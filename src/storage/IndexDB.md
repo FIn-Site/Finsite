@@ -46,6 +46,40 @@ meaning you cannot return the object directly you must trigger one of the former
  - it happens before `onsuccess`
  - it does not mean the operation failed
  - it is not the same as `onerror`
+ 
  It simply means that another tab, window, or worker still has the database open with the old version and it is _waiting_ to proceed after all connections are closed
 
- 
+ ---
+
+ ## Get all transactions
+
+ Similar to the approach we took in opening the database, we wrapped this function with a promise and exported it as `async` so we can use `await` when we call it
+
+__Transactions__ are the opreations we will use to manipualte the dataset this includes:
+- get
+- getAll
+- add
+- put
+- delete
+
+`db.transaction(STORE_NAME, 'readonly')` starts a transaction on our storage in readonly mode, its in readonly mode because we are not writing to it and indexDB can optimize this request
+
+These operations exist _on the object storage_ __NOT__ in `db` so we call `trasnaction.objectStore(STORE_NAME)`
+
+### onsuccess
+
+will return an array of all transactions
+
+### onerror
+
+returns the error 
+__NOTE__
+there is a difference between `error` and `errorCode`
+- error: returns[ name, message, the error itself, stack trace]
+- errorCode: (Outdated) only returns error value
+    - 1: NotFoundError
+    - 2: ConstraintError
+    - 3: AbortError
+
+---
+

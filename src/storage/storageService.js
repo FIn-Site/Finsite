@@ -25,9 +25,27 @@ function openDatabase() {
         };
 
         request.onerror = (event) => {
-            reject(`Database error: ${event.target.errorCode}`);
+            reject(`Database error: ${event.target.error}`);
         };
 
     });
 
+}
+
+export async function getAllTransactions() {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+
+        const request = store.getAll();
+
+        request.onsuccess = (event) => {
+            resolve(event.target.result);
+        }
+
+        request.onerror = (event) => {
+            reject(`Failed to get all transactions: ${event.target.error}`);
+        }
+    });
 }
