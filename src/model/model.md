@@ -12,13 +12,19 @@ in the `try` we await all transactions from storage service and initalize  `this
 
 in the `catch` we send out the error as well as overwrite transaction with an empty array
 
+
+## addEntry()
+async function to await `addTransaction` in storage service. Takes in a record parameter with the formatting:
+{ group, category, amount, date }
+
+`try` write new record to a variable (record) and pass it to `addTransaction` since `onsuccess` returns the full record + id, it can directly be pushed to `this.transactions` (local database) and returns the saved record so the controlel can update the view
+
+`catch` throws an error, controller handles it
+
+
 ## getAll
 
 returns a __Shallow copy__ of the array, this is to prevent data mutation by copying the array over to a new array so mutation does affect source of truth
 
-## addTransaction
 
-similar in inital logic only difference is
-- use 'readwrite'
-- resolve with entire record + id (so it can be added to view)
 

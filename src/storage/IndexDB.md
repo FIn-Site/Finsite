@@ -83,3 +83,8 @@ there is a difference between `error` and `errorCode`
 
 ---
 
+## add transaction
+
+similar to `getAllTransactions` in inital logic only difference is
+- use 'readwrite'
+- resolve with entire record + id (so it can be pushed to local storage array + updated on view)

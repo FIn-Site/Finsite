@@ -1,4 +1,4 @@
-import { getAllTransactions } from "../storage/storageService";
+import { getAllTransactions, addTransaction } from "../storage/storageService";
 
 export class FinanceModel {
     constructor() {
@@ -15,6 +15,18 @@ export class FinanceModel {
             console.error("Error initializing FinanceModel:", error);
             this.transactions = [];
             return this.transactions;
+        }
+    }
+
+    async addEntry({group, category, amount, date}) {
+        try {
+            const newTransaction = { group, category, amount: Number(amount), date };
+            const savedTransaction = await addTransaction(newTransaction);
+            this.transactions.push(savedTransaction);
+            return savedTransaction;
+        } catch (error) {
+            console.error("Error adding transaction:", error);
+            throw error;
         }
     }
 
