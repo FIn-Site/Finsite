@@ -49,3 +49,21 @@ export async function getAllTransactions() {
         }
     });
 }
+
+export async function addTransaction(transactionData) {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+
+        const request = store.add(transactionData);
+
+        request.onsuccess = (event) => {
+            const id = event.target.result;
+            resolve({ id, ...transactionData });
+        }
+        request.onerror = (event) => {
+            reject(`Failed to add transaction: ${event.target.error}`);
+        }
+    });
+}

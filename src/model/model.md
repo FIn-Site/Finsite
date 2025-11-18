@@ -16,5 +16,9 @@ in the `catch` we send out the error as well as overwrite transaction with an em
 
 returns a __Shallow copy__ of the array, this is to prevent data mutation by copying the array over to a new array so mutation does affect source of truth
 
+## addTransaction
 
+similar in inital logic only difference is
+- use 'readwrite'
+- resolve with entire record + id (so it can be added to view)
 
