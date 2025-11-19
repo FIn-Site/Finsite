@@ -1,4 +1,4 @@
-import { getAllTransactions, addTransaction } from "../storage/storageService";
+import { getAllTransactions, addTransaction } from "../storage/storageService.js";
 
 export class FinanceModel {
     constructor() {
