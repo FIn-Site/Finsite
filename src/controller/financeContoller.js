@@ -21,10 +21,25 @@ export class FinSiteController {
         // Get initial data from model
         const data = this.model.getData();
         
-        // Update the view with initial data
-        this.view.update(data);
+        // Set initial view to dashboard
+        this.model.updateData({ currentView: 'dashboard' });
         
-        console.log('FinSightController initialization complete');
+        console.log('Controller initialization complete');
+    }
+    
+    /**
+     * Handle navigation between different views
+     * @param {string} viewName - Name of the view to navigate to
+     */
+    navigate(viewName) {
+        console.log(`🧭 Navigating to: ${viewName}`);
+        
+        // Update model state
+        this.model.updateData({ currentView: viewName });
+        
+        // Could trigger view updates here if needed
+        const currentData = this.model.getData();
+        console.log('Current app state:', currentData);
     }
 
     /**

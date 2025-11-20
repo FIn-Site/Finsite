@@ -1,4 +1,4 @@
-cd/**
+/**
  * FinSiteModel - Manages application data and business logic
  * Handles data operations, API calls, and state management
  */

@@ -2,10 +2,9 @@
  * Main application entry point
  * Initializes and coordinates all MVC components
  */
-import { FinanceModel } from "./model/FinanceModel.js"
-import { FinanceView } from "./view/FinanceView.js"
-import { FinanceController } from "./controller/FinanceController.js"
-import { LocalStorageGateway } from "./storage/LocalStorageGateway.js"
+import { FinSiteModel } from "./model/financeModel.js"
+import { FinSiteView } from "./view/financeView.js"
+import { FinSiteController } from "./controller/financeContoller.js"
 
 /**
  * Initialize the chat application
@@ -15,15 +14,16 @@ function initializeApp() {
     console.log('🚀 Initialize FinSite...');
     
     try {
-        // Create storage gateway
-        const storage = new LocalStorageGateway();
-        
         // Instantiate MVC components
-        const model = new FinanceModel(storage);
-        const view = new FinanceView(document.querySelector('#app'));
+        const model = new FinSiteModel();
+        const view = new FinSiteView();
+
+        // Render the view in the #app container
+        view.render('#app');
 
         // Link Everything through the Controller
-        const controller = new FinanceController(model, view);
+        const controller = new FinSiteController(model, view);
+        controller.init();
         
         console.log('✅ FinSight initialization complete!');
     } catch (error) {
