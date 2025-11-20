@@ -1,33 +1,69 @@
-// /src/controller/FinanceController.js
-export class FinanceController {
+/**
+ * FinSiteController - Coordinates between Model and View
+ * Handles user interactions and application logic
+ */
+export class FinSiteController {
     constructor(model, view) {
-      this.model = model;
-      this.view = view;
-  
-      this.view.onSubmit = (tx) => this.handleSubmit(tx);
-      this.view.onDeleteSelected = (ids) => this.handleDeleteSelected(ids); // NEW
-  
-      this.view.renderTable(this.model.list());
+        this.model = model;
+        this.view = view;
+        
+        console.log('FinSiteController initialized');
     }
-  
-    handleSubmit(tx) {
-      if (!Number.isFinite(tx.amount) || tx.amount <= 0) { this.view.showBanner('Enter a valid amount > 0', false); return; }
-      if (!tx.category) { this.view.showBanner('Select a category', false); return; }
-      if (!tx.date) { this.view.showBanner('Pick a date', false); return; }
-  
-      const saved = this.model.addTransaction(tx);
-      // CHANGE: forward `saved` to charts/graph updater when available.
-  
-      this.view.showBanner(`Added: ${saved.category} • $${saved.amount.toFixed(2)} on ${saved.date}`, true);
-      this.view.resetForm();
-      this.view.renderTable(this.model.list());
+
+    /**
+     * Initialize the controller
+     * Sets up event listeners and initial data
+     */
+    init() {
+        // Initialize the model with default data
+        this.model.init();
+        
+        // Get initial data from model
+        const data = this.model.getData();
+        
+        // Set initial view to dashboard
+        this.model.updateData({ currentView: 'dashboard' });
+        
+        console.log('Controller initialization complete');
     }
-  
-    handleDeleteSelected(ids) {
-      if (!ids?.length) { this.view.showBanner('No rows selected.', false, 1400); return; }
-      this.model.removeMany(ids);
-      this.view.renderTable(this.model.list());
-      this.view.showBanner('Selected entries deleted.', true, 1400);
+    
+    /**
+     * Handle navigation between different views
+     * @param {string} viewName - Name of the view to navigate to
+     */
+    navigate(viewName) {
+        console.log(`🧭 Navigating to: ${viewName}`);
+        
+        // Update model state
+        this.model.updateData({ currentView: viewName });
+        
+        // Could trigger view updates here if needed
+        const currentData = this.model.getData();
+        console.log('Current app state:', currentData);
     }
-  }
-  
+
+    /**
+     * Handle user interactions
+     * @param {string} action - Action type
+     * @param {Object} payload - Action data
+     */
+    handleAction(action, payload) {
+        switch (action) {
+            case 'navigate':
+                this.navigate(payload.route);
+                break;
+            default:
+                console.log('Unknown action:', action);
+        }
+    }
+
+    /**
+     * Navigate to different views
+     * @param {string} route - Route to navigate to
+     */
+    navigate(route) {
+        this.model.updateData({ currentView: route });
+        const data = this.model.getData();
+        this.view.update(data);
+    }
+}
