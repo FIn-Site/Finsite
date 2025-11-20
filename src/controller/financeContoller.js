@@ -6,9 +6,9 @@ export class FinanceController {
         this.view = view;
 
         this.view.onSubmit = (tx) => this.handleSubmit(tx);
-        this.view.onDeleteSelected = (ids) => this.handleDeleteSelected(ids); // NEW
+        // this.view.onDeleteSelected = (ids) => this.handleDeleteSelected(ids); 
     
-        this.view.renderTable(this.model.list());
+        this.view.renderTable(this.model.getAll());
     }
 
     async init() {
@@ -27,7 +27,7 @@ export class FinanceController {
       if (!tx.category) { this.view.showBanner('Select a category', false); return; }
       if (!tx.date) { this.view.showBanner('Pick a date', false); return; }
   
-      const saved = this.model.addTransaction(tx.group="household", tx.category, tx.amount, tx.date);
+      const saved = this.addTransaction(tx.group, tx.category, tx.amount, tx.date);
       // CHANGE: forward `saved` to charts/graph updater when available.
   
       this.view.showBanner(`Added: ${saved.category} • $${saved.amount.toFixed(2)} on ${saved.date}`, true);

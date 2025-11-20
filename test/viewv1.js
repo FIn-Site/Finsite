@@ -1,7 +1,4 @@
-import { FinanceController } from "../controller/financeContoller.js";
-
-
-
+// /src/view/FinanceView.js
 export class FinanceView {
     constructor(root) {
       this.root = root;
@@ -80,13 +77,12 @@ export class FinanceView {
       this.root.querySelector('#clearBtn').addEventListener('click', () => {
         this.form.reset();
         this.dateEl.value = new Date().toISOString().slice(0,10);
-        this.showBanner('Fields cleared.', true, 1400);
+        this.onClearFields && this.onClearFields();
       });
   
       this.form.addEventListener('submit', (e) => {
         e.preventDefault();
         const payload = {
-          group: "household",
           amount: parseFloat(this.amountEl.value),
           category: this.categoryEl.value,
           date: this.dateEl.value
