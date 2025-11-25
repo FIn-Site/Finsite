@@ -1,58 +1,45 @@
-import { getAllTransactions, addTransaction } from "../storage/storageService.js";
-
-export class FinanceModel {
+/**
+ * FinSiteModel - Manages application data and business logic
+ * Handles data operations, API calls, and state management
+ */
+export class FinSiteModel {
     constructor() {
-        this.transactions = [];
+        this.data = {
+            user: null,
+            accounts: [],
+            transactions: [],
+            currentView: 'dashboard'
+        };
+        
+        console.log('FinSiteModel initialized');
     }
-
-    async init() {
-        try {
-            const storedTransactions = await getAllTransactions();
-            this.transactions = Array.isArray(storedTransactions) ? storedTransactions : [];
-
-            return this.transactions;
-        } catch (error) {
-            console.error("Error initializing FinanceModel:", error);
-            this.transactions = [];
-            return this.transactions;
-        }
-    }
-
-    async addEntry({group, category, amount, date}) {
-        try {
-            const newTransaction = { group, category, amount: Number(amount), date };
-            const savedTransaction = await addTransaction(newTransaction);
-            this.transactions.push(savedTransaction);
-            return savedTransaction;
-        } catch (error) {
-            console.error("Error adding transaction:", error);
-            throw error;
-        }
-    }
-
-    getAll() {
-        return [...this.transactions];
-    }
-
 
     /**
-     * 
-     * addTransaction(tx) {
-      const saved = { ...tx, id: (crypto?.randomUUID?.() || String(Date.now() + Math.random())) };
-      this.state.transactions.unshift(saved);
-      this.storage.save(this.state.transactions);
-      return saved;
-    }
-    clearAll() {
-      this.state.transactions = [];
-      this.storage.save(this.state.transactions);
-    }
-    removeMany(ids) {
-      const set = new Set(ids);
-      this.state.transactions = this.state.transactions.filter(t => !set.has(t.id));
-      this.storage.save(this.state.transactions);
-    }
-    list() { return [...this.state.transactions]; }
-     * 
+     * Get current application data
+     * @returns {Object} Current data state
      */
+    getData() {
+        return this.data;
+    }
+
+    /**
+     * Update application data
+     * @param {Object} newData - New data to merge
+     */
+    updateData(newData) {
+        this.data = { ...this.data, ...newData };
+        console.log('Model data updated:', this.data);
+    }
+
+    /**
+     * Initialize default data
+     */
+    init() {
+        this.data.user = {
+            name: 'Jenner',
+            greeting: 'Good evening'
+        };
+        
+        console.log('Model initialized with default data');
+    }
 }
