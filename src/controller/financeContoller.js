@@ -7,40 +7,46 @@ export class FinSiteController {
         this.model = model;
         this.view = view;
         
-        console.log('FinSiteController initialized');
+        if(typeof this.view.blindHandlers === 'function') {
+            this.view.bindHandlers({
+                onNavigate: (route) => this.navigate(route)
+            });
+        }
+
+        console.log('FinSiteController initialized with model and view');
     }
 
     /**
      * Initialize the controller
      * Sets up event listeners and initial data
      */
-    init() {
-        // Initialize the model with default data
-        this.model.init();
-        
-        // Get initial data from model
-        const data = this.model.getData();
-        
-        // Set initial view to dashboard
-        this.model.updateData({ currentView: 'dashboard' });
-        
-        console.log('Controller initialization complete');
+    async init() {
+        console.log('Controller initialization started');
+
+        try {
+            // 1) Load from storage via the model (async)
+            const initialData = await this.model.init();
+
+            // 2) Make sure we have a starting route in the model
+            if (!initialData.currentView) {
+                this.model.updateData({ currentView: 'dashboard' });
+            }
+
+            // 3) Get a fresh snapshot of state
+            const data = this.model.getData();
+
+            // 4) Tell the view to render based on model state
+            this.view.update(data);
+
+            console.log('Controller initialization complete');
+        } catch (error) {
+            console.error('Error during controller initialization:', error);
+          
+        }
+
     }
     
-    /**
-     * Handle navigation between different views
-     * @param {string} viewName - Name of the view to navigate to
-     */
-    navigate(viewName) {
-        console.log(`🧭 Navigating to: ${viewName}`);
-        
-        // Update model state
-        this.model.updateData({ currentView: viewName });
-        
-        // Could trigger view updates here if needed
-        const currentData = this.model.getData();
-        console.log('Current app state:', currentData);
-    }
+  
 
     /**
      * Handle user interactions
@@ -62,6 +68,7 @@ export class FinSiteController {
      * @param {string} route - Route to navigate to
      */
     navigate(route) {
+        console.log(`🧭 Navigating to: ${route}`);
         this.model.updateData({ currentView: route });
         const data = this.model.getData();
         this.view.update(data);

@@ -11,6 +11,15 @@ export class FinSiteView {
     constructor() {
         this.container = null;
         this.currentPage = 'dashboard';
+        this.handlers = {};
+    }
+
+    /**
+     * Allow the controller to register callbacks for view events
+     * @param {Object} handlers - { onNavigate: (route) => {...}}
+     */
+    bindHandlers(handlers) {
+        this.handlers = handlers || {};
     }
 
     /**
@@ -55,7 +64,14 @@ export class FinSiteView {
         if (sidebar) {
             sidebar.addEventListener('navigate', (event) => {
                 const { page } = event.detail;
-                this.navigateToPage(page);
+                
+                if (this.handlers && typeof this.handlers.onNavigate === 'function') {
+                    // Forward to controller
+                    this.handlers.onNavigate(page);
+                } else {
+                    // Fallback: local navigation
+                    this.navigateToPage(page);
+                }
             });
         }
 
