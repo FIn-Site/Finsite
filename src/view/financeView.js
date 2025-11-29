@@ -137,6 +137,14 @@ export class FinSiteView {
                 dashboard.updateData(data);
             }
         }
+
+        // Update transactions component with new data if it's active
+        if (this.currentPage === 'transactions') {
+        const transactionsPage = this.container.querySelector('finsite-transactions');
+        if (transactionsPage && typeof transactionsPage.setTransactions === 'function') {
+            transactionsPage.setTransactions(data.transactions || []);
+        }
+    }
         
         console.log('View updated with data:', data);
     }

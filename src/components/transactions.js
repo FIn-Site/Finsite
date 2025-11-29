@@ -6,80 +6,33 @@ class FinSiteTransactions extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
-        this.data = {
-            summary: {
-                totalIncome: 3200.00,
-                totalExpenses: 1847.32,
-                netIncome: 1352.68,
-                totalTransactions: 247
-            },
-            transactions: [
-                {
-                    id: 1,
-                    category: 'pending',
-                    name: 'Uber.com',
-                    account: 'Credit Card 2',
-                    type: 'Fast Food',
-                    amount: -24.78,
-                    date: 'Mar 5',
-                    status: 'Pending',
-                    icon: '$'
-                },
-                {
-                    id: 2,
-                    category: 'pending',
-                    name: 'Work Barista',
-                    account: 'Credit Card 2',
-                    type: 'Coffee Shops',
-                    amount: -2.70,
-                    date: 'Mar 3',
-                    status: 'Pending',
-                    icon: '$'
-                },
-                {
-                    id: 3,
-                    category: 'march2025',
-                    name: 'Salary Deposit - Tech Corp',
-                    account: 'Chase Checking',
-                    type: 'Income',
-                    amount: 3200.00,
-                    date: 'Mar 15',
-                    status: 'Complete',
-                    icon: '$'
-                },
-                {
-                    id: 4,
-                    category: 'march2025',
-                    name: 'Instacart',
-                    account: 'Credit Card 2',
-                    type: 'Groceries',
-                    amount: -40.22,
-                    date: 'Mar 4',
-                    status: 'Complete',
-                    icon: '$'
-                },
-                {
-                    id: 5,
-                    category: 'march2025',
-                    name: 'Convenience Store',
-                    account: 'Credit Card 2',
-                    type: 'Groceries',
-                    amount: -12.30,
-                    date: 'Mar 3',
-                    status: 'Complete',
-                    icon: '$'
-                }
-            ]
+
+        // Core state: all transactions currently displayed
+        this.transactions = [];
+
+        // Summary data derived from this.transactions (spending-only)
+        this.summaryData = {
+            totalSpent: 0,
+            totalTransactions: 0,
+            avgPerTransaction: 0
         };
+
+        // UI state
         this.currentFilter = 'all';
         this.searchQuery = '';
     }
 
-    // Method to set transactions data from external source
+    /**
+     * Set transactions data from external source (MVC model)
+     * @param {Array<Object>} transactionsArray
+     */
     setTransactions(transactionsArray) {
-        this.transactions = transactionsArray || [];
+        this.transactions = Array.isArray(transactionsArray)
+            ? [...transactionsArray]
+            : [];
+
         this.calculateSummaryData();
-        
+
         // Only re-render if the component is already connected
         if (this.isConnected) {
             this.render();
@@ -87,88 +40,42 @@ class FinSiteTransactions extends HTMLElement {
         }
     }
 
-    // Calculate summary statistics
+    /**
+     * Calculate summary statistics for spending-only view
+     * Assumes all amounts are positive "money out"
+     */
     calculateSummaryData() {
-        const income = this.transactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0);
-        const expenses = Math.abs(this.transactions.filter(t => t.amount < 0).reduce((sum, t) => sum + t.amount, 0));
-        
+        let totalSpent = 0;
+
+        this.transactions.forEach((tx) => {
+            const amount = Number(tx.amount) || 0;
+            totalSpent += amount;
+        });
+
+        const totalTransactions = this.transactions.length;
+        const avgPerTransaction =
+            totalTransactions > 0 ? totalSpent / totalTransactions : 0;
+
         this.summaryData = {
-            totalIncome: income,
-            totalExpenses: expenses,
-            netIncome: income - expenses,
-            totalTransactions: this.transactions.length
+            totalSpent,
+            totalTransactions,
+            avgPerTransaction
         };
     }
 
     connectedCallback() {
-        // Initialize with sample data matching the screenshot
-        this.initializeWithSampleData();
+        // Ensure transactions is at least an empty array
+        if (!Array.isArray(this.transactions)) {
+            this.transactions = [];
+        }
+
+        // Keep summary in sync with whatever data we currently have
+        this.calculateSummaryData();
+
         this.render();
         this.setupEventListeners();
     }
 
-    // Initialize with sample data matching the screenshot
-    initializeWithSampleData() {
-        const sampleTransactions = [
-            {
-                id: 1,
-                category: 'pending',
-                name: 'Uber.com',
-                account: 'Credit Card 2',
-                type: 'Fast Food',
-                amount: -24.78,
-                date: 'Mar 5',
-                status: 'Pending',
-                icon: '$'
-            },
-            {
-                id: 2,
-                category: 'pending',
-                name: 'Work Barista',
-                account: 'Credit Card 2',
-                type: 'Coffee Shops',
-                amount: -2.70,
-                date: 'Mar 3',
-                status: 'Pending',
-                icon: '$'
-            },
-            {
-                id: 3,
-                category: 'march2025',
-                name: 'Salary Deposit - Tech Corp',
-                account: 'Chase Checking',
-                type: 'Income',
-                amount: 3200.00,
-                date: 'Mar 15',
-                status: 'Complete',
-                icon: '$'
-            },
-            {
-                id: 4,
-                category: 'march2025',
-                name: 'Instacart',
-                account: 'Credit Card 2',
-                type: 'Groceries',
-                amount: -40.22,
-                date: 'Mar 4',
-                status: 'Complete',
-                icon: '$'
-            },
-            {
-                id: 5,
-                category: 'march2025',
-                name: 'Convenience Store',
-                account: 'Credit Card 2',
-                type: 'Groceries',
-                amount: -12.30,
-                date: 'Mar 3',
-                status: 'Complete',
-                icon: '$'
-            }
-        ];
-        
-        this.setTransactions(sampleTransactions);
-    }
 
     render() {
         this.shadowRoot.innerHTML = `
@@ -184,15 +91,18 @@ class FinSiteTransactions extends HTMLElement {
                     display: block;
                     width: 100%;
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    color: #ffffff;
                 }
 
-                .transactions-container {
+                .transactions-card {
+                    background: #111827;
+                    border-radius: 1rem;
                     padding: 1.5rem;
-                    width: 100%;
-                    max-width: none;
-                    background: #1a1a1a;
-                    min-height: 100vh;
-                    box-sizing: border-box;
+                    border: 1px solid #1f2937;
+                    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1.5rem;
                 }
 
                 .transactions-header {
@@ -207,16 +117,43 @@ class FinSiteTransactions extends HTMLElement {
                 .header-left {
                     display: flex;
                     align-items: center;
-                    gap: 1.5rem;
-                    flex: 1;
+                    gap: 0.75rem;
                 }
 
-                .page-title {
-                    font-size: 1.75rem;
+                .transactions-title {
+                    font-size: 1.125rem;
                     font-weight: 600;
-                    color: #ffffff;
-                    margin: 0;
-                    margin-right: 2rem;
+                    letter-spacing: 0.01em;
+                }
+
+                .badge {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.25rem;
+                    padding: 0.125rem 0.5rem;
+                    background: rgba(52, 211, 153, 0.1);
+                    border-radius: 9999px;
+                    border: 1px solid rgba(52, 211, 153, 0.2);
+                    font-size: 0.7rem;
+                    text-transform: uppercase;
+                    letter-spacing: 0.08em;
+                    color: #6ee7b7;
+                }
+
+                .badge-dot {
+                    width: 0.375rem;
+                    height: 0.375rem;
+                    border-radius: 9999px;
+                    background: #10b981;
+                    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.5);
+                }
+
+                .header-right {
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                    flex-wrap: wrap;
+                    justify-content: flex-end;
                 }
 
                 .search-container {
@@ -249,45 +186,79 @@ class FinSiteTransactions extends HTMLElement {
 
                 .filter-buttons {
                     display: flex;
+                    align-items: center;
                     gap: 0.5rem;
                 }
 
                 .filter-btn {
-                    padding: 0.625rem 1rem;
-                    background: #374151;
-                    border: none;
-                    border-radius: 0.5rem;
-                    color: #ffffff;
-                    font-size: 0.875rem;
-                    font-weight: 500;
+                    padding: 0.4rem 0.75rem;
+                    border-radius: 9999px;
+                    border: 1px solid #4b5563;
+                    background: transparent;
+                    color: #e5e7eb;
+                    font-size: 0.75rem;
                     cursor: pointer;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.25rem;
                     transition: all 0.2s ease;
-                    min-width: 4rem;
                 }
 
                 .filter-btn:hover {
-                    background: #4b5563;
+                    background: #374151;
                 }
 
                 .filter-btn.active {
-                    background: #3b82f6;
-                    color: #ffffff;
+                    background: #4b5563;
+                    border-color: #6b7280;
+                }
+
+                .filter-circle {
+                    width: 0.4rem;
+                    height: 0.4rem;
+                    border-radius: 9999px;
+                    background: #9ca3af;
+                }
+
+                .filter-btn[data-filter="income"] .filter-circle {
+                    background: #10b981;
+                }
+
+                .filter-btn[data-filter="expenses"] .filter-circle {
+                    background: #ef4444;
+                }
+
+                .filter-btn[data-filter="pending"] .filter-circle {
+                    background: #f97316;
                 }
 
                 .export-btn {
-                    padding: 0.625rem 1rem;
-                    background: #4b5563;
-                    border: none;
-                    border-radius: 0.5rem;
-                    color: #ffffff;
-                    font-size: 0.875rem;
-                    font-weight: 500;
+                    padding: 0.45rem 0.85rem;
+                    border-radius: 9999px;
+                    border: 1px solid #4b5563;
+                    background: transparent;
+                    color: #e5e7eb;
+                    font-size: 0.75rem;
                     cursor: pointer;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.35rem;
                     transition: all 0.2s ease;
+                    white-space: nowrap;
                 }
 
                 .export-btn:hover {
-                    background: #6b7280;
+                    background: #374151;
+                }
+
+                .export-icon {
+                    font-size: 0.85rem;
+                }
+
+                .transactions-body {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1.5rem;
                 }
 
                 .summary-cards {
@@ -333,129 +304,152 @@ class FinSiteTransactions extends HTMLElement {
                 }
 
                 .transactions-content {
-                    background: #2a2a2a;
-                    border: none;
-                    border-radius: 1rem;
+                    display: grid;
+                    grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
+                    gap: 1.5rem;
+                }
+
+                .transactions-list-card {
+                    background: #020617;
+                    border-radius: 0.75rem;
+                    padding: 1rem 0;
+                    border: 1px solid #111827;
                     overflow: hidden;
-                    width: 100%;
                 }
 
-                .transactions-info {
+                .transactions-list-header {
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    padding: 1rem 1.5rem;
-                    border-bottom: 0.0625rem solid #333;
-                    background: #333;
+                    padding: 0 1.5rem 0.75rem;
+                    border-bottom: 1px solid #111827;
                 }
 
-                .transactions-count {
-                    font-size: 0.875rem;
-                    color: #ffffff;
+                .transactions-list-title {
+                    font-size: 0.85rem;
+                    font-weight: 500;
+                    text-transform: uppercase;
+                    letter-spacing: 0.08em;
+                    color: #9ca3af;
                 }
 
-                .section-header {
-                    padding: 1rem 1.5rem;
-                    background: #434957;
+                .transactions-list-actions {
                     display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                }
+
+                .chip {
+                    padding: 0.15rem 0.55rem;
+                    border-radius: 9999px;
+                    background: #111827;
+                    border: 1px solid #1f2937;
+                    font-size: 0.7rem;
+                    color: #9ca3af;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.35rem;
+                }
+
+                .chip-dot {
+                    width: 0.35rem;
+                    height: 0.35rem;
+                    border-radius: 9999px;
+                    background: #f97316;
+                }
+
+                .transactions-list {
+                    max-height: 400px;
+                    overflow-y: auto;
+                }
+
+                .transactions-list::-webkit-scrollbar {
+                    width: 0.375rem;
+                }
+
+                .transactions-list::-webkit-scrollbar-thumb {
+                    background: #1f2937;
+                    border-radius: 9999px;
+                }
+
+                .transactions-list::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+
+                .transaction-row {
+                    display: flex;
+                    align-items: center;
                     justify-content: space-between;
-                    align-items: center;
-                    cursor: pointer;
-                    user-select: none;
+                    padding: 0.75rem 1.5rem;
+                    border-bottom: 1px solid #020617;
+                    transition: background-color 0.15s ease;
                 }
 
-                .section-header:hover {
-                    background: #4a5568;
-                }
-
-                .section-title {
-                    font-size: 1rem;
-                    font-weight: 600;
-                    color: #ffffff;
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                }
-
-                .section-amount {
-                    font-size: 1rem;
-                    font-weight: 600;
-                }
-
-                .section-amount.positive {
-                    color: #10b981;
-                }
-
-                .section-amount.negative {
-                    color: #ef4444;
-                }
-
-                .transaction-list {
-                    display: flex;
-                    flex-direction: column;
-                }
-
-                .transaction-item {
-                    display: flex;
-                    align-items: center;
-                    padding: 0.875rem 1.5rem;
-                    border-bottom: 0.0625rem solid #333;
-                    transition: background-color 0.2s ease;
-                    background: #2a2a2a;
-                }
-
-                .transaction-item:hover {
-                    background: #333;
-                }
-
-                .transaction-item:last-child {
+                .transaction-row:last-child {
                     border-bottom: none;
                 }
 
+                .transaction-row:hover {
+                    background: #020617;
+                }
+
+                .transaction-main {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                }
+
                 .transaction-icon {
-                    width: 2rem;
-                    height: 2rem;
-                    border-radius: 50%;
+                    width: 2.2rem;
+                    height: 2.2rem;
+                    border-radius: 0.75rem;
+                    background: #111827;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 0.875rem;
-                    margin-right: 0.875rem;
+                    font-size: 1.1rem;
                     flex-shrink: 0;
-                    color: #ffffff;
-                    font-weight: bold;
-                }
-
-                .transaction-icon.expense {
-                    background: #ef4444;
-                }
-
-                .transaction-icon.income {
-                    background: #10b981;
                 }
 
                 .transaction-icon.pending {
-                    background: #6b7280;
+                    background: rgba(249, 115, 22, 0.12);
+                    color: #f97316;
                 }
 
-                .transaction-details {
-                    flex: 1;
-                    min-width: 0;
+                .transaction-icon.income {
+                    background: rgba(16, 185, 129, 0.12);
+                    color: #10b981;
+                }
+
+                .transaction-icon.expense {
+                    background: rgba(239, 68, 68, 0.12);
+                    color: #ef4444;
+                }
+
+                .transaction-text {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.15rem;
                 }
 
                 .transaction-name {
-                    font-size: 0.875rem;
+                    font-size: 0.9rem;
                     font-weight: 500;
-                    color: #ffffff;
-                    margin-bottom: 0.125rem;
                 }
 
                 .transaction-meta {
                     font-size: 0.75rem;
                     color: #9ca3af;
                     display: flex;
-                    gap: 0.375rem;
-                    flex-wrap: wrap;
+                    align-items: center;
+                    gap: 0.4rem;
+                }
+
+                .transaction-meta-dot {
+                    width: 0.2rem;
+                    height: 0.2rem;
+                    border-radius: 9999px;
+                    background: #4b5563;
                 }
 
                 .transaction-amount {
@@ -470,7 +464,7 @@ class FinSiteTransactions extends HTMLElement {
                 }
 
                 .transaction-amount.negative {
-                    color: #ffffff;
+                    color: #ef4444;
                 }
 
                 .transaction-date {
@@ -488,305 +482,489 @@ class FinSiteTransactions extends HTMLElement {
                 }
 
                 .status-pending {
-                    background: rgba(107, 114, 128, 0.2);
+                    background: rgba(249, 115, 22, 0.16);
+                    color: #fbbf24;
+                }
+
+                .status-complete {
+                    background: rgba(16, 185, 129, 0.16);
+                    color: #6ee7b7;
+                }
+
+                .transactions-overview-card {
+                    background: #020617;
+                    border-radius: 0.75rem;
+                    padding: 1rem 1.25rem;
+                    border: 1px solid #111827;
+                }
+
+                .overview-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 1rem;
+                }
+
+                .overview-title {
+                    font-size: 0.85rem;
+                    font-weight: 500;
+                    text-transform: uppercase;
+                    letter-spacing: 0.08em;
                     color: #9ca3af;
                 }
 
-                /* Responsive Design */
-                @media (max-width: 64rem) {
-                    .transactions-header {
-                        flex-direction: column;
-                        align-items: stretch;
-                    }
+                .overview-tag {
+                    font-size: 0.75rem;
+                    color: #9ca3af;
+                }
 
-                    .header-left {
-                        flex-direction: column;
-                        align-items: stretch;
-                        gap: 1rem;
-                    }
+                .overview-metric {
+                    margin-bottom: 1rem;
+                }
 
-                    .summary-cards {
-                        grid-template-columns: repeat(2, 1fr);
-                        gap: 1rem;
+                .metric-label {
+                    font-size: 0.75rem;
+                    color: #9ca3af;
+                    margin-bottom: 0.4rem;
+                }
+
+                .metric-value {
+                    font-size: 1.4rem;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: baseline;
+                    gap: 0.25rem;
+                }
+
+                .metric-value.positive {
+                    color: #10b981;
+                }
+
+                .metric-value.negative {
+                    color: #ef4444;
+                }
+
+                .metric-trend {
+                    font-size: 0.75rem;
+                    color: #9ca3af;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.35rem;
+                }
+
+                .trend-icon {
+                    font-size: 0.8rem;
+                }
+
+                .trend-label {
+                    font-weight: 500;
+                }
+
+                .trend-value {
+                    color: #10b981;
+                }
+
+                .trend-value.negative {
+                    color: #ef4444;
+                }
+
+                .trend-period {
+                    color: #6b7280;
+                }
+
+                .overview-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.6rem;
+                }
+
+                .overview-item {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    font-size: 0.8rem;
+                }
+
+                .overview-item-label {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    color: #d1d5db;
+                }
+
+                .badge-dot {
+                    width: 0.35rem;
+                    height: 0.35rem;
+                    border-radius: 9999px;
+                }
+
+                .badge-dot.groceries {
+                    background: #f97316;
+                }
+
+                .badge-dot.food {
+                    background: #3b82f6;
+                }
+
+                .badge-dot.utilities {
+                    background: #8b5cf6;
+                }
+
+                .overview-item-value {
+                    font-weight: 500;
+                    color: #e5e7eb;
+                }
+
+                @media (max-width: 1024px) {
+                    .transactions-content {
+                        grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.9fr);
                     }
                 }
 
-                @media (max-width: 48rem) {
-                    .transactions-container {
-                        padding: 1rem;
+                @media (max-width: 768px) {
+                    .transactions-card {
+                        padding: 1.25rem;
                     }
 
-                    .summary-cards {
-                        grid-template-columns: 1fr;
+                    .transactions-header {
+                        align-items: flex-start;
                     }
 
-                    .transaction-item {
-                        padding: 0.75rem 1rem;
+                    .header-right {
+                        flex-direction: column;
+                        align-items: flex-start;
+                    }
+
+                    .transactions-content {
+                        grid-template-columns: minmax(0, 1fr);
                     }
                 }
             </style>
-            
-            <div class="transactions-container">
+
+            <div class="transactions-card">
                 <div class="transactions-header">
                     <div class="header-left">
-                        <h1 class="page-title">Transaction Activity</h1>
-                        <div class="search-container">
-                            <input type="text" class="search-input" placeholder="Search transactions..." id="search-input">
+                        <div>
+                            <div class="transactions-title">Transactions</div>
+                            <div class="badge">
+                                <span class="badge-dot"></span>
+                                <span>Spending Tracker</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="header-actions">
-                        <div class="filter-buttons">
-                            <button class="filter-btn active" data-filter="all">All</button>
-                            <button class="filter-btn" data-filter="income">Income</button>
-                            <button class="filter-btn" data-filter="expenses">Expenses</button>
-                            <button class="filter-btn" data-filter="pending">Pending</button>
+                    <div class="header-right">
+                        <div class="search-container">
+                            <input 
+                                type="text" 
+                                class="search-input" 
+                                placeholder="Search transactions..." 
+                                id="search-input"
+                            >
                         </div>
-                        <button class="export-btn">Export CSV</button>
+                        <div class="header-actions">
+                            <div class="filter-buttons">
+                                <button class="filter-btn active" data-filter="all">All</button>
+                                <button class="filter-btn" data-filter="income">Income</button>
+                                <button class="filter-btn" data-filter="expenses">Expenses</button>
+                                <button class="filter-btn" data-filter="pending">Pending</button>
+                            </div>
+                            <button class="export-btn">
+                                <span class="export-icon">⭳</span>
+                                <span>Export CSV</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <div class="summary-cards">
                     <div class="summary-card">
-                        <div class="summary-value positive">+$${this.summaryData.totalIncome.toLocaleString()}</div>
-                        <div class="summary-label">Total Income</div>
+                        <div class="summary-value negative">
+                            $${this.summaryData.totalSpent.toLocaleString()}
+                        </div>
+                        <div class="summary-label">Total Spent</div>
                     </div>
                     <div class="summary-card">
-                        <div class="summary-value negative">-$${this.summaryData.totalExpenses.toLocaleString()}</div>
-                        <div class="summary-label">Total Expenses</div>
-                    </div>
-                    <div class="summary-card">
-                        <div class="summary-value ${this.summaryData.netIncome >= 0 ? 'positive' : 'negative'}">${this.summaryData.netIncome >= 0 ? '+' : ''}$${Math.abs(this.summaryData.netIncome).toLocaleString()}</div>
-                        <div class="summary-label">Net Income</div>
-                    </div>
-                    <div class="summary-card">
-                        <div class="summary-value">${this.summaryData.totalTransactions}</div>
+                        <div class="summary-value">
+                            ${this.summaryData.totalTransactions}
+                        </div>
                         <div class="summary-label">Total Transactions</div>
                     </div>
+                    <div class="summary-card">
+                        <div class="summary-value neutral">
+                            $${this.summaryData.avgPerTransaction.toLocaleString(undefined, { 
+                                minimumFractionDigits: 2, 
+                                maximumFractionDigits: 2 
+                            })}
+                        </div>
+                        <div class="summary-label">Average per Transaction</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-value">
+                            ${this.getFilteredTransactions().length}
+                        </div>
+                        <div class="summary-label">Currently Visible</div>
+                    </div>
                 </div>
 
-                <div class="transactions-content">
-                    <div class="transactions-info">
-                        <span class="transactions-count">Showing ${this.getFilteredTransactions().length} transactions since 2025</span>
-                        <button class="export-btn">Export CSV</button>
+                <div class="transactions-body">
+                    <div class="transactions-content">
+                        <div class="transactions-list-card">
+                            <div class="transactions-list-header">
+                                <div class="transactions-list-title">Recent Transactions</div>
+                                <div class="transactions-list-actions">
+                                    <div class="chip">
+                                        <span class="chip-dot"></span>
+                                        <span>Manual Entry</span>
+                                    </div>
+                                    <div class="chip">
+                                        <span>${this.transactions.length}</span>
+                                        <span>Entries</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="transactions-list">
+                                ${this.getFilteredTransactions()
+                                    .map(transaction => this.renderTransactionItem(transaction))
+                                    .join('')}
+                            </div>
+                        </div>
+
+                        <div class="transactions-overview-card">
+                            <div class="overview-header">
+                                <div>
+                                    <div class="overview-title">Spending Overview</div>
+                                    <div class="overview-tag">Based on current visible transactions</div>
+                                </div>
+                            </div>
+
+                            <div class="overview-metric">
+                                <div class="metric-label">Total spent</div>
+                                <div class="metric-value negative">
+                                    $${this.summaryData.totalSpent.toLocaleString()}
+                                </div>
+                            </div>
+
+                            <div class="overview-list">
+                                <div class="overview-item">
+                                    <div class="overview-item-label">
+                                        <span class="badge-dot groceries"></span>
+                                        <span>Entries Logged</span>
+                                    </div>
+                                    <div class="overview-item-value">
+                                        ${this.summaryData.totalTransactions}
+                                    </div>
+                                </div>
+                                <div class="overview-item">
+                                    <div class="overview-item-label">
+                                        <span class="badge-dot food"></span>
+                                        <span>Currently visible</span>
+                                    </div>
+                                    <div class="overview-item-value">
+                                        ${this.getFilteredTransactions().length}
+                                    </div>
+                                </div>
+                                <div class="overview-item">
+                                    <div class="overview-item-label">
+                                        <span class="badge-dot utilities"></span>
+                                        <span>Average per transaction</span>
+                                    </div>
+                                    <div class="overview-item-value">
+                                        $${this.summaryData.avgPerTransaction.toLocaleString(undefined, { 
+                                            minimumFractionDigits: 2, 
+                                            maximumFractionDigits: 2 
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    ${this.renderTransactionSections()}
                 </div>
             </div>
         `;
     }
 
-    renderTransactionSections() {
-        const sections = this.groupTransactionsByCategory();
-        return Object.entries(sections).map(([category, transactions]) => {
-            const sectionTotal = transactions.reduce((sum, t) => sum + t.amount, 0);
-            return `
-                <div class="section-header">
-                    <div class="section-title">
-                        ▼ ${this.getSectionTitle(category)}
-                    </div>
-                    <div class="section-amount ${sectionTotal >= 0 ? 'positive' : 'negative'}">
-                        ${sectionTotal >= 0 ? '+' : ''}$${Math.abs(sectionTotal).toLocaleString()}
-                    </div>
-                </div>
-                <div class="transaction-list">
-                    ${transactions.map(transaction => this.renderTransactionItem(transaction)).join('')}
-                </div>
-            `;
-        }).join('');
-    }
+     getFilteredTransactions() {
+        let filtered = Array.isArray(this.transactions)
+            ? [...this.transactions]
+            : [];
 
-    renderTransactionItem(transaction) {
-        // return `<finsite-transaction-item transaction-data='${JSON.stringify(transaction)}'></finsite-transaction-item>`;
-        const isPositive = transaction.amount > 0;
-        const iconClass = transaction.status === 'Pending' ? 'pending' : (isPositive ? 'income' : 'expense');
-        
-        return `
-            <div class="transaction-item">
-                <div class="transaction-icon ${iconClass}">
-                    ${transaction.icon}
-                </div>
-                <div class="transaction-details">
-                    <div class="transaction-name">${transaction.name}</div>
-                    <div class="transaction-meta">
-                        <span>${transaction.account}</span>
-                        <span>${transaction.type}</span>
-                    </div>
-                </div>
-                <div class="transaction-amount ${isPositive ? 'positive' : 'negative'}">
-                    ${isPositive ? '+' : '-'}$${Math.abs(transaction.amount).toLocaleString()}
-                </div>
-                <div class="transaction-date">${transaction.date}</div>
-                ${transaction.status === 'Pending' ? '<div class="transaction-status status-pending">(Pending)</div>' : ''}
-            </div>
-        `;
-    }
-
-    groupTransactionsByCategory() {
-        const filtered = this.getFilteredTransactions();
-        const groups = {};
-        
-        filtered.forEach(transaction => {
-            if (!groups[transaction.category]) {
-                groups[transaction.category] = [];
-            }
-            groups[transaction.category].push(transaction);
-        });
-        
-        return groups;
-    }
-
-    getFilteredTransactions() {
-        let filtered = [...this.transactions];
-        
-        // Apply filter
+        // 1) Apply filter
         if (this.currentFilter !== 'all') {
-            filtered = filtered.filter(transaction => {
+            filtered = filtered.filter((transaction) => {
+                const amount = Number(transaction.amount) || 0;
+                const status = (transaction.status || '').toLowerCase();
+
                 switch (this.currentFilter) {
-                    case 'income':
-                        return transaction.amount > 0;
+
                     case 'expenses':
-                        return transaction.amount < 0;
+                        // All logged transactions are expenses/spending
+                        return amount >= 0;
+
                     case 'pending':
-                        return transaction.status === 'Pending';
+                        return status === 'pending';
+
                     default:
                         return true;
                 }
             });
         }
-        
-        // Apply search
+
+        // 2) Apply search (name/account/type/status)
         if (this.searchQuery && this.searchQuery.trim() !== '') {
-            filtered = filtered.filter(transaction => 
-                transaction.name.toLowerCase().includes(this.searchQuery) ||
-                transaction.account.toLowerCase().includes(this.searchQuery) ||
-                transaction.type.toLowerCase().includes(this.searchQuery) ||
-                transaction.status.toLowerCase().includes(this.searchQuery)
+            const q = this.searchQuery.toLowerCase();
+            filtered = filtered.filter((transaction) =>
+                (transaction.name || '').toLowerCase().includes(q) ||
+                (transaction.account || '').toLowerCase().includes(q) ||
+                (transaction.type || '').toLowerCase().includes(q) ||
+                (transaction.status || '').toLowerCase().includes(q)
             );
         }
-        
+
         return filtered;
     }
 
-    getSectionTitle(category) {
-        const titles = {
-            'pending': 'Pending',
-            'march2025': 'March 2025'
-        };
-        return titles[category] || category;
-    }
+    /**
+     * Render a single transaction row
+     * Matches the structure expected by the CSS in render()
+     */
+    renderTransactionItem(transaction) {
+        const name = this.escapeHtml(transaction.name || '');
+        const account = this.escapeHtml(transaction.account || '');
+        const type = this.escapeHtml(transaction.type || '');
+        const date = this.escapeHtml(transaction.date || '');
+        const status = (transaction.status || '').toLowerCase();
+        const rawStatus = this.escapeHtml(transaction.status || '');
 
-    setupEventListeners() {
-        // Filter buttons
-        const filterButtons = this.shadowRoot.querySelectorAll('.filter-btn');
-        filterButtons.forEach(button => {
-            button.addEventListener('click', (e) => {
-                const filter = e.target.getAttribute('data-filter');
-                this.setFilter(filter);
-            });
+        const amountNum = Number(transaction.amount) || 0;
+        const formattedAmount = amountNum.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
         });
 
+        const isPending = status === 'pending';
+
+        const iconClass = [
+            'transaction-icon',
+            isPending ? 'pending' : 'expense'
+        ].join(' ');
+
+        const statusClass = [
+            'transaction-status',
+            isPending ? 'status-pending' : 'status-complete'
+        ].join(' ');
+
+        // All amounts are spending, so we style as "negative" (money out)
+        const amountClass = ['transaction-amount', 'negative'].join(' ');
+
+        return `
+            <div class="transaction-row">
+                <div class="transaction-main">
+                    <div class="${iconClass}">
+                        ${this.escapeHtml(transaction.icon || '$')}
+                    </div>
+                    <div class="transaction-text">
+                        <div class="transaction-name">${name}</div>
+                        <div class="transaction-meta">
+                            <span>${account}</span>
+                            <span class="transaction-meta-dot"></span>
+                            <span>${type}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="${amountClass}">-$${formattedAmount}</div>
+                <div class="transaction-date">${date}</div>
+                <div class="${statusClass}">
+                    ${rawStatus}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Escape HTML to avoid XSS from dynamic content
+     */
+    escapeHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    /**
+     * Wire up search, filter, and export interactions
+     * Must be called after every render()
+     */
+    setupEventListeners() {
+        const root = this.shadowRoot;
+        if (!root) return;
+
         // Search input
-        const searchInput = this.shadowRoot.querySelector('#search-input');
-        searchInput.addEventListener('input', (e) => {
-            this.searchTransactions(e.target.value);
+        const searchInput = root.querySelector('#search-input');
+        if (searchInput) {
+            searchInput.value = this.searchQuery;
+            searchInput.addEventListener('input', (e) => {
+                this.searchQuery = e.target.value || '';
+                this.render();
+                this.setupEventListeners();
+            });
+        }
+
+        // Filter buttons
+        const filterButtons = root.querySelectorAll('.filter-btn');
+        filterButtons.forEach((btn) => {
+            const filter = btn.getAttribute('data-filter') || 'all';
+
+            // Set active class based on currentFilter
+            if (filter === this.currentFilter) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+
+            btn.addEventListener('click', () => {
+                this.currentFilter = filter;
+                this.render();
+                this.setupEventListeners();
+            });
         });
 
         // Export buttons
-        const exportButtons = this.shadowRoot.querySelectorAll('.export-btn');
-        exportButtons.forEach(button => {
-            button.addEventListener('click', () => {
+        const exportButtons = root.querySelectorAll('.export-btn');
+        exportButtons.forEach((btn) => {
+            btn.addEventListener('click', () => {
                 this.exportTransactions();
             });
         });
-
-        // Section headers for collapse/expand
-        this.setupSectionToggle();
     }
 
-    setupSectionToggle() {
-        const sectionHeaders = this.shadowRoot.querySelectorAll('.section-header');
-        sectionHeaders.forEach(header => {
-            header.addEventListener('click', () => {
-                const transactionList = header.nextElementSibling;
-                const isCollapsed = transactionList.style.display === 'none';
-                
-                // Toggle visibility instantly
-                if (isCollapsed) {
-                    transactionList.style.display = 'block';
-                } else {
-                    transactionList.style.display = 'none';
-                }
-                
-                // Update arrow direction
-                const titleElement = header.querySelector('.section-title');
-                if (titleElement) {
-                    const currentText = titleElement.textContent;
-                    const newArrow = isCollapsed ? '▼' : '▶';
-                    titleElement.textContent = currentText.replace(/[▼▶]/, newArrow);
-                }
-            });
-        });
-    }
-
-    setFilter(filter) {
-        this.currentFilter = filter;
-        
-        // Update button states
-        const filterButtons = this.shadowRoot.querySelectorAll('.filter-btn');
-        filterButtons.forEach(button => {
-            button.classList.toggle('active', button.getAttribute('data-filter') === filter);
-        });
-        
-        // Re-render transactions
-        this.updateTransactionsDisplay();
-    }
-
-    searchTransactions(query) {
-        this.searchQuery = query.toLowerCase();
-        this.updateTransactionsDisplay();
-    }
-
-    updateTransactionsDisplay() {
-        const transactionsContent = this.shadowRoot.querySelector('.transactions-content');
-        transactionsContent.innerHTML = `
-            <div class="transactions-info">
-                <span class="transactions-count">Showing ${this.getFilteredTransactions().length} transactions since 2025</span>
-                <button class="export-btn">Export CSV</button>
-            </div>
-            ${this.renderTransactionSections()}
-        `;
-        
-        // Re-setup export button listeners
-        const exportButtons = transactionsContent.querySelectorAll('.export-btn');
-        exportButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                this.exportTransactions();
-            });
-        });
-
-        // Re-setup section toggle functionality
-        this.setupSectionToggle();
-    }
-
+    /**
+     * Export currently visible transactions to CSV
+     */
     exportTransactions() {
         const transactions = this.getFilteredTransactions();
         console.log('📊 Exporting transactions:', transactions);
-        
-        // Create CSV content
+
+        if (!transactions.length) {
+            alert('No transactions to export.');
+            return;
+        }
+
         const headers = ['Date', 'Name', 'Account', 'Type', 'Amount', 'Status'];
-        const csvContent = [
-            headers.join(','),
-            ...transactions.map(t => [
-                t.date,
-                `"${t.name}"`,
-                `"${t.account}"`,
-                `"${t.type}"`,
-                t.amount,
-                t.status
-            ].join(','))
-        ].join('\n');
-        
-        // Create and download file
+        const rows = transactions.map((t) => [
+            t.date || '',
+            t.name || '',
+            t.account || '',
+            t.type || '',
+            Number(t.amount || 0).toFixed(2),
+            t.status || ''
+        ]);
+
+        const csvContent = [headers, ...rows]
+            .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+            .join('\n');
+
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
