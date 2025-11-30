@@ -1,4 +1,13 @@
-import {getAllTransactions, addTransaction, deleteTransactions, clearAllTransactions} from '../storage/storageService.js';
+import {
+    getAllTransactions,
+    addTransaction,
+    deleteTransactions,
+    clearAllTransactions,
+    getAllGroups,
+    addGroup,
+    getAllCategories,
+    addCategory
+} from '../storage/storageService.js';
 
 /**
  * FinSiteModel - Manages application data and business logic
@@ -6,10 +15,12 @@ import {getAllTransactions, addTransaction, deleteTransactions, clearAllTransact
  */
 export class FinSiteModel {
     constructor() {
-           this.data = {
+        this.data = {
             user: null,
             accounts: [],
             transactions: [],
+            groups: [],
+            categories: [],
             currentView: 'dashboard'
         };
 
@@ -26,8 +37,10 @@ export class FinSiteModel {
         return {
             ...this.data,
             accounts: [...this.data.accounts],
-            transactions: [...this.data.transactions]
-        };  
+            transactions: [...this.data.transactions],
+            groups: [...this.data.groups],
+            categories: [...this.data.categories]
+        };
     }
 
     /**
@@ -40,46 +53,119 @@ export class FinSiteModel {
     }
 
     /**
-     * Initialize default data
+     * Initialize data from storage (transactions, groups, categories)
      */
     async init() {
-    try {
-        const storedTransactions = await getAllTransactions();
-        const transactions = Array.isArray(storedTransactions) ? storedTransactions : [];
+        try {
+            // Load everything in parallel
+            const [storedTransactions, storedGroups, storedCategories] =
+                await Promise.all([
+                    getAllTransactions(),
+                    getAllGroups(),
+                    getAllCategories()
+                ]);
 
-        this.data.transactions = transactions;
+            const transactions = Array.isArray(storedTransactions)
+                ? storedTransactions
+                : [];
 
-        if (!this.data.user) {
-            this.data.user = {
-                name: 'Jenner',
-                greeting: 'Good evening'
-            };
-        }
+            let groups = Array.isArray(storedGroups) ? storedGroups : [];
+            let categories = Array.isArray(storedCategories)
+                ? storedCategories
+                : [];
 
-        this._initialized = true;
-        console.log('Model initialized from storage. Count:', transactions.length);
-        return this.getData();
-    } catch (error) {
+            // If no groups/categories exist yet, seed defaults
+            if (groups.length === 0 || categories.length === 0) {
+                const { defaultGroups, defaultCategories } =
+                    this._getDefaultConfig();
+
+                // Persist defaults
+                await Promise.all([
+                    ...defaultGroups.map((g) => addGroup(g)),
+                    ...defaultCategories.map((c) => addCategory(c))
+                ]);
+
+                groups = defaultGroups;
+                categories = defaultCategories;
+            }
+
+            this.data.transactions = transactions;
+            this.data.groups = groups;
+            this.data.categories = categories;
+
+            if (!this.data.user) {
+                this.data.user = {
+                    name: 'Jenner',
+                    greeting: 'Good evening'
+                };
+            }
+
+            this._initialized = true;
+            console.log(
+                'Model initialized from storage.',
+                'Transactions:',
+                transactions.length,
+                'Groups:',
+                groups.length,
+                'Categories:',
+                categories.length
+            );
+            return this.getData();
+        } catch (error) {
             console.error('Error initializing model data:', error);
             this.data.transactions = [];
+            this.data.groups = [];
+            this.data.categories = [];
             this._initialized = true;
             return this.getData();
         }
     }
 
-        /**
+    /**
+     * Default configuration for groups and categories.
+     * These are just startup defaults and can be changed by the user later.
+     */
+    _getDefaultConfig() {
+        const defaultGroups = [
+            { id: 'household', name: 'Household' },
+            { id: 'investments', name: 'Investments' },
+            { id: 'expenses', name: 'General Expenses' }
+        ];
+
+        const defaultCategories = [
+            // Household
+            { id: 'groceries', groupId: 'household', name: 'Groceries' },
+            { id: 'utilities', groupId: 'household', name: 'Utilities' },
+            { id: 'fuel', groupId: 'household', name: 'Fuel' },
+
+            // Investments
+            { id: 'stocks', groupId: 'investments', name: 'Stocks' },
+            { id: 'bonds', groupId: 'investments', name: 'Bonds' },
+
+            // General
+            { id: 'dining-out', groupId: 'expenses', name: 'Dining Out' },
+            { id: 'shopping', groupId: 'expenses', name: 'Shopping' }
+        ];
+
+        return { defaultGroups, defaultCategories };
+    }
+
+    /**
      * Add a new transaction (and persist it).
      * Expected shape: { group, category, amount, date, ... }
      */
     async addTransaction(input) {
-        const { group = 'manual', category, amount, date, ...rest } = input || {};
+        const { group = 'expenses', category, amount, date, merchant = '', notes = '', ...rest } =
+            input || {};
 
         const newTx = {
             group,
             category,
             amount: Number(amount),
             date,
-            ...rest,
+            merchant,
+            notes,
+            ...rest
         };
 
         try {
@@ -107,20 +193,24 @@ export class FinSiteModel {
         }
 
         try {
-            // 1) remove from IndexedDB
             await deleteTransactions(ids);
 
             const idSet = new Set(ids.map((rawId) => Number(rawId)));
 
-            // 2) update in-memory copy
             this.data.transactions = this.data.transactions.filter(
                 (tx) => !idSet.has(Number(tx.id))
             );
 
-            console.log('Transactions deleted. New count:', this.data.transactions.length);
+            console.log(
+                'Transactions deleted. New count:',
+                this.data.transactions.length
+            );
             return this.getData();
         } catch (error) {
-            console.error('Error deleting transactions in FinSiteModel:', error);
+            console.error(
+                'Error deleting transactions in FinSiteModel:',
+                error
+            );
             throw error;
         }
     }
@@ -147,4 +237,20 @@ export class FinSiteModel {
         return [...this.data.transactions];
     }
 
+    /**
+     * Read-only helper for groups.
+     */
+    getGroups() {
+        return [...this.data.groups];
+    }
+
+    /**
+     * Read-only helper for categories by group.
+     * @param {string} groupId
+     */
+    getCategoriesByGroup(groupId) {
+        return this.data.categories.filter(
+            (cat) => cat.groupId === groupId
+        );
+    }
 }
