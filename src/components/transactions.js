@@ -20,6 +20,9 @@ class FinSiteTransactions extends HTMLElement {
         // UI state
         this.currentFilter = 'all';
         this.searchQuery = '';
+        
+        // Modal state
+        this.isModalOpen = false;
     }
 
     /**
@@ -249,6 +252,247 @@ class FinSiteTransactions extends HTMLElement {
 
                 .export-btn:hover {
                     background: #374151;
+                }
+
+                .add-transaction-btn {
+                    padding: 0.5rem 1rem;
+                    border-radius: 9999px;
+                    border: none;
+                    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                    color: #ffffff;
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.4rem;
+                    transition: all 0.2s ease;
+                    white-space: nowrap;
+                    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+                }
+
+                .add-transaction-btn:hover {
+                    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+                    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+                    transform: translateY(-1px);
+                }
+
+                .add-transaction-btn:active {
+                    transform: translateY(0);
+                }
+
+                .add-icon {
+                    font-size: 1rem;
+                    font-weight: 700;
+                }
+
+                /* Modal Styles */
+                .modal-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.7);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 1000;
+                    backdrop-filter: blur(4px);
+                }
+
+                .modal-overlay.hidden {
+                    display: none;
+                }
+
+                .modal-container {
+                    background: #1f2937;
+                    border-radius: 1rem;
+                    padding: 1.5rem;
+                    width: 100%;
+                    max-width: 480px;
+                    border: 1px solid #374151;
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                    animation: modalSlideIn 0.2s ease-out;
+                }
+
+                @keyframes modalSlideIn {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-20px) scale(0.95);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0) scale(1);
+                    }
+                }
+
+                .modal-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 1.25rem;
+                    padding-bottom: 1rem;
+                    border-bottom: 1px solid #374151;
+                }
+
+                .modal-title {
+                    font-size: 1.125rem;
+                    font-weight: 600;
+                    color: #ffffff;
+                }
+
+                .modal-subtitle {
+                    font-size: 0.8rem;
+                    color: #9ca3af;
+                    margin-top: 0.25rem;
+                }
+
+                .modal-close-btn {
+                    background: transparent;
+                    border: none;
+                    color: #9ca3af;
+                    font-size: 1.5rem;
+                    cursor: pointer;
+                    padding: 0.25rem;
+                    line-height: 1;
+                    transition: color 0.2s ease;
+                }
+
+                .modal-close-btn:hover {
+                    color: #ffffff;
+                }
+
+                .modal-form {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1rem;
+                }
+
+                .form-row {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 1rem;
+                }
+
+                .form-group {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.375rem;
+                }
+
+                .form-label {
+                    font-size: 0.8rem;
+                    font-weight: 500;
+                    color: #d1d5db;
+                }
+
+                .form-input,
+                .form-select,
+                .form-textarea {
+                    padding: 0.625rem 0.875rem;
+                    background: #111827;
+                    border: 1px solid #374151;
+                    border-radius: 0.5rem;
+                    color: #ffffff;
+                    font-size: 0.875rem;
+                    outline: none;
+                    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+                }
+
+                .form-input:focus,
+                .form-select:focus,
+                .form-textarea:focus {
+                    border-color: #10b981;
+                    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+                }
+
+                .form-input::placeholder,
+                .form-textarea::placeholder {
+                    color: #6b7280;
+                }
+
+                .form-select {
+                    cursor: pointer;
+                }
+
+                .form-textarea {
+                    min-height: 80px;
+                    resize: vertical;
+                }
+
+                .modal-actions {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 0.75rem;
+                    margin-top: 0.5rem;
+                    padding-top: 1rem;
+                    border-top: 1px solid #374151;
+                }
+
+                .btn-cancel {
+                    padding: 0.5rem 1rem;
+                    background: transparent;
+                    border: 1px solid #4b5563;
+                    border-radius: 0.5rem;
+                    color: #e5e7eb;
+                    font-size: 0.875rem;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                }
+
+                .btn-cancel:hover {
+                    background: #374151;
+                }
+
+                .btn-submit {
+                    padding: 0.5rem 1.25rem;
+                    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                    border: none;
+                    border-radius: 0.5rem;
+                    color: #ffffff;
+                    font-size: 0.875rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                }
+
+                .btn-submit:hover {
+                    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+                }
+
+                .btn-submit:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                }
+
+                /* Banner notification */
+                .notification-banner {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    padding: 0.75rem 1rem;
+                    text-align: center;
+                    font-size: 0.875rem;
+                    font-weight: 500;
+                    transform: translateY(-100%);
+                    transition: transform 0.3s ease;
+                    z-index: 1001;
+                }
+
+                .notification-banner.show {
+                    transform: translateY(0);
+                }
+
+                .notification-banner.success {
+                    background: rgba(16, 185, 129, 0.95);
+                    color: #ffffff;
+                }
+
+                .notification-banner.error {
+                    background: rgba(239, 68, 68, 0.95);
+                    color: #ffffff;
                 }
 
                 .export-icon {
@@ -672,7 +916,106 @@ class FinSiteTransactions extends HTMLElement {
                                 <span class="export-icon">⭳</span>
                                 <span>Export CSV</span>
                             </button>
+                            <button class="add-transaction-btn" id="add-transaction-btn">
+                                <span class="add-icon">+</span>
+                                <span>Add Transaction</span>
+                            </button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Notification Banner -->
+                <div class="notification-banner" id="notification-banner"></div>
+
+                <!-- Add Transaction Modal -->
+                <div class="modal-overlay ${this.isModalOpen ? '' : 'hidden'}" id="modal-overlay">
+                    <div class="modal-container">
+                        <div class="modal-header">
+                            <div>
+                                <div class="modal-title">Add New Transaction</div>
+                                <div class="modal-subtitle">Enter transaction details below</div>
+                            </div>
+                            <button class="modal-close-btn" id="modal-close-btn">&times;</button>
+                        </div>
+                        <form class="modal-form" id="transaction-form" novalidate>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label" for="tx-amount">Amount (USD)</label>
+                                    <input 
+                                        class="form-input" 
+                                        type="number" 
+                                        id="tx-amount" 
+                                        name="amount" 
+                                        step="0.01" 
+                                        min="0.01" 
+                                        placeholder="e.g., 12.34" 
+                                        required 
+                                    />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="tx-date">Date</label>
+                                    <input 
+                                        class="form-input" 
+                                        type="date" 
+                                        id="tx-date" 
+                                        name="date" 
+                                        required 
+                                    />
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label" for="tx-group">Group</label>
+                                    <select class="form-select" id="tx-group" name="group" required>
+                                        <option value="" disabled selected>Select a group</option>
+                                        <option value="household">Household</option>
+                                        <option value="investments">Investments</option>
+                                        <option value="expenses">General Expenses</option>
+                                        <option value="manual">Manual Entry</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="tx-category">Category</label>
+                                    <select class="form-select" id="tx-category" name="category" required>
+                                        <option value="" disabled selected>Select a category</option>
+                                        <option value="bills">Bills</option>
+                                        <option value="utilities">Utilities</option>
+                                        <option value="groceries">Groceries</option>
+                                        <option value="dining">Dining</option>
+                                        <option value="transport">Transport</option>
+                                        <option value="loans">Loans</option>
+                                        <option value="healthcare">Healthcare</option>
+                                        <option value="entertainment">Entertainment</option>
+                                        <option value="education">Education</option>
+                                        <option value="luxuries">Luxuries</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="tx-merchant">Merchant</label>
+                                <input 
+                                    class="form-input" 
+                                    type="text" 
+                                    id="tx-merchant" 
+                                    name="merchant" 
+                                    placeholder="e.g., Amazon, Walmart, Starbucks" 
+                                />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="tx-notes">Notes</label>
+                                <textarea 
+                                    class="form-textarea" 
+                                    id="tx-notes" 
+                                    name="notes" 
+                                    placeholder="Add any additional notes..." 
+                                ></textarea>
+                            </div>
+                            <div class="modal-actions">
+                                <button type="button" class="btn-cancel" id="modal-cancel-btn">Cancel</button>
+                                <button type="submit" class="btn-submit">Add Transaction</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
 
@@ -893,6 +1236,138 @@ class FinSiteTransactions extends HTMLElement {
     }
 
     /**
+     * Open the add transaction modal
+     */
+    openModal() {
+        this.isModalOpen = true;
+        const overlay = this.shadowRoot.querySelector('#modal-overlay');
+        if (overlay) {
+            overlay.classList.remove('hidden');
+        }
+        // Set default date to today
+        const dateInput = this.shadowRoot.querySelector('#tx-date');
+        if (dateInput) {
+            dateInput.value = new Date().toISOString().slice(0, 10);
+        }
+
+        // Emit custom event for external listeners
+        this.dispatchEvent(new CustomEvent('open-manual-entry', {
+            bubbles: true,
+            composed: true,
+            detail: { source: 'transactions-page' }
+        }));
+    }
+
+    /**
+     * Close the add transaction modal
+     */
+    closeModal() {
+        this.isModalOpen = false;
+        const overlay = this.shadowRoot.querySelector('#modal-overlay');
+        if (overlay) {
+            overlay.classList.add('hidden');
+        }
+        // Reset form
+        const form = this.shadowRoot.querySelector('#transaction-form');
+        if (form) {
+            form.reset();
+        }
+    }
+
+    /**
+     * Show notification banner
+     * @param {string} message - Message to display
+     * @param {boolean} isSuccess - True for success, false for error
+     * @param {number} duration - Duration in ms
+     */
+    showNotification(message, isSuccess = true, duration = 2500) {
+        const banner = this.shadowRoot.querySelector('#notification-banner');
+        if (!banner) return;
+
+        banner.textContent = message;
+        banner.className = `notification-banner ${isSuccess ? 'success' : 'error'} show`;
+
+        clearTimeout(this._notificationTimer);
+        this._notificationTimer = setTimeout(() => {
+            banner.classList.remove('show');
+        }, duration);
+    }
+
+    /**
+     * Handle form submission
+     * Validates input and emits add-transaction event
+     */
+    handleFormSubmit(e) {
+        e.preventDefault();
+
+        const form = this.shadowRoot.querySelector('#transaction-form');
+        const formData = new FormData(form);
+
+        const amount = parseFloat(formData.get('amount'));
+        const date = formData.get('date');
+        const group = formData.get('group');
+        const category = formData.get('category');
+        const merchant = formData.get('merchant') || '';
+        const notes = formData.get('notes') || '';
+
+        // Validation
+        if (!Number.isFinite(amount) || amount <= 0) {
+            this.showNotification('Please enter a valid amount greater than 0', false);
+            return;
+        }
+        if (!date) {
+            this.showNotification('Please select a date', false);
+            return;
+        }
+        if (!group) {
+            this.showNotification('Please select a group', false);
+            return;
+        }
+        if (!category) {
+            this.showNotification('Please select a category', false);
+            return;
+        }
+
+        const transactionData = {
+            amount,
+            date,
+            group,
+            category,
+            merchant,
+            notes,
+            name: merchant || category, // Use merchant as name, fallback to category
+            account: 'Manual Entry',
+            type: category,
+            status: 'complete'
+        };
+
+        // Emit the add-transaction event for the controller to handle
+        this.dispatchEvent(new CustomEvent('add-transaction', {
+            bubbles: true,
+            composed: true,
+            detail: transactionData
+        }));
+    }
+
+    /**
+     * Called by external code after successful transaction add
+     */
+    onTransactionAdded(savedTransaction) {
+        this.showNotification(
+            `Added: ${savedTransaction.category} • $${Number(savedTransaction.amount).toFixed(2)} on ${savedTransaction.date}`,
+            true
+        );
+        this.closeModal();
+    }
+
+    /**
+     * Called by external code if transaction add fails
+     */
+    onTransactionError(errorMessage) {
+        this.showNotification(errorMessage || 'Failed to save transaction', false);
+    }
+
+    /**
      * Wire up search, filter, and export interactions
      * Must be called after every render()
      */
@@ -937,6 +1412,48 @@ class FinSiteTransactions extends HTMLElement {
                 this.exportTransactions();
             });
         });
+
+        // Add Transaction button
+        const addTransactionBtn = root.querySelector('#add-transaction-btn');
+        if (addTransactionBtn) {
+            addTransactionBtn.addEventListener('click', () => {
+                this.openModal();
+            });
+        }
+
+        // Modal close button
+        const modalCloseBtn = root.querySelector('#modal-close-btn');
+        if (modalCloseBtn) {
+            modalCloseBtn.addEventListener('click', () => {
+                this.closeModal();
+            });
+        }
+
+        // Modal cancel button
+        const modalCancelBtn = root.querySelector('#modal-cancel-btn');
+        if (modalCancelBtn) {
+            modalCancelBtn.addEventListener('click', () => {
+                this.closeModal();
+            });
+        }
+
+        // Modal overlay click to close
+        const modalOverlay = root.querySelector('#modal-overlay');
+        if (modalOverlay) {
+            modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) {
+                    this.closeModal();
+                }
+            });
+        }
+
+        // Form submission
+        const form = root.querySelector('#transaction-form');
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                this.handleFormSubmit(e);
+            });
+        }
     }
 
     /**

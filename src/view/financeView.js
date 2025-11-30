@@ -85,6 +85,21 @@ export class FinSiteView {
                 mainContainer.classList.toggle('sidebar-hidden');
             });
         }
+
+        // Set up add-transaction listener (bubbles from finsite-transactions component)
+        this.container.addEventListener('add-transaction', (event) => {
+            const transactionData = event.detail;
+            console.log('📝 Add transaction event received:', transactionData);
+            
+            if (this.handlers && typeof this.handlers.onAddTransaction === 'function') {
+                this.handlers.onAddTransaction(transactionData);
+            }
+        });
+
+        // Set up open-manual-entry listener for analytics/logging
+        this.container.addEventListener('open-manual-entry', (event) => {
+            console.log('📊 Manual entry modal opened from:', event.detail.source);
+        });
     }
 
     /**

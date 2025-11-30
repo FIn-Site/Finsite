@@ -7,9 +7,10 @@ export class FinSiteController {
         this.model = model;
         this.view = view;
         
-        if(typeof this.view.blindHandlers === 'function') {
+        if(typeof this.view.bindHandlers === 'function') {
             this.view.bindHandlers({
-                onNavigate: (route) => this.navigate(route)
+                onNavigate: (route) => this.navigate(route),
+                onAddTransaction: (transactionData) => this.handleAddTransaction(transactionData)
             });
         }
 
@@ -72,5 +73,39 @@ export class FinSiteController {
         this.model.updateData({ currentView: route });
         const data = this.model.getData();
         this.view.update(data);
+    }
+
+    /**
+     * Handle adding a new transaction from the manual entry form
+     * @param {Object} transactionData - Transaction data from the form
+     */
+    async handleAddTransaction(transactionData) {
+        console.log('💰 Handling add transaction:', transactionData);
+
+        try {
+            // Use the model to persist the transaction to IndexedDB
+            const savedTransaction = await this.model.addTransaction(transactionData);
+
+            console.log('✅ Transaction saved successfully:', savedTransaction);
+
+            // Get the transactions component and notify it of success
+            const transactionsPage = document.querySelector('finsite-transactions');
+            if (transactionsPage && typeof transactionsPage.onTransactionAdded === 'function') {
+                transactionsPage.onTransactionAdded(savedTransaction);
+            }
+
+            // Update the view with the new data
+            const data = this.model.getData();
+            this.view.update(data);
+
+        } catch (error) {
+            console.error('❌ Error adding transaction:', error);
+
+            // Notify the transactions component of the error
+            const transactionsPage = document.querySelector('finsite-transactions');
+            if (transactionsPage && typeof transactionsPage.onTransactionError === 'function') {
+                transactionsPage.onTransactionError('Failed to save transaction. Please try again.');
+            }
+        }
     }
 }
