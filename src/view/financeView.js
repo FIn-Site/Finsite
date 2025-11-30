@@ -1,17 +1,17 @@
 import '../components/sidebar.js';
-import '../components/header.js';
 import '../components/dashboard.js';
 import '../components/transactions.js';
 
 /**
  * FinSiteView - Handles all UI rendering and DOM manipulation
- * Responsible for presenting data and capturing user interactions
+ * Mint-style two-pane layout with persistent sidebar and main content area
  */
 export class FinSiteView {
     constructor() {
         this.container = null;
         this.currentPage = 'dashboard';
         this.handlers = {};
+        this.sidebarCollapsed = false;
     }
 
     /**
@@ -38,14 +38,15 @@ export class FinSiteView {
 
         console.log('📦 Container found, rendering layout...');
 
-        // Create the main application layout with components
+        // Create the two-pane layout: sidebar + main content
         this.container.innerHTML = `
-            <finsite-header></finsite-header>
-            <finsite-sidebar></finsite-sidebar>
-            <div class="main-container" id="main-container">
-                <div id="content-area">
-                    ${this.renderPageComponent('dashboard')}
-                </div>
+            <div class="app-shell">
+                <finsite-sidebar></finsite-sidebar>
+                <main class="main-content" id="main-content">
+                    <div id="content-area">
+                        ${this.renderPageComponent('dashboard')}
+                    </div>
+                </main>
             </div>
         `;
         
@@ -73,16 +74,19 @@ export class FinSiteView {
                     this.navigateToPage(page);
                 }
             });
-        }
 
-        // Set up header toggle listener
-        const header = this.container.querySelector('finsite-header');
-        const mainContainer = this.container.querySelector('#main-container');
-        
-        if (header && sidebar && mainContainer) {
-            header.addEventListener('toggle-sidebar', () => {
-                sidebar.classList.toggle('hidden');
-                mainContainer.classList.toggle('sidebar-hidden');
+            // Handle sidebar collapse/expand
+            sidebar.addEventListener('sidebar-toggle', (event) => {
+                const { collapsed } = event.detail;
+                this.sidebarCollapsed = collapsed;
+                const mainContent = this.container.querySelector('#main-content');
+                if (mainContent) {
+                    if (collapsed) {
+                        mainContent.classList.add('sidebar-collapsed');
+                    } else {
+                        mainContent.classList.remove('sidebar-collapsed');
+                    }
+                }
             });
         }
 
@@ -155,11 +159,11 @@ export class FinSiteView {
 
         // Update transactions component with new data if it's active
         if (this.currentPage === 'transactions') {
-        const transactionsPage = this.container.querySelector('finsite-transactions');
-        if (transactionsPage && typeof transactionsPage.setTransactions === 'function') {
-            transactionsPage.setTransactions(data.transactions || []);
+            const transactionsPage = this.container.querySelector('finsite-transactions');
+            if (transactionsPage && typeof transactionsPage.setTransactions === 'function') {
+                transactionsPage.setTransactions(data.transactions || []);
+            }
         }
-    }
         
         console.log('View updated with data:', data);
     }
