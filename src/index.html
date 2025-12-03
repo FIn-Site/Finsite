@@ -4,19 +4,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>FinSite - Personal Finance Tracker</title>
     <link rel="stylesheet" href="css/reset.css">
     <link rel="stylesheet" href="css/styles.css">
+    
+    <!--
+    OPTIMIZATION B: Chart.js is now loaded via ES module import in chart-core.js
+    OPTIMIZATION C: Date adapter removed (using categorical axis, not time scale)
+    
+    The chart-core module handles:
+    - Lazy loading of Chart.js when dashboard is first rendered
+    - Registration of required components only
+    - Global defaults configuration
+    - Factory functions for chart creation
+    -->
 </head>
 
 <body>
-    <div id="app" style="min-height: 100vh; background: #1a1a1a; display: flex; align-items: center; justify-content: center;">
-        <div style="color: yellow; text-align: center;">
-            <h2>Loading FinSight...</h2>
+    <div id="app" style="min-height: 100vh; background: #0f172a; display: flex; align-items: center; justify-content: center;">
+        <div style="color: #94a3b8; text-align: center;">
+            <h2 style="color: #ffffff; margin-bottom: 0.5rem;">Loading FinSite...</h2>
             <p>If this message persists, check browser console for errors.</p>
         </div>
     </div>
-</body>
+</head>
 <script type="module" src="app.js"></script>
 
+</body>
 </html>

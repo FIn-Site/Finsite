@@ -1,47 +1,30 @@
-# /docs/adr/001-model-financemodel.md
-# ADR 001 – FinanceModel (Domain State & Operations)
+# Model
 
-## Status
-Accepted — initial version.
+## Setup
 
-## Context
-We need to store transactions (amount, date, category), add new ones, list them, and support deletion (multi-select) and clear-all. Persistence should be swappable.
+Model is exported as `FinanceModel` for later intstantiation by the controller, the constructor initalizaes `this.transactions` with an empty array to prevent undefined or null returns, this will later be used as our local copy of the transactions for faster viewing/manipulating
 
-## Decision
-- **FinanceModel** holds `state.transactions`.
-- **addTransaction(tx)**:
-  - Valid tx appended to the **front** (`unshift`) so newest appear first.
-  - Adds a unique `id` (`crypto.randomUUID()` fallback to timestamp).
-  - Persists via the injected storage gateway.
-- **removeMany(ids)**:
-  - Deletes all IDs in one pass using a `Set`.
-- **clearAll()**:
-  - Empties state and persists.
-- **list()** returns a shallow copy for immutability at call sites.
+## init()
 
-## Code used (key snippets)
-- `unshift(saved)` to maintain reverse-chronological order.
-- `id` generation for stable per-row operations (delete/select).
-- Storage is **injected**: `new FinanceModel(storage)`.
+is set as an async function so we can use `await` for `getAllTransactions` 
 
-## Rationale (Why)
-- **Deterministic ordering** matches “most recent at top”.
-- **ID-based operations** enable precise deletion irrespective of table order.
-- **Dependency injection** keeps persistence pluggable (LocalStorage now, API later).
+in the `try` we await all transactions from storage service and initalize  `this.transactions` with it, the conditional operator is an extra saftey net incase storage service returns anything except an array
 
-## Alternatives considered
-- Index-based deletion: fragile when sorting/filtering.
-- Push + manual sort: more code for same effect.
+in the `catch` we send out the error as well as overwrite transaction with an empty array
 
-## Consequences
-- Model is UI-agnostic; safe to reuse in other views (CSV import page, etc.).
-- Storage decisions are isolated.
 
-## Verification
-- Adding a tx updates `list()` with new item at index 0.
-- `removeMany([id])` removes only selected rows.
-- Data persists across refresh via storage gateway.
+## addEntry()
+async function to await `addTransaction` in storage service. Takes in a record parameter with the formatting:
+{ group, category, amount, date }
 
-## Future Work
-- Add schema validation/types.
-- Support edits/undo.
+`try` write new record to a variable (record) and pass it to `addTransaction` since `onsuccess` returns the full record + id, it can directly be pushed to `this.transactions` (local database) and returns the saved record so the controlel can update the view
+
+`catch` throws an error, controller handles it
+
+
+## getAll
+
+returns a __Shallow copy__ of the array, this is to prevent data mutation by copying the array over to a new array so mutation does affect source of truth
+
+
+

@@ -1,16 +1,25 @@
 import '../components/sidebar.js';
-import '../components/header.js';
 import '../components/dashboard.js';
 import '../components/transactions.js';
 
 /**
  * FinSiteView - Handles all UI rendering and DOM manipulation
- * Responsible for presenting data and capturing user interactions
+ * Mint-style two-pane layout with persistent sidebar and main content area
  */
 export class FinSiteView {
     constructor() {
         this.container = null;
         this.currentPage = 'dashboard';
+        this.handlers = {};
+        this.sidebarCollapsed = false;
+    }
+
+    /**
+     * Allow the controller to register callbacks for view events
+     * @param {Object} handlers - { onNavigate: (route) => {...}}
+     */
+    bindHandlers(handlers) {
+        this.handlers = handlers || {};
     }
 
     /**
@@ -29,14 +38,15 @@ export class FinSiteView {
 
         console.log('📦 Container found, rendering layout...');
 
-        // Create the main application layout with components
+        // Create the two-pane layout: sidebar + main content
         this.container.innerHTML = `
-            <finsite-header></finsite-header>
-            <finsite-sidebar></finsite-sidebar>
-            <div class="main-container" id="main-container">
-                <div id="content-area">
-                    ${this.renderPageComponent('dashboard')}
-                </div>
+            <div class="app-shell">
+                <finsite-sidebar></finsite-sidebar>
+                <main class="main-content" id="main-content">
+                    <div id="content-area">
+                        ${this.renderPageComponent('dashboard')}
+                    </div>
+                </main>
             </div>
         `;
         
@@ -55,20 +65,45 @@ export class FinSiteView {
         if (sidebar) {
             sidebar.addEventListener('navigate', (event) => {
                 const { page } = event.detail;
-                this.navigateToPage(page);
+                
+                if (this.handlers && typeof this.handlers.onNavigate === 'function') {
+                    // Forward to controller
+                    this.handlers.onNavigate(page);
+                } else {
+                    // Fallback: local navigation
+                    this.navigateToPage(page);
+                }
+            });
+
+            // Handle sidebar collapse/expand
+            sidebar.addEventListener('sidebar-toggle', (event) => {
+                const { collapsed } = event.detail;
+                this.sidebarCollapsed = collapsed;
+                const mainContent = this.container.querySelector('#main-content');
+                if (mainContent) {
+                    if (collapsed) {
+                        mainContent.classList.add('sidebar-collapsed');
+                    } else {
+                        mainContent.classList.remove('sidebar-collapsed');
+                    }
+                }
             });
         }
 
-        // Set up header toggle listener
-        const header = this.container.querySelector('finsite-header');
-        const mainContainer = this.container.querySelector('#main-container');
-        
-        if (header && sidebar && mainContainer) {
-            header.addEventListener('toggle-sidebar', () => {
-                sidebar.classList.toggle('hidden');
-                mainContainer.classList.toggle('sidebar-hidden');
-            });
-        }
+        // Set up add-transaction listener (bubbles from finsite-transactions component)
+        this.container.addEventListener('add-transaction', (event) => {
+            const transactionData = event.detail;
+            console.log('📝 Add transaction event received:', transactionData);
+            
+            if (this.handlers && typeof this.handlers.onAddTransaction === 'function') {
+                this.handlers.onAddTransaction(transactionData);
+            }
+        });
+
+        // Set up open-manual-entry listener for analytics/logging
+        this.container.addEventListener('open-manual-entry', (event) => {
+            console.log('📊 Manual entry modal opened from:', event.detail.source);
+        });
     }
 
     /**
@@ -121,8 +156,45 @@ export class FinSiteView {
                 dashboard.updateData(data);
             }
         }
+
+        // Update transactions component with new data if it's active
+        if (this.currentPage === 'transactions') {
+            const transactionsPage = this.container.querySelector('finsite-transactions');
+            if (transactionsPage && typeof transactionsPage.setTransactions === 'function') {
+                transactionsPage.setTransactions(data.transactions || []);
+            }
+        }
         
         console.log('View updated with data:', data);
+    }
+
+    /**
+     * Update dashboard charts with pre-aggregated data from model
+     * This passes the summary directly to the dashboard's chart component
+     * @param {Object} chartData - Pre-aggregated chart data { timeSeries, groupBreakdown, metrics }
+     * @param {boolean} isHeavyUpdate - True for bulk updates (disables animation)
+     */
+    updateDashboardCharts(chartData, isHeavyUpdate = false) {
+        // Only update if dashboard is visible or exists
+        const dashboard = this.container?.querySelector('finsite-dashboard');
+        if (dashboard && typeof dashboard.updateChartData === 'function') {
+            dashboard.updateChartData(chartData, isHeavyUpdate);
+            console.log('📊 Dashboard charts updated with:', chartData);
+        }
+    }
+
+    /**
+     * Update dashboard panel with summary data (stats cards, recent activity)
+     * This passes real transaction data to replace static demo values
+     * @param {Object} panelSummary - Panel summary from model
+     */
+    updateDashboardPanel(panelSummary) {
+        // Only update if dashboard is visible or exists
+        const dashboard = this.container?.querySelector('finsite-dashboard');
+        if (dashboard && typeof dashboard.updateFromSummary === 'function') {
+            dashboard.updateFromSummary(panelSummary);
+            console.log('📋 Dashboard panel updated with:', panelSummary);
+        }
     }
 
     /**
