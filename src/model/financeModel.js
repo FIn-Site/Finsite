@@ -615,4 +615,189 @@ export class FinSiteModel {
             sixMonthAvg: Math.round(sixMonthAvg * 100) / 100
         };
     }
+
+    // ============================================================
+    // Dashboard Panel Summary - Dynamic Data for Dashboard Cards
+    // ============================================================
+
+    /**
+     * Generate dashboard panel summary with real transaction data
+     * Used for the dashboard stat cards and recent activity section
+     * @returns {Object} Dashboard panel summary
+     */
+    getDashboardPanelSummary() {
+        const transactions = this.data.transactions;
+        const now = new Date();
+        
+        // Calculate recent transactions (max 5, sorted desc by date)
+        const recentTransactions = this._getRecentTransactions(5);
+        
+        // Calculate total spent all time (only 'spend' transactions, exclude income)
+        const totalSpentAllTime = this._calculateTotalSpent(transactions);
+        
+        // Calculate transactions this week (last 7 days rolling window)
+        const transactionsThisWeek = this._countTransactionsThisWeek();
+        
+        // Monthly spending current (from cached metrics)
+        const monthlySpendingCurrent = this._cachedMetrics.thisMonth;
+        
+        // Monthly spending last month
+        const monthlySpendingLast = this._cachedMetrics.lastMonth;
+        
+        // Calculate monthly change percent and direction
+        let monthlyChangePercent = 0;
+        let monthlyDirection = 'neutral';
+        
+        if (monthlySpendingLast > 0) {
+            monthlyChangePercent = ((monthlySpendingCurrent - monthlySpendingLast) / monthlySpendingLast) * 100;
+            monthlyDirection = monthlyChangePercent > 0 ? 'up' : monthlyChangePercent < 0 ? 'down' : 'neutral';
+        } else if (monthlySpendingCurrent > 0) {
+            monthlyChangePercent = 100;
+            monthlyDirection = 'up';
+        }
+
+        return {
+            recentTransactions,
+            totalSpentAllTime: Math.round(totalSpentAllTime * 100) / 100,
+            transactionsThisWeek,
+            monthlySpendingCurrent: Math.round(monthlySpendingCurrent * 100) / 100,
+            monthlySpendingLast: Math.round(monthlySpendingLast * 100) / 100,
+            monthlyChangePercent: Math.round(monthlyChangePercent * 100) / 100,
+            monthlyDirection
+        };
+    }
+
+    /**
+     * Get recent transactions sorted by date descending
+     * @param {number} limit - Maximum number of transactions to return
+     * @returns {Array} Recent transactions with formatted data
+     */
+    _getRecentTransactions(limit = 5) {
+        const transactions = this.data.transactions;
+        
+        if (!transactions || transactions.length === 0) {
+            return [];
+        }
+
+        // Sort by date descending (newest first)
+        const sorted = [...transactions].sort((a, b) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            return dateB - dateA;
+        });
+
+        // Take top N and format for display
+        return sorted.slice(0, limit).map(tx => {
+            const categoryIcon = this._getCategoryIcon(tx.category || tx.group);
+            const relativeDate = this._getRelativeDate(tx.date);
+            
+            return {
+                id: tx.id,
+                icon: categoryIcon,
+                merchant: tx.merchant || tx.category || 'Transaction',
+                amount: Math.abs(Number(tx.amount) || 0),
+                date: relativeDate,
+                rawDate: tx.date,
+                category: tx.category,
+                group: tx.group
+            };
+        });
+    }
+
+    /**
+     * Calculate total spent from all transactions
+     * @param {Array} transactions 
+     * @returns {number} Total spent amount
+     */
+    _calculateTotalSpent(transactions) {
+        if (!transactions || transactions.length === 0) {
+            return 0;
+        }
+
+        return transactions.reduce((total, tx) => {
+            // Only count spending (positive amounts or amounts not marked as income)
+            const amount = Math.abs(Number(tx.amount) || 0);
+            // For now, count all transactions as spending
+            // If you have a type field, you could filter: tx.type !== 'income'
+            return total + amount;
+        }, 0);
+    }
+
+    /**
+     * Count transactions in the last 7 days (rolling window)
+     * @returns {number} Count of transactions this week
+     */
+    _countTransactionsThisWeek() {
+        const transactions = this.data.transactions;
+        
+        if (!transactions || transactions.length === 0) {
+            return 0;
+        }
+
+        const now = new Date();
+        const sevenDaysAgo = new Date(now);
+        sevenDaysAgo.setDate(now.getDate() - 7);
+        sevenDaysAgo.setHours(0, 0, 0, 0);
+
+        return transactions.filter(tx => {
+            const txDate = new Date(tx.date);
+            return txDate >= sevenDaysAgo && txDate <= now;
+        }).length;
+    }
+
+    /**
+     * Get icon for category/group
+     * @param {string} categoryOrGroup 
+     * @returns {string} Emoji icon
+     */
+    _getCategoryIcon(categoryOrGroup) {
+        const iconMap = {
+            // Categories
+            'groceries': '🛒',
+            'utilities': '💡',
+            'fuel': '⛽',
+            'stocks': '📈',
+            'bonds': '📊',
+            'dining-out': '🍽️',
+            'shopping': '🛍️',
+            // Groups
+            'household': '🏠',
+            'investments': '💰',
+            'expenses': '💳',
+            // Default
+            'uncategorized': '📝'
+        };
+
+        const key = (categoryOrGroup || 'uncategorized').toLowerCase();
+        return iconMap[key] || '💸';
+    }
+
+    /**
+     * Get relative date string (Today, Yesterday, or formatted date)
+     * @param {string|Date} date 
+     * @returns {string} Relative date string
+     */
+    _getRelativeDate(date) {
+        const txDate = new Date(date);
+        const now = new Date();
+        
+        // Reset time for comparison
+        const txDay = new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate());
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+
+        if (txDay.getTime() === today.getTime()) {
+            return 'Today';
+        } else if (txDay.getTime() === yesterday.getTime()) {
+            return 'Yesterday';
+        } else {
+            // Format as "Mon DD" or "Mon DD, YYYY" if different year
+            const options = { month: 'short', day: 'numeric' };
+            if (txDate.getFullYear() !== now.getFullYear()) {
+                options.year = 'numeric';
+            }
+            return txDate.toLocaleDateString('en-US', options);
+        }
+    }
 }

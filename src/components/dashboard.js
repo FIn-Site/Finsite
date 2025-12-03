@@ -4,25 +4,22 @@ import './spending-chart.js';
 /**
  * Dashboard Web Component for FinSite
  * Handles dashboard content display with spending charts and quick stats
- * Receives pre-aggregated chart data from model via view
+ * Receives pre-aggregated chart data and panel summary from model via view
  */
 class FinSiteDashboard extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
         
-        // Dashboard data structure
-        this.data = {
-            balance: '$12,345.67',
-            balanceChange: '+$234.50 this month',
-            activities: [
-                { icon: '🛒', text: 'Grocery Store - $45.67', date: 'Today' },
-                { icon: '⛽', text: 'Gas Station - $32.10', date: 'Yesterday' }
-            ],
-            stats: {
-                transactions: 15,
-                monthlySpending: '$1,234'
-            }
+        // Dashboard panel data - starts empty, populated from model
+        this.panelData = {
+            totalSpentAllTime: 0,
+            transactionsThisWeek: 0,
+            monthlySpendingCurrent: 0,
+            monthlySpendingLast: 0,
+            monthlyChangePercent: 0,
+            monthlyDirection: 'neutral',
+            recentTransactions: []
         };
         
         // Chart data structure (pre-aggregated from model)
@@ -40,7 +37,39 @@ class FinSiteDashboard extends HTMLElement {
         });
     }
 
+    /**
+     * Format currency for display
+     * @param {number} amount 
+     * @returns {string} Formatted currency string
+     */
+    _formatCurrency(amount) {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(amount || 0);
+    }
+
     render() {
+        const { 
+            totalSpentAllTime, 
+            transactionsThisWeek, 
+            monthlySpendingCurrent,
+            monthlyChangePercent,
+            monthlyDirection,
+            recentTransactions 
+        } = this.panelData;
+
+        // Determine change indicator styling
+        const changeClass = monthlyDirection === 'up' ? 'negative' : 
+                           monthlyDirection === 'down' ? 'positive' : '';
+        const changePrefix = monthlyDirection === 'up' ? '+' : 
+                            monthlyDirection === 'down' ? '' : '';
+        const changeText = monthlyChangePercent !== 0 
+            ? `${changePrefix}${monthlyChangePercent.toFixed(1)}% vs last month`
+            : 'No change vs last month';
+
         this.shadowRoot.innerHTML = `
             <style>
                 /* Reset-aware styles for shadow DOM */
@@ -216,6 +245,31 @@ class FinSiteDashboard extends HTMLElement {
                     color: #64748b;
                 }
 
+                .activity-amount {
+                    font-size: 0.875rem;
+                    font-weight: 600;
+                    color: #ef4444;
+                }
+
+                .empty-state {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 2rem;
+                    color: #64748b;
+                    text-align: center;
+                }
+
+                .empty-state-icon {
+                    font-size: 2rem;
+                    margin-bottom: 0.5rem;
+                }
+
+                .empty-state-text {
+                    font-size: 0.875rem;
+                }
+
                 /* Responsive */
                 @media (max-width: 1024px) {
                     .quick-stats-row {
@@ -238,24 +292,24 @@ class FinSiteDashboard extends HTMLElement {
                     <div class="stat-card">
                         <div class="stat-card-header">
                             <div class="stat-icon balance">💰</div>
-                            <span class="stat-label">Account Balance</span>
+                            <span class="stat-label">Total Spent (All Time)</span>
                         </div>
-                        <div class="stat-value">${this.data.balance}</div>
-                        <div class="stat-change positive">${this.data.balanceChange}</div>
+                        <div class="stat-value" data-field="totalSpent">${this._formatCurrency(totalSpentAllTime)}</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-card-header">
                             <div class="stat-icon transactions">📊</div>
                             <span class="stat-label">Transactions This Week</span>
                         </div>
-                        <div class="stat-value">${this.data.stats.transactions}</div>
+                        <div class="stat-value" data-field="weeklyCount">${transactionsThisWeek}</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-card-header">
                             <div class="stat-icon spending">💳</div>
                             <span class="stat-label">Monthly Spending</span>
                         </div>
-                        <div class="stat-value">${this.data.stats.monthlySpending}</div>
+                        <div class="stat-value" data-field="monthlySpending">${this._formatCurrency(monthlySpendingCurrent)}</div>
+                        <div class="stat-change ${changeClass}" data-field="monthlyChange">${changeText}</div>
                     </div>
                 </div>
 
@@ -268,23 +322,68 @@ class FinSiteDashboard extends HTMLElement {
                 <div class="recent-activity">
                     <h3 class="activity-header">Recent Activity</h3>
                     <div class="activity-list">
-                        ${this.renderActivities()}
+                        ${this._renderActivities()}
                     </div>
                 </div>
             </div>
         `;
     }
 
-    renderActivities() {
-        return this.data.activities.map(activity => `
-            <div class="activity-item">
-                <span class="activity-icon">${activity.icon}</span>
-                <div class="activity-info">
-                    <div class="activity-text">${activity.text}</div>
-                    <div class="activity-date">${activity.date}</div>
+    /**
+     * Render activity items or empty state
+     * @returns {string} HTML for activity list
+     */
+    _renderActivities() {
+        const { recentTransactions } = this.panelData;
+
+        if (!recentTransactions || recentTransactions.length === 0) {
+            return `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📭</div>
+                    <div class="empty-state-text">No recent transactions</div>
                 </div>
+            `;
+        }
+
+        return recentTransactions.map(tx => `
+            <div class="activity-item">
+                <span class="activity-icon">${tx.icon}</span>
+                <div class="activity-info">
+                    <div class="activity-text">${tx.merchant}</div>
+                    <div class="activity-date">${tx.date}</div>
+                </div>
+                <div class="activity-amount">-${this._formatCurrency(tx.amount)}</div>
             </div>
         `).join('');
+    }
+
+    /**
+     * Update dashboard from panel summary (stats, recent activity)
+     * Called by view when model provides new dashboard panel summary
+     * @param {Object} summary - Dashboard panel summary from model
+     */
+    updateFromSummary(summary) {
+        if (!summary) return;
+
+        this.panelData = {
+            ...this.panelData,
+            ...summary
+        };
+
+        // Re-render the component
+        this.render();
+        
+        // Re-acquire chart reference after render
+        requestAnimationFrame(() => {
+            this._chartComponent = this.shadowRoot.querySelector('finsite-spending-chart');
+            
+            // Re-apply chart data if we have it
+            if (this.chartData && this._chartComponent && this._chartComponent.updateChartData) {
+                this._chartComponent.updateChartData(this.chartData);
+            }
+        });
+
+        console.log('📋 Dashboard panel updated from summary:', summary);
     }
 
     /**
@@ -308,11 +407,15 @@ class FinSiteDashboard extends HTMLElement {
     }
 
     /**
-     * Update dashboard data (balance, stats, activities)
+     * Legacy method - Update dashboard data
+     * @deprecated Use updateFromSummary instead
      * @param {Object} newData - New data to display
      */
     updateData(newData) {
-        this.data = { ...this.data, ...newData };
+        // Map old format to new if needed
+        if (newData.stats) {
+            this.panelData.transactionsThisWeek = newData.stats.transactions || 0;
+        }
         this.render();
         
         // Re-acquire chart reference after render
@@ -324,29 +427,6 @@ class FinSiteDashboard extends HTMLElement {
                 this._chartComponent.updateChartData(this.chartData);
             }
         });
-    }
-
-    /**
-     * Update account balance
-     * @param {string} balance - New balance amount
-     * @param {string} change - Balance change text
-     */
-    updateBalance(balance, change) {
-        this.data.balance = balance;
-        this.data.balanceChange = change;
-        this.render();
-    }
-
-    /**
-     * Add new activity item
-     * @param {Object} activity - Activity object with icon, text, date
-     */
-    addActivity(activity) {
-        this.data.activities.unshift(activity);
-        if (this.data.activities.length > 5) {
-            this.data.activities = this.data.activities.slice(0, 5);
-        }
-        this.render();
     }
 }
 

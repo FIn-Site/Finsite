@@ -84,20 +84,37 @@ export class FinSiteController {
     }
 
     /**
-     * Refresh dashboard charts with aggregated data from model
+     * Refresh dashboard with aggregated data from model
      * Called after initialization, navigation to dashboard, and data changes
      * @param {boolean} isHeavyUpdate - True for bulk updates (CSV import)
      */
-    _refreshDashboardCharts(isHeavyUpdate = false) {
-        // Get pre-aggregated dashboard summary from model
-        const dashboardSummary = this.model.getDashboardSummary();
+    _refreshDashboard(isHeavyUpdate = false) {
+        // Get pre-aggregated chart data from model
+        const chartData = this.model.getDashboardSummary();
         
-        // Pass to view to update chart component
+        // Get panel summary (stats, recent activity) from model
+        const panelSummary = this.model.getDashboardPanelSummary();
+        
+        // Pass chart data to view for chart component
         if (typeof this.view.updateDashboardCharts === 'function') {
-            this.view.updateDashboardCharts(dashboardSummary, isHeavyUpdate);
+            this.view.updateDashboardCharts(chartData, isHeavyUpdate);
         }
         
-        console.log('📊 Dashboard charts refreshed with summary:', dashboardSummary);
+        // Pass panel summary to view for dashboard stat cards and recent activity
+        if (typeof this.view.updateDashboardPanel === 'function') {
+            this.view.updateDashboardPanel(panelSummary);
+        }
+        
+        console.log('📊 Dashboard refreshed with chart data:', chartData);
+        console.log('📋 Dashboard panel updated with summary:', panelSummary);
+    }
+
+    /**
+     * Legacy method name - calls _refreshDashboard
+     * @deprecated Use _refreshDashboard instead
+     */
+    _refreshDashboardCharts(isHeavyUpdate = false) {
+        this._refreshDashboard(isHeavyUpdate);
     }
 
     /**

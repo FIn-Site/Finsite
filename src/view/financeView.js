@@ -184,6 +184,20 @@ export class FinSiteView {
     }
 
     /**
+     * Update dashboard panel with summary data (stats cards, recent activity)
+     * This passes real transaction data to replace static demo values
+     * @param {Object} panelSummary - Panel summary from model
+     */
+    updateDashboardPanel(panelSummary) {
+        // Only update if dashboard is visible or exists
+        const dashboard = this.container?.querySelector('finsite-dashboard');
+        if (dashboard && typeof dashboard.updateFromSummary === 'function') {
+            dashboard.updateFromSummary(panelSummary);
+            console.log('📋 Dashboard panel updated with:', panelSummary);
+        }
+    }
+
+    /**
      * Get the current page
      * @returns {string} Current page name
      */
