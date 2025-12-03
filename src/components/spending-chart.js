@@ -1,54 +1,147 @@
 /**
  * Spending Chart Web Component for FinSite
- * Reusable chart component with line graph and metrics
+ * 
+ * OPTIMIZATION B: Uses chart-core module instead of global Chart.js
+ * OPTIMIZATION C: Categorical X-axis (no date adapter needed)
+ * 
+ * This is the ONLY component in the app that directly interacts with Chart.js
  */
+import { 
+    initChartCore, 
+    getChart, 
+    isInitialized,
+    createLineChartConfig, 
+    createBarChartConfig,
+    formatCurrency,
+    CHART_COLORS 
+} from '../chart/chart-core.js';
+
 class FinSiteSpendingChart extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
         
-        // Default data
+        // Chart.js instances - one per chart type
+        this._lineChart = null;
+        this._barChart = null;
+        this._Chart = null; // Chart.js constructor reference
+        
+        // Default chart data structure (pre-aggregated from model)
         this.chartData = {
-            labels: ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'],
-            values: [1650, 1720, 1580, 1820, 1780, 1890, 1847],
+            // Time series for line chart (money x time)
+            timeSeries: {
+                labels: ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb'],
+                values: [1650, 1720, 1580, 1820, 1780, 1890]
+            },
+            // Group breakdown for bar chart (money x group)
+            groupBreakdown: {
+                labels: ['Household', 'Dining', 'Transport', 'Entertainment', 'Utilities'],
+                values: [850, 420, 380, 240, 180]
+            },
+            // KPI metrics
             metrics: {
-                thisMonth: '$1,847',
-                vsLastMonth: '+12%',
-                sixMonthAvg: '$1,456'
+                thisMonth: 1890,
+                lastMonth: 1780,
+                percentChange: 6.18,
+                sixMonthAvg: 1740
             }
         };
         
-        // Component properties
-        this.width = this.getAttribute('width') || '100%';
-        this.height = this.getAttribute('height') || 'auto';
+        // Animation settings
+        this._isHeavyUpdate = false;
+        this._isInitializing = false;
     }
 
     static get observedAttributes() {
-        return ['width', 'height', 'data'];
+        return ['data'];
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
-        if (name === 'width') this.width = newValue;
-        if (name === 'height') this.height = newValue;
-        if (name === 'data') {
+        if (name === 'data' && newValue) {
             try {
-                this.chartData = JSON.parse(newValue);
+                this.updateChartData(JSON.parse(newValue));
             } catch (e) {
-                console.warn('Invalid chart data provided');
+                console.warn('Invalid chart data provided:', e);
             }
         }
-        if (this.shadowRoot) this.render();
     }
 
     connectedCallback() {
         this.render();
-        this.setupChart();
+        // Initialize charts asynchronously (lazy load Chart.js)
+        this._initChartsAsync();
+    }
+
+    disconnectedCallback() {
+        // Properly destroy Chart.js instances to prevent memory leaks
+        this._destroyCharts();
+    }
+
+    /**
+     * Async initialization - lazy loads Chart.js via chart-core module
+     */
+    async _initChartsAsync() {
+        if (this._isInitializing) return;
+        this._isInitializing = true;
+
+        try {
+            // Lazy load Chart.js through chart-core module
+            this._Chart = await initChartCore();
+            
+            // Create charts now that Chart.js is loaded
+            requestAnimationFrame(() => {
+                this._initCharts();
+            });
+        } catch (error) {
+            console.error('Failed to initialize charts:', error);
+            
+            // Fallback: try global Chart if available
+            const globalChart = getChart();
+            if (globalChart) {
+                this._Chart = globalChart;
+                requestAnimationFrame(() => {
+                    this._initCharts();
+                });
+            }
+        } finally {
+            this._isInitializing = false;
+        }
+    }
+
+    /**
+     * Update chart data from external source (model via view)
+     * @param {Object} newData - Pre-aggregated chart data
+     * @param {boolean} isHeavyUpdate - True for bulk updates (CSV import), disables animation
+     */
+    updateChartData(newData, isHeavyUpdate = false) {
+        this._isHeavyUpdate = isHeavyUpdate;
+        
+        // Merge new data with existing
+        if (newData.timeSeries) {
+            this.chartData.timeSeries = { ...this.chartData.timeSeries, ...newData.timeSeries };
+        }
+        if (newData.groupBreakdown) {
+            this.chartData.groupBreakdown = { ...this.chartData.groupBreakdown, ...newData.groupBreakdown };
+        }
+        if (newData.metrics) {
+            this.chartData.metrics = { ...this.chartData.metrics, ...newData.metrics };
+        }
+        
+        // Update existing chart instances without recreating
+        this._updateCharts();
+        
+        // Update metric displays
+        this._updateMetricsDisplay();
     }
 
     render() {
+        const { metrics } = this.chartData;
+        const percentChange = metrics.percentChange || 0;
+        const changeClass = percentChange >= 0 ? 'positive' : 'negative';
+        const changeSymbol = percentChange >= 0 ? '+' : '';
+
         this.shadowRoot.innerHTML = `
             <style>
-                /* Reset-aware styles */
                 * {
                     margin: 0;
                     padding: 0;
@@ -57,86 +150,79 @@ class FinSiteSpendingChart extends HTMLElement {
 
                 :host {
                     display: block;
-                    width: ${this.width};
-                    height: ${this.height};
+                    width: 100%;
+                    height: 100%;
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                 }
 
-                .chart-container {
-                    background: #2a2a2a;
-                    border-radius: 0.75rem;
-                    padding: 2rem;
-                    border: 0.0625rem solid #444;
-                    height: 100%;
-                    min-height: 31.25rem;
+                .charts-container {
                     display: flex;
                     flex-direction: column;
+                    gap: 1.5rem;
+                    height: 100%;
+                }
+
+                .chart-card {
+                    background: #1e293b;
+                    border-radius: 1rem;
+                    padding: 1.5rem;
+                    border: 1px solid #334155;
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    min-height: 280px;
                 }
 
                 .chart-header {
-                    margin-bottom: 24px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    margin-bottom: 1rem;
                 }
 
                 .chart-title {
-                    font-size: 1.5rem;
+                    font-size: 1rem;
                     font-weight: 600;
-                    color: #ffffff;
-                    margin: 0 0 1.5rem 0;
-                    text-align: center;
+                    color: #f1f5f9;
+                    margin: 0;
+                }
+
+                .chart-subtitle {
+                    font-size: 0.75rem;
+                    color: #64748b;
+                    margin-top: 0.25rem;
                 }
 
                 .chart-area {
                     flex: 1;
                     position: relative;
-                    background: #2a2a2a;
-                    border-radius: 0.75rem;
-                    padding: 2rem;
-                    margin-bottom: 1.5rem;
-                    min-height: 18.75rem;
+                    min-height: 200px;
                 }
 
                 .chart-canvas {
-                    width: 100%;
-                    height: 100%;
-                    display: block;
+                    width: 100% !important;
+                    height: 100% !important;
                 }
 
-                .chart-grid {
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    pointer-events: none;
-                }
-
-                .metrics-grid {
+                .metrics-row {
                     display: grid;
-                    grid-template-columns: 1fr 1fr 1fr;
-                    gap: 12px;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 1rem;
+                    margin-bottom: 1.5rem;
                 }
 
                 .metric-card {
-                    background: linear-gradient(135deg, #333333 0%, #2a2a2a 100%);
+                    background: #1e293b;
                     border-radius: 0.75rem;
-                    padding: 1.5rem;
-                    text-align: center;
-                    border: 0.0625rem solid #404040;
-                    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.2);
-                    transition: all 0.2s ease;
-                }
-
-                .metric-card:hover {
-                    background: linear-gradient(135deg, #3a3a3a 0%, #2f2f2f 100%);
-                    box-shadow: 0 0.375rem 0.75rem rgba(0, 0, 0, 0.3);
-                    transform: translateY(-0.125rem);
+                    padding: 1rem 1.25rem;
+                    border: 1px solid #334155;
                 }
 
                 .metric-value {
-                    font-size: 1.375rem;
+                    font-size: 1.5rem;
                     font-weight: 700;
-                    margin: 0 0 0.375rem 0;
-                    color: #ffffff;
+                    color: #f1f5f9;
+                    margin-bottom: 0.25rem;
                 }
 
                 .metric-value.positive {
@@ -149,421 +235,258 @@ class FinSiteSpendingChart extends HTMLElement {
 
                 .metric-label {
                     font-size: 0.75rem;
-                    color: #9ca3af;
-                    margin: 0;
+                    color: #64748b;
                     font-weight: 500;
                 }
 
-                .chart-tooltip {
-                    position: absolute;
-                    background: rgba(0, 0, 0, 0.9);
-                    color: white;
-                    padding: 0.5rem 0.75rem;
-                    border-radius: 0.375rem;
-                    font-size: 0.75rem;
-                    font-weight: 500;
-                    pointer-events: none;
-                    opacity: 0;
-                    transition: opacity 0.2s ease;
-                    z-index: 1000;
-                    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.3);
-                    white-space: nowrap;
+                .charts-grid {
+                    display: grid;
+                    grid-template-columns: 1.5fr 1fr;
+                    gap: 1.5rem;
+                    flex: 1;
                 }
 
-                .chart-tooltip.visible {
-                    opacity: 1;
-                }
-
-                /* Responsive Design */
-                @media (max-width: 768px) {
-                    .metrics-grid {
+                /* Responsive adjustments */
+                @media (max-width: 1024px) {
+                    .charts-grid {
                         grid-template-columns: 1fr;
-                        gap: 8px;
                     }
                     
-                    .chart-container {
-                        padding: 16px;
+                    .metrics-row {
+                        grid-template-columns: repeat(2, 1fr);
+                    }
+                }
+
+                @media (max-width: 640px) {
+                    .metrics-row {
+                        grid-template-columns: 1fr;
                     }
                     
-                    .metric-card {
-                        padding: 12px;
+                    .chart-card {
+                        min-height: 240px;
                     }
                 }
             </style>
 
-            <div class="chart-container">
-                <div class="chart-header">
-                    <h3 class="chart-title">Monthly Spending Trend</h3>
-                </div>
-                
-                <div class="chart-area">
-                    <canvas class="chart-canvas" id="spending-chart"></canvas>
-                    <div class="chart-tooltip" id="tooltip"></div>
-                </div>
-                
-                <div class="metrics-grid">
+            <div class="charts-container">
+                <!-- Metrics Row -->
+                <div class="metrics-row">
                     <div class="metric-card">
-                        <div class="metric-value">${this.chartData.metrics.thisMonth}</div>
+                        <div class="metric-value" id="metric-this-month">
+                            $${this._formatCurrency(metrics.thisMonth)}
+                        </div>
                         <div class="metric-label">This Month</div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-value ${this.getMetricClass(this.chartData.metrics.vsLastMonth)}">${this.chartData.metrics.vsLastMonth}</div>
+                        <div class="metric-value ${changeClass}" id="metric-change">
+                            ${changeSymbol}${percentChange.toFixed(1)}%
+                        </div>
                         <div class="metric-label">vs Last Month</div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-value">${this.chartData.metrics.sixMonthAvg}</div>
-                        <div class="metric-label">6-Mo Avg</div>
+                        <div class="metric-value" id="metric-last-month">
+                            $${this._formatCurrency(metrics.lastMonth)}
+                        </div>
+                        <div class="metric-label">Last Month</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="metric-avg">
+                            $${this._formatCurrency(metrics.sixMonthAvg)}
+                        </div>
+                        <div class="metric-label">6-Month Average</div>
+                    </div>
+                </div>
+
+                <!-- Charts Grid -->
+                <div class="charts-grid">
+                    <!-- Line Chart: Money x Time -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div>
+                                <h3 class="chart-title">Spending Over Time</h3>
+                                <p class="chart-subtitle">Monthly spending trend</p>
+                            </div>
+                        </div>
+                        <div class="chart-area">
+                            <canvas id="line-chart" class="chart-canvas"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Bar Chart: Money x Group -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div>
+                                <h3 class="chart-title">Spending by Category</h3>
+                                <p class="chart-subtitle">Top spending categories</p>
+                            </div>
+                        </div>
+                        <div class="chart-area">
+                            <canvas id="bar-chart" class="chart-canvas"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
         `;
     }
 
-    getMetricClass(value) {
-        if (value.includes('+')) return 'positive';
-        if (value.includes('-')) return 'negative';
-        return '';
+    /**
+     * Initialize Chart.js instances
+     * Only called once per component lifecycle
+     * Uses chart-core module instead of global Chart
+     */
+    _initCharts() {
+        // Use module-provided Chart or fallback to global
+        const Chart = this._Chart || getChart();
+        
+        if (!Chart) {
+            console.error('Chart.js not available. Initialization failed.');
+            return;
+        }
+
+        this._createLineChart(Chart);
+        this._createBarChart(Chart);
+        
+        console.log('📊 Chart.js instances created via chart-core module');
     }
 
-    setupChart() {
-        const canvas = this.shadowRoot.querySelector('#spending-chart');
-        const tooltip = this.shadowRoot.querySelector('#tooltip');
-        
-        console.log('Setting up chart - Canvas:', canvas, 'Tooltip:', tooltip);
-        
-        if (!canvas) {
-            console.error('Canvas not found');
-            return;
-        }
-
-        if (!tooltip) {
-            console.error('Tooltip not found');
-            return;
-        }
+    /**
+     * Create the line chart (money x time)
+     * @param {typeof Chart} Chart - Chart.js constructor
+     */
+    _createLineChart(Chart) {
+        const canvas = this.shadowRoot.querySelector('#line-chart');
+        if (!canvas) return;
 
         const ctx = canvas.getContext('2d');
-        const rect = canvas.parentElement.getBoundingClientRect();
-        
-        // Set canvas size
-        canvas.width = rect.width - 40; // Account for padding
-        canvas.height = rect.height - 40;
-        
-        console.log('Canvas size set:', canvas.width, 'x', canvas.height);
-        
-        // Store references for event handling
-        this.canvas = canvas;
-        this.ctx = ctx;
-        this.tooltip = tooltip;
-        this.points = [];
-        
-        this.drawChart(ctx, canvas, tooltip);
-        
-        // Setup hover events with a small delay to ensure everything is ready
-        setTimeout(() => {
-            this.setupHoverEvents();
-        }, 100);
-    }
+        const { labels, values } = this.chartData.timeSeries;
 
-    drawChart(ctx, canvas, tooltip) {
-        const { labels, values } = this.chartData;
-        const padding = 40;
-        const width = canvas.width;
-        const height = canvas.height;
-        const chartWidth = width - (padding * 2);
-        const chartHeight = height - (padding * 2);
-
-        // Clear canvas
-        ctx.clearRect(0, 0, width, height);
-
-        // Draw grid
-        this.drawGrid(ctx, padding, chartWidth, chartHeight);
-
-        // Calculate points
-        const points = this.calculatePoints(values, labels, padding, chartWidth, chartHeight);
-        this.points = points; // Store for hover detection
-        
-        console.log('Chart points calculated:', this.points);
-
-        // Draw line and points
-        this.drawLine(ctx, points);
-        this.drawPoints(ctx, points);
-
-        // Draw labels
-        this.drawLabels(ctx, labels, padding, chartWidth, height);
-        this.drawYAxisLabels(ctx, values, padding, chartHeight);
-    }
-
-    drawGrid(ctx, padding, chartWidth, chartHeight) {
-        ctx.strokeStyle = '#374151';
-        ctx.lineWidth = 1;
-
-        // Vertical grid lines
-        for (let i = 0; i <= 6; i++) {
-            const x = padding + (i * chartWidth / 6);
-            ctx.beginPath();
-            ctx.moveTo(x, padding);
-            ctx.lineTo(x, padding + chartHeight);
-            ctx.stroke();
-        }
-
-        // Horizontal grid lines
-        for (let i = 0; i <= 4; i++) {
-            const y = padding + (i * chartHeight / 4);
-            ctx.beginPath();
-            ctx.moveTo(padding, y);
-            ctx.lineTo(padding + chartWidth, y);
-            ctx.stroke();
-        }
-    }
-
-    calculatePoints(values, labels, padding, chartWidth, chartHeight) {
-        const minValue = Math.min(...values);
-        const maxValue = Math.max(...values);
-        
-        // Add padding to the range for better visual spacing
-        const roundedMin = Math.floor(minValue / 200) * 200;
-        const roundedMax = Math.ceil(maxValue / 200) * 200 + 200; // Add extra bracket
-        const valueRange = roundedMax - roundedMin;
-
-        return values.map((value, index) => {
-            const x = padding + (index * chartWidth / (labels.length - 1));
-            const y = padding + chartHeight - ((value - roundedMin) / valueRange * chartHeight);
-            return { x, y, value, label: labels[index] };
-        });
-    }
-
-    drawLine(ctx, points) {
-        // Draw line
-        ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 3;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-
-        ctx.beginPath();
-        points.forEach((point, index) => {
-            if (index === 0) {
-                ctx.moveTo(point.x, point.y);
-            } else {
-                ctx.lineTo(point.x, point.y);
-            }
-        });
-        ctx.stroke();
-    }
-
-    drawPoints(ctx, points, highlightIndex = -1) {
-        points.forEach((point, index) => {
-            ctx.save();
-            
-            if (index === highlightIndex) {
-                // Highlighted point - larger with glow
-                ctx.shadowColor = index === points.length - 1 ? '#10b981' : '#3b82f6';
-                ctx.shadowBlur = 12;
-                ctx.fillStyle = index === points.length - 1 ? '#10b981' : '#3b82f6';
-                ctx.beginPath();
-                ctx.arc(point.x, point.y, 6, 0, 2 * Math.PI);
-                ctx.fill();
-                
-                // Add outer ring
-                ctx.shadowBlur = 0;
-                ctx.strokeStyle = index === points.length - 1 ? '#10b981' : '#3b82f6';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(point.x, point.y, 8, 0, 2 * Math.PI);
-                ctx.stroke();
-            } else {
-                // Regular point with glow effect
-                ctx.shadowColor = index === points.length - 1 ? '#10b981' : '#3b82f6';
-                ctx.shadowBlur = 8;
-                ctx.fillStyle = index === points.length - 1 ? '#10b981' : '#3b82f6';
-                ctx.beginPath();
-                ctx.arc(point.x, point.y, 4, 0, 2 * Math.PI);
-                ctx.fill();
-            }
-            
-            ctx.restore();
-        });
-    }
-
-    drawLabels(ctx, labels, padding, chartWidth, height) {
-        ctx.fillStyle = '#9ca3af';
-        ctx.font = '0.75rem -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.textAlign = 'center';
-
-        labels.forEach((label, index) => {
-            const x = padding + (index * chartWidth / (labels.length - 1));
-            if (index === labels.length - 1) {
-                ctx.fillStyle = '#10b981';
-                ctx.font = '0.75rem -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-            } else {
-                ctx.fillStyle = '#9ca3af';
-                ctx.font = '0.75rem -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-            }
-            ctx.fillText(label, x, height - 10);
-        });
-    }
-
-    drawYAxisLabels(ctx, values, padding, chartHeight) {
-        const minValue = Math.min(...values);
-        const maxValue = Math.max(...values);
-        
-        // Create nice round numbers for y-axis with extra headroom
-        const roundedMin = Math.floor(minValue / 200) * 200;
-        const roundedMax = Math.ceil(maxValue / 200) * 200 + 200; // Add extra bracket
-        const valueRange = roundedMax - roundedMin;
-        const step = (roundedMax - roundedMin) / 4;
-        
-        ctx.fillStyle = '#9ca3af';
-        ctx.font = '0.75rem -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.textAlign = 'right';
-        
-        for (let i = 0; i <= 4; i++) {
-            const value = roundedMin + (step * i);
-            const y = padding + chartHeight - ((value - roundedMin) / valueRange * chartHeight);
-            const formattedValue = `$${(value / 1000).toFixed(1)}k`;
-            ctx.fillText(formattedValue, padding - 10, y + 3);
-        }
-    }
-
-    redrawWithHighlight(ctx, canvas, points, highlightIndex) {
-        const { labels, values } = this.chartData;
-        const padding = 40;
-        const width = canvas.width;
-        const height = canvas.height;
-        const chartWidth = width - (padding * 2);
-        const chartHeight = height - (padding * 2);
-
-        // Clear and redraw everything
-        ctx.clearRect(0, 0, width, height);
-        this.drawGrid(ctx, padding, chartWidth, chartHeight);
-        this.drawLine(ctx, points);
-
-        // Draw all points
-        points.forEach((point, index) => {
-            ctx.save();
-            
-            if (index === highlightIndex) {
-                // Highlighted point - larger with glow
-                ctx.shadowColor = index === points.length - 1 ? '#10b981' : '#3b82f6';
-                ctx.shadowBlur = 12;
-                ctx.fillStyle = index === points.length - 1 ? '#10b981' : '#3b82f6';
-                ctx.beginPath();
-                ctx.arc(point.x, point.y, 6, 0, 2 * Math.PI);
-                ctx.fill();
-                
-                // Add outer ring
-                ctx.shadowBlur = 0;
-                ctx.strokeStyle = index === points.length - 1 ? '#10b981' : '#3b82f6';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(point.x, point.y, 8, 0, 2 * Math.PI);
-                ctx.stroke();
-            } else {
-                // Regular point
-                ctx.shadowColor = index === points.length - 1 ? '#10b981' : '#3b82f6';
-                ctx.shadowBlur = 6;
-                ctx.fillStyle = index === points.length - 1 ? '#10b981' : '#3b82f6';
-                ctx.beginPath();
-                ctx.arc(point.x, point.y, 4, 0, 2 * Math.PI);
-                ctx.fill();
-            }
-            
-            ctx.restore();
+        // Use chart-core factory for configuration
+        const config = createLineChartConfig({
+            labels,
+            values,
+            ctx,
+            animate: !this._isHeavyUpdate
         });
 
-        this.drawLabels(ctx, labels, padding, chartWidth, height);
-    }
-
-    setupHoverEvents() {
-        if (!this.canvas || !this.tooltip) {
-            console.log('Canvas or tooltip not found for hover setup');
-            return;
-        }
-
-        console.log('Setting up hover events', this.canvas, this.tooltip);
-
-        // Simple, direct event handlers
-        this.canvas.addEventListener('mousemove', (e) => {
-            if (!this.points || this.points.length === 0) return;
-
-            const rect = this.canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-
-            let hoveredIndex = -1;
-            let minDistance = 20; // Increased detection radius
-
-            this.points.forEach((point, index) => {
-                const distance = Math.sqrt(
-                    Math.pow(mouseX - point.x, 2) + Math.pow(mouseY - point.y, 2)
-                );
-
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    hoveredIndex = index;
-                }
-            });
-
-            if (hoveredIndex !== -1) {
-                const { labels, values } = this.chartData;
-                this.tooltip.textContent = `${labels[hoveredIndex]}: $${values[hoveredIndex].toLocaleString()}`;
-                this.tooltip.style.left = `${mouseX + 10}px`;
-                this.tooltip.style.top = `${mouseY - 40}px`;
-                this.tooltip.classList.add('visible');
-                this.canvas.style.cursor = 'pointer';
-                
-                console.log('Showing tooltip:', this.tooltip.textContent);
-            } else {
-                this.tooltip.classList.remove('visible');
-                this.canvas.style.cursor = 'default';
-            }
-        });
-
-        this.canvas.addEventListener('mouseleave', () => {
-            this.tooltip.classList.remove('visible');
-            this.canvas.style.cursor = 'default';
-            console.log('Mouse left canvas, hiding tooltip');
-        });
-    }
-
-    redrawChart(highlightIndex = -1) {
-        if (!this.canvas || !this.ctx) return;
-
-        const { labels, values } = this.chartData;
-        const padding = 40;
-        const width = this.canvas.width;
-        const height = this.canvas.height;
-        const chartWidth = width - (padding * 2);
-        const chartHeight = height - (padding * 2);
-
-        // Clear and redraw everything
-        this.ctx.clearRect(0, 0, width, height);
-        this.drawGrid(this.ctx, padding, chartWidth, chartHeight);
-        this.drawLine(this.ctx, this.points);
-        this.drawPoints(this.ctx, this.points, highlightIndex);
-        this.drawLabels(this.ctx, labels, padding, chartWidth, height);
-        this.drawYAxisLabels(this.ctx, values, padding, chartHeight);
+        this._lineChart = new Chart(ctx, config);
     }
 
     /**
-     * Update chart data
-     * @param {Object} newData - New chart data
+     * Create the bar chart (money x group)
+     * @param {typeof Chart} Chart - Chart.js constructor
      */
-    updateData(newData) {
-        this.chartData = { ...this.chartData, ...newData };
-        this.render();
-        this.setupChart();
+    _createBarChart(Chart) {
+        const canvas = this.shadowRoot.querySelector('#bar-chart');
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        const { labels, values } = this.chartData.groupBreakdown;
+
+        // Use chart-core factory for configuration
+        const config = createBarChartConfig({
+            labels,
+            values,
+            animate: !this._isHeavyUpdate
+        });
+
+        this._barChart = new Chart(ctx, config);
     }
 
     /**
-     * Resize chart
-     * @param {string} width - New width
-     * @param {string} height - New height
+     * Update existing chart instances with new data
+     * Does NOT recreate charts - mutates data and calls update()
      */
-    resize(width, height) {
-        this.width = width || this.width;
-        this.height = height || this.height;
-        this.render();
-        setTimeout(() => this.setupChart(), 100);
+    _updateCharts() {
+        const animationDuration = this._isHeavyUpdate ? 0 : 400;
+
+        // Update line chart
+        if (this._lineChart) {
+            const { labels, values } = this.chartData.timeSeries;
+            this._lineChart.data.labels = labels;
+            this._lineChart.data.datasets[0].data = values;
+            this._lineChart.options.animation.duration = animationDuration;
+            this._lineChart.update();
+        }
+
+        // Update bar chart
+        if (this._barChart) {
+            const { labels, values } = this.chartData.groupBreakdown;
+            this._barChart.data.labels = labels;
+            this._barChart.data.datasets[0].data = values;
+            this._barChart.options.animation.duration = animationDuration;
+            this._barChart.update();
+        }
+
+        // Reset heavy update flag
+        this._isHeavyUpdate = false;
+    }
+
+    /**
+     * Update the metrics display without re-rendering
+     */
+    _updateMetricsDisplay() {
+        const { metrics } = this.chartData;
+        
+        const thisMonthEl = this.shadowRoot.querySelector('#metric-this-month');
+        const changeEl = this.shadowRoot.querySelector('#metric-change');
+        const lastMonthEl = this.shadowRoot.querySelector('#metric-last-month');
+        const avgEl = this.shadowRoot.querySelector('#metric-avg');
+
+        if (thisMonthEl) {
+            thisMonthEl.textContent = `$${formatCurrency(metrics.thisMonth)}`;
+        }
+        
+        if (changeEl) {
+            const changeClass = metrics.percentChange >= 0 ? 'positive' : 'negative';
+            const changeSymbol = metrics.percentChange >= 0 ? '+' : '';
+            changeEl.textContent = `${changeSymbol}${metrics.percentChange.toFixed(1)}%`;
+            changeEl.className = `metric-value ${changeClass}`;
+        }
+        
+        if (lastMonthEl) {
+            lastMonthEl.textContent = `$${formatCurrency(metrics.lastMonth)}`;
+        }
+        
+        if (avgEl) {
+            avgEl.textContent = `$${formatCurrency(metrics.sixMonthAvg)}`;
+        }
+    }
+
+    /**
+     * Destroy Chart.js instances to prevent memory leaks
+     */
+    _destroyCharts() {
+        if (this._lineChart) {
+            this._lineChart.destroy();
+            this._lineChart = null;
+        }
+        if (this._barChart) {
+            this._barChart.destroy();
+            this._barChart = null;
+        }
+        console.log('📊 Chart.js instances destroyed');
+    }
+
+    /**
+     * Format currency value for display
+     * Uses chart-core module's formatCurrency
+     * @param {number} value - Amount in dollars
+     * @returns {string} Formatted string
+     */
+    _formatCurrency(value) {
+        return formatCurrency(value);
+    }
+
+    /**
+     * Handle resize events
+     */
+    resize() {
+        if (this._lineChart) {
+            this._lineChart.resize();
+        }
+        if (this._barChart) {
+            this._barChart.resize();
+        }
     }
 }
 

@@ -169,6 +169,21 @@ export class FinSiteView {
     }
 
     /**
+     * Update dashboard charts with pre-aggregated data from model
+     * This passes the summary directly to the dashboard's chart component
+     * @param {Object} chartData - Pre-aggregated chart data { timeSeries, groupBreakdown, metrics }
+     * @param {boolean} isHeavyUpdate - True for bulk updates (disables animation)
+     */
+    updateDashboardCharts(chartData, isHeavyUpdate = false) {
+        // Only update if dashboard is visible or exists
+        const dashboard = this.container?.querySelector('finsite-dashboard');
+        if (dashboard && typeof dashboard.updateChartData === 'function') {
+            dashboard.updateChartData(chartData, isHeavyUpdate);
+            console.log('📊 Dashboard charts updated with:', chartData);
+        }
+    }
+
+    /**
      * Get the current page
      * @returns {string} Current page name
      */

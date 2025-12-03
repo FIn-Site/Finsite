@@ -39,6 +39,9 @@ export class FinSiteController {
             // 4) Tell the view to render based on model state
             this.view.update(data);
 
+            // 5) Refresh dashboard charts with aggregated data
+            this._refreshDashboardCharts();
+
             console.log('Controller initialization complete');
         } catch (error) {
             console.error('Error during controller initialization:', error);
@@ -73,6 +76,28 @@ export class FinSiteController {
         this.model.updateData({ currentView: route });
         const data = this.model.getData();
         this.view.update(data);
+        
+        // Refresh dashboard charts when navigating to dashboard
+        if (route === 'dashboard') {
+            this._refreshDashboardCharts();
+        }
+    }
+
+    /**
+     * Refresh dashboard charts with aggregated data from model
+     * Called after initialization, navigation to dashboard, and data changes
+     * @param {boolean} isHeavyUpdate - True for bulk updates (CSV import)
+     */
+    _refreshDashboardCharts(isHeavyUpdate = false) {
+        // Get pre-aggregated dashboard summary from model
+        const dashboardSummary = this.model.getDashboardSummary();
+        
+        // Pass to view to update chart component
+        if (typeof this.view.updateDashboardCharts === 'function') {
+            this.view.updateDashboardCharts(dashboardSummary, isHeavyUpdate);
+        }
+        
+        console.log('📊 Dashboard charts refreshed with summary:', dashboardSummary);
     }
 
     /**
@@ -98,6 +123,9 @@ export class FinSiteController {
             const data = this.model.getData();
             this.view.update(data);
 
+            // Refresh dashboard charts (single transaction = light update with animation)
+            this._refreshDashboardCharts(false);
+
         } catch (error) {
             console.error('❌ Error adding transaction:', error);
 
@@ -106,6 +134,54 @@ export class FinSiteController {
             if (transactionsPage && typeof transactionsPage.onTransactionError === 'function') {
                 transactionsPage.onTransactionError('Failed to save transaction. Please try again.');
             }
+        }
+    }
+
+    /**
+     * Handle bulk transaction import (CSV)
+     * OPTIMIZATION A: Uses model.addTransactionsBulk for single-pass aggregate rebuild
+     * @param {Array} transactions - Array of transaction objects
+     */
+    async handleBulkImport(transactions) {
+        console.log('📦 Handling bulk import:', transactions.length, 'transactions');
+
+        try {
+            // Use bulk import method (single aggregate rebuild at the end)
+            await this.model.addTransactionsBulk(transactions);
+
+            // Update the view
+            const data = this.model.getData();
+            this.view.update(data);
+
+            // Refresh dashboard charts (bulk = heavy update, no animation)
+            this._refreshDashboardCharts(true);
+
+            console.log('✅ Bulk import complete');
+        } catch (error) {
+            console.error('❌ Error during bulk import:', error);
+        }
+    }
+
+    /**
+     * Handle deleting transactions
+     * @param {Array} ids - Array of transaction IDs to delete
+     */
+    async handleDeleteTransactions(ids) {
+        console.log('🗑️ Handling delete transactions:', ids);
+
+        try {
+            await this.model.deleteTransactions(ids);
+
+            // Update the view
+            const data = this.model.getData();
+            this.view.update(data);
+
+            // Refresh dashboard charts
+            this._refreshDashboardCharts(ids.length > 5);
+
+            console.log('✅ Transactions deleted');
+        } catch (error) {
+            console.error('❌ Error deleting transactions:', error);
         }
     }
 }
