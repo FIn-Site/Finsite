@@ -42,7 +42,7 @@ class FinSiteDashboard extends HTMLElement {
      * @param {number} amount
      * @returns {string} Formatted currency string
      */
-    _formatCurrency(amount) {
+    static _formatCurrency(amount) {
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: 'USD',
@@ -58,14 +58,19 @@ class FinSiteDashboard extends HTMLElement {
             monthlySpendingCurrent,
             monthlyChangePercent,
             monthlyDirection,
-            recentTransactions,
         } = this.panelData;
 
         // Determine change indicator styling
-        const changeClass = monthlyDirection === 'up' ? 'negative'
-            : monthlyDirection === 'down' ? 'positive' : '';
-        const changePrefix = monthlyDirection === 'up' ? '+'
-            : monthlyDirection === 'down' ? '' : '';
+        let changeClass = '';
+        let changePrefix = '';
+
+        if (monthlyDirection === 'up') {
+            changeClass = 'negative';
+            changePrefix = '+';
+        } else if (monthlyDirection === 'down') {
+            changeClass = 'positive';
+            changePrefix = '';
+        }
         const changeText = monthlyChangePercent !== 0
             ? `${changePrefix}${monthlyChangePercent.toFixed(1)}% vs last month`
             : 'No change vs last month';

@@ -14,6 +14,19 @@ module.exports = {
     "no-plusplus": "off",
     "no-underscore-dangle": "off",
     'import/extensions': 'off',
+    'import/prefer-default-export': 'off',
     'indent': ['error', 4, { SwitchCase: 1 }],
-  }
+    'no-use-before-define': ['error', {
+        functions: false,
+        classes: true,
+        variables: true,
+    }],
+    'no-param-reassign': ['error', {
+        props: false,
+    }],
+  },
+    
+  globals: {
+    Chart: 'readonly',
+ },
 };

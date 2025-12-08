@@ -1,6 +1,6 @@
 # ESLint Configuration Decisions
 
-**Date:** December 7, 2025  
+**Date:** December 8, 2025  
 **Status:** Active  
 **Context:** Airbnb Base ESLint configuration with custom rule overrides
 
@@ -152,6 +152,203 @@ import { FinanceController } from './controller/financeController';
 - Browser module resolution requires explicit file extensions per the ES modules spec
 
 **Impact:** Allows correct native ES module imports without artificially breaking working code.
+
+---
+
+## Parser Configuration
+
+### `parserOptions.sourceType: "module"`
+
+**What it does:**
+- Tells ESLint to parse all files as ES modules (rather than scripts)
+- Enables `import`/`export` syntax, `import.meta`, and module-specific features
+- Sets the parsing mode to match ECMAScript module semantics
+
+**Why we configured it:**
+- Our entire codebase uses native ES modules (`import`/`export` statements)
+- Without `sourceType: "module"`, ESLint would treat files as scripts and flag module syntax as errors
+- Aligns ESLint's parser with how the browser actually executes our code (`<script type="module">`)
+
+**Impact:** Allows ESLint to correctly parse and validate ES module syntax throughout the project.
+
+---
+
+### `parserOptions.ecmaVersion: 12`
+
+**What it does:**
+- Sets the ECMAScript version to ES2021 (version 12)
+- Enables parsing of modern features: optional chaining (`?.`), nullish coalescing (`??`), `BigInt`, `Promise.allSettled()`, etc.
+- Works in conjunction with `env: { es2021: true }` for complete ES2021 support
+
+**Why we configured it:**
+- Explicitly declares the language version our code targets
+- Ensures ESLint understands all ES2021 syntax we use (optional chaining, nullish coalescing, etc.)
+- Provides clarity and specificity beyond just the `env` setting
+
+**Impact:** Guarantees ESLint correctly parses all modern JavaScript features we depend on.
+
+---
+
+## Global Declarations
+
+### `globals.Chart: "readonly"`
+
+**What it does:**
+- Declares `Chart` as a read-only global variable
+- Tells ESLint that `Chart` is provided by an external script (Chart.js loaded via `<script>` tag)
+- Prevents `no-undef` errors when using `Chart` while still protecting against accidental reassignment
+
+**Why we configured it:**
+- Chart.js is loaded globally via CDN (`<script>` tag), not imported as an ES module
+- Without this declaration, ESLint flags every `Chart.defaults`, `new Chart()`, etc. as undefined
+- `"readonly"` ensures we can't accidentally do `Chart = something` and break the library
+
+**The pattern:**
+```javascript
+// ✅ Allowed: using the global Chart object
+Chart.defaults.font.family = 'Inter';
+const chart = new Chart(ctx, config);
+
+// ❌ Blocked: reassigning the global
+Chart = myCustomChart; // ESLint error
+```
+
+**Impact:** Allows legitimate Chart.js usage while maintaining protection against unintended modifications.
+
+---
+
+## Modified Rules
+
+These rules remain enabled but with customized configurations:
+
+```json
+"rules": {
+  "import/prefer-default-export": "off",
+  "indent": ["error", 4, { "SwitchCase": 1 }],
+  "no-use-before-define": ["error", { "functions": false, "classes": true, "variables": true }],
+  "no-param-reassign": ["error", { "props": false }]
+}
+```
+
+---
+
+### 5. `"import/prefer-default-export": "off"`
+
+**What the rule does:**
+- Enforces using `export default` when a module has only a single export
+- Discourages named exports (`export { Foo }`) in favor of default exports (`export default Foo`)
+- Aims for consistency in single-export modules
+
+**Why we disabled it:**
+- Our codebase consistently uses named exports (e.g., `export { FinSiteDashboard }`, `export { FinanceModel }`)
+- Named exports provide better refactoring support (easier to rename, find references)
+- Mixing default and named exports based on file export count creates inconsistency
+- We prefer the explicitness of named exports across the entire project
+
+**Example pattern we use:**
+```javascript
+// Our preferred style (named export)
+export { FinanceController };
+
+// Rule wants this (default export)
+export default FinanceController;
+```
+
+**Impact:** Maintains consistent named export pattern throughout the codebase without ESLint friction.
+
+---
+
+### 6. `"indent": ["error", 4, { "SwitchCase": 1 }]`
+
+**What the rule does:**
+- Enforces consistent indentation throughout the codebase
+- Sets indent size to **4 spaces** (overriding Airbnb's 2-space default)
+- Requires 1 additional indentation level for `case` statements inside `switch` blocks
+
+**Why we configured it:**
+- Our project uses 4-space indentation as the chosen visual style
+- Airbnb defaults to 2 spaces, which doesn't match our existing codebase
+- 4 spaces provide clearer visual hierarchy, especially in nested structures
+- `SwitchCase: 1` prevents awkward alignment of `case` statements flush with `switch`
+
+**Example:**
+```javascript
+switch (type) {
+    case 'expense':  // Indented 1 level from switch
+        return calculateExpense();
+    case 'income':
+        return calculateIncome();
+    default:
+        return 0;
+}
+```
+
+**Impact:** Aligns ESLint's indentation expectations with our actual code style, eliminating hundreds of false errors.
+
+---
+
+### 7. `"no-use-before-define": ["error", { "functions": false, "classes": true, "variables": true }]`
+
+**What the rule does:**
+- Prevents using variables, classes, or functions before they're defined in the code
+- By default, flags **all** usage before definition as errors
+- Protects against temporal dead zone issues and initialization order bugs
+
+**Why we customized it:**
+- **Functions:** JavaScript hoists function declarations, so calling a function before its definition is safe and idiomatic
+- **Classes & Variables:** These are **not** hoisted safely (`let`/`const` have temporal dead zones), so we keep the protection
+- Our code uses a pattern of calling helper functions (like `_applyDefaults()`, `formatCurrency()`) before their definitions
+
+**Example:**
+```javascript
+// ✅ Allowed: function called before definition (hoisted)
+initializeChart();
+function initializeChart() { /* ... */ }
+
+// ❌ Still blocked: class used before definition
+const instance = new MyClass(); // Error!
+class MyClass { /* ... */ }
+
+// ❌ Still blocked: variable used before definition
+console.log(value); // Error!
+const value = 42;
+```
+
+**Impact:** Allows natural function organization while maintaining safety for classes and variables.
+
+---
+
+### 8. `"no-param-reassign": ["error", { "props": false }]`
+
+**What the rule does:**
+- Prevents reassigning function parameters (e.g., `param = newValue`)
+- By default, also prevents mutating parameter properties (e.g., `param.key = value`)
+- Protects against accidental side effects and unclear data flow
+
+**Why we customized it:**
+- **Parameter reassignment:** Still blocked—reassigning `param = something` is confusing and error-prone
+- **Property mutation:** Allowed via `props: false`—necessary for configuring objects like Chart.js defaults
+- Chart.js configuration requires mutating `Chart.defaults.*` properties, which are passed as parameters
+
+**Example:**
+```javascript
+function configureChart(defaults) {
+    // ❌ Still blocked: reassigning the parameter
+    defaults = {}; // Error!
+    
+    // ✅ Allowed: mutating properties of the parameter
+    defaults.font.family = 'Inter';
+    defaults.color = '#f1f5f9';
+}
+
+// Real usage in chart-core.js
+function _applyDefaults(Chart) {
+    Chart.defaults.font.family = 'Inter'; // ✅ Allowed
+    Chart.defaults.color = '#f1f5f9';     // ✅ Allowed
+}
+```
+
+**Impact:** Enables necessary Chart.js configuration patterns while maintaining protection against parameter reassignment.
 
 ---
 

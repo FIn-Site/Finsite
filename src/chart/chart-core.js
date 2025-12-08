@@ -115,7 +115,7 @@ export async function initChartCore() {
 
 /**
  * Internal initialization logic
- * Loads Chart.js via script injection (no date adapter - OPTIMIZATION C)
+ * Loads Chart.js via script injection
  */
 async function _doInit() {
     try {
@@ -123,7 +123,7 @@ async function _doInit() {
         // This works whether we're in /src/ or /src/chart/
         const basePath = new URL('../../ChartJS/', import.meta.url).href;
 
-        // Load only Chart.js core (no date adapter needed - OPTIMIZATION C)
+        // Load only Chart.js core
         await loadScript(`${basePath}chart.umd.min.js`);
 
         // Wait for Chart to be available on window
@@ -250,7 +250,6 @@ export function createLineChartConfig({
                 intersect: false,
             },
             scales: {
-                // OPTIMIZATION C: Categorical X axis (no time scale)
                 x: {
                     type: 'category',
                     grid: {
