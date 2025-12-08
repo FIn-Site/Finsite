@@ -3,18 +3,18 @@
  * Handles top navigation with menu toggle, notifications, and user greeting
  */
 class FinSiteHeader extends HTMLElement {
-  constructor() {
-    super();
-    this.attachShadow({ mode: 'open' });
-  }
+    constructor() {
+        super();
+        this.attachShadow({ mode: 'open' });
+    }
 
-  connectedCallback() {
-    this.render();
-    this.setupEventListeners();
-  }
+    connectedCallback() {
+        this.render();
+        this.setupEventListeners();
+    }
 
-  render() {
-    this.shadowRoot.innerHTML = `
+    render() {
+        this.shadowRoot.innerHTML = `
             <style>
                 /* Reset-aware styles for shadow DOM */
                 * {
@@ -112,47 +112,47 @@ class FinSiteHeader extends HTMLElement {
                 </div>
             </div>
         `;
-  }
-
-  setupEventListeners() {
-    const menuToggle = this.shadowRoot.querySelector('#menu-toggle');
-
-    if (menuToggle) {
-      menuToggle.addEventListener('click', () => {
-        // Dispatch custom event for sidebar toggle
-        this.dispatchEvent(new CustomEvent('toggle-sidebar', {
-          bubbles: true,
-          composed: true,
-        }));
-      });
     }
-  }
 
-  /**
+    setupEventListeners() {
+        const menuToggle = this.shadowRoot.querySelector('#menu-toggle');
+
+        if (menuToggle) {
+            menuToggle.addEventListener('click', () => {
+                // Dispatch custom event for sidebar toggle
+                this.dispatchEvent(new CustomEvent('toggle-sidebar', {
+                    bubbles: true,
+                    composed: true,
+                }));
+            });
+        }
+    }
+
+    /**
      * Update the greeting text
      * @param {string} greeting - New greeting text
      */
-  updateGreeting(greeting) {
-    const greetingElement = this.shadowRoot.querySelector('.greeting');
-    if (greetingElement) {
-      greetingElement.textContent = greeting;
+    updateGreeting(greeting) {
+        const greetingElement = this.shadowRoot.querySelector('.greeting');
+        if (greetingElement) {
+            greetingElement.textContent = greeting;
+        }
     }
-  }
 
-  /**
+    /**
      * Set menu toggle active state
      * @param {boolean} active - Whether menu is active
      */
-  setMenuActive(active) {
-    const menuToggle = this.shadowRoot.querySelector('#menu-toggle');
-    if (menuToggle) {
-      if (active) {
-        menuToggle.classList.add('active');
-      } else {
-        menuToggle.classList.remove('active');
-      }
+    setMenuActive(active) {
+        const menuToggle = this.shadowRoot.querySelector('#menu-toggle');
+        if (menuToggle) {
+            if (active) {
+                menuToggle.classList.add('active');
+            } else {
+                menuToggle.classList.remove('active');
+            }
+        }
     }
-  }
 }
 
 // Define the custom element

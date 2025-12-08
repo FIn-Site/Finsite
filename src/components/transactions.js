@@ -12,15 +12,15 @@ class FinSiteTransactions extends HTMLElement {
 
         // Filter state
         this.filters = {
-            scope: 'all',          // all, income, expense
-            search: '',            // search query
-            dateRange: null,       // { start: Date, end: Date } or null
-            groups: [],            // selected group IDs
-            categories: [],        // selected category IDs
+            scope: 'all', // all, income, expense
+            search: '', // search query
+            dateRange: null, // { start: Date, end: Date } or null
+            groups: [], // selected group IDs
+            categories: [], // selected category IDs
         };
 
         // UI state
-        this.sortOrder = 'newest';     // newest, oldest, amount-high, amount-low
+        this.sortOrder = 'newest'; // newest, oldest, amount-high, amount-low
         this.isSearchActive = false;
         this.isDatePickerOpen = false;
         this.isFilterPanelOpen = false;
@@ -32,7 +32,7 @@ class FinSiteTransactions extends HTMLElement {
         this.availableGroups = [
             { id: 'household', name: 'Household' },
             { id: 'investments', name: 'Investments' },
-            { id: 'expenses', name: 'General Expenses' }
+            { id: 'expenses', name: 'General Expenses' },
         ];
         this.availableCategories = [
             { id: 'groceries', name: 'Groceries', groupId: 'household' },
@@ -41,7 +41,7 @@ class FinSiteTransactions extends HTMLElement {
             { id: 'stocks', name: 'Stocks', groupId: 'investments' },
             { id: 'bonds', name: 'Bonds', groupId: 'investments' },
             { id: 'dining-out', name: 'Dining Out', groupId: 'expenses' },
-            { id: 'shopping', name: 'Shopping', groupId: 'expenses' }
+            { id: 'shopping', name: 'Shopping', groupId: 'expenses' },
         ];
     }
 
@@ -73,27 +73,25 @@ class FinSiteTransactions extends HTMLElement {
 
         // Scope filter
         if (this.filters.scope === 'expense') {
-            filtered = filtered.filter(tx => Number(tx.amount) > 0);
+            filtered = filtered.filter((tx) => Number(tx.amount) > 0);
         } else if (this.filters.scope === 'income') {
-            filtered = filtered.filter(tx => Number(tx.amount) < 0);
+            filtered = filtered.filter((tx) => Number(tx.amount) < 0);
         }
 
         // Search filter
         if (this.filters.search.trim()) {
             const q = this.filters.search.toLowerCase();
-            filtered = filtered.filter(tx =>
-                (tx.merchant || '').toLowerCase().includes(q) ||
-                (tx.category || '').toLowerCase().includes(q) ||
-                (tx.notes || '').toLowerCase().includes(q) ||
-                (tx.group || '').toLowerCase().includes(q) ||
-                (tx.name || '').toLowerCase().includes(q)
-            );
+            filtered = filtered.filter((tx) => (tx.merchant || '').toLowerCase().includes(q)
+                || (tx.category || '').toLowerCase().includes(q)
+                || (tx.notes || '').toLowerCase().includes(q)
+                || (tx.group || '').toLowerCase().includes(q)
+                || (tx.name || '').toLowerCase().includes(q));
         }
 
         // Date range filter
         if (this.filters.dateRange) {
             const { start, end } = this.filters.dateRange;
-            filtered = filtered.filter(tx => {
+            filtered = filtered.filter((tx) => {
                 const txDate = new Date(tx.date);
                 return txDate >= start && txDate <= end;
             });
@@ -101,12 +99,12 @@ class FinSiteTransactions extends HTMLElement {
 
         // Group filter
         if (this.filters.groups.length > 0) {
-            filtered = filtered.filter(tx => this.filters.groups.includes(tx.group));
+            filtered = filtered.filter((tx) => this.filters.groups.includes(tx.group));
         }
 
         // Category filter
         if (this.filters.categories.length > 0) {
-            filtered = filtered.filter(tx => this.filters.categories.includes(tx.category));
+            filtered = filtered.filter((tx) => this.filters.categories.includes(tx.category));
         }
 
         // Sort
@@ -141,7 +139,7 @@ class FinSiteTransactions extends HTMLElement {
 
     formatDateHeader(dateStr) {
         if (!dateStr || dateStr === 'Unknown') return 'Unknown Date';
-        
+
         const date = new Date(dateStr);
         const today = new Date();
         const yesterday = new Date(today);
@@ -158,12 +156,14 @@ class FinSiteTransactions extends HTMLElement {
             weekday: 'long',
             year: 'numeric',
             month: 'long',
-            day: 'numeric'
+            day: 'numeric',
         });
     }
 
     clearAllFilters() {
-        this.filters = { scope: 'all', search: '', dateRange: null, groups: [], categories: [] };
+        this.filters = {
+            scope: 'all', search: '', dateRange: null, groups: [], categories: [],
+        };
         this.isSearchActive = false;
         this.isDatePickerOpen = false;
         this.isFilterPanelOpen = false;
@@ -172,11 +172,11 @@ class FinSiteTransactions extends HTMLElement {
     }
 
     hasActiveFilters() {
-        return this.filters.scope !== 'all' ||
-               this.filters.search.trim() !== '' ||
-               this.filters.dateRange !== null ||
-               this.filters.groups.length > 0 ||
-               this.filters.categories.length > 0;
+        return this.filters.scope !== 'all'
+               || this.filters.search.trim() !== ''
+               || this.filters.dateRange !== null
+               || this.filters.groups.length > 0
+               || this.filters.categories.length > 0;
     }
 
     // ============================================================
@@ -185,27 +185,43 @@ class FinSiteTransactions extends HTMLElement {
 
     getCategoryIcon(category) {
         const icons = {
-            'groceries': '🛒', 'utilities': '💡', 'fuel': '⛽', 'stocks': '📈',
-            'bonds': '📊', 'dining-out': '🍽️', 'dining': '🍽️', 'shopping': '🛍️',
-            'transport': '🚗', 'healthcare': '🏥', 'entertainment': '🎬',
-            'education': '📚', 'bills': '📄', 'loans': '💰', 'luxuries': '💎', 'other': '📝'
+            groceries: '🛒',
+            utilities: '💡',
+            fuel: '⛽',
+            stocks: '📈',
+            bonds: '📊',
+            'dining-out': '🍽️',
+            dining: '🍽️',
+            shopping: '🛍️',
+            transport: '🚗',
+            healthcare: '🏥',
+            entertainment: '🎬',
+            education: '📚',
+            bills: '📄',
+            loans: '💰',
+            luxuries: '💎',
+            other: '📝',
         };
         return icons[(category || '').toLowerCase()] || '💸';
     }
 
     getGroupIcon(group) {
-        const icons = { 'household': '🏠', 'investments': '📈', 'expenses': '💳', 'manual': '✏️' };
+        const icons = {
+            household: '🏠', investments: '📈', expenses: '💳', manual: '✏️',
+        };
         return icons[(group || '').toLowerCase()] || '📁';
     }
 
     getGroupName(groupId) {
-        const group = this.availableGroups.find(g => g.id === groupId);
+        const group = this.availableGroups.find((g) => g.id === groupId);
         return group ? group.name : groupId;
     }
 
     escapeHtml(str) {
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     // ============================================================
@@ -289,10 +305,10 @@ class FinSiteTransactions extends HTMLElement {
         for (const [dateKey, txs] of grouped) {
             html += `<div class="date-group">
                 <div class="date-header">${this.formatDateHeader(dateKey)}</div>
-                <div class="date-transactions">${txs.map(tx => this.renderTransactionRow(tx)).join('')}</div>
+                <div class="date-transactions">${txs.map((tx) => this.renderTransactionRow(tx)).join('')}</div>
             </div>`;
         }
-        return html + '</div>';
+        return `${html}</div>`;
     }
 
     renderTransactionRow(tx) {
@@ -362,14 +378,14 @@ class FinSiteTransactions extends HTMLElement {
                 <div class="panel-header"><span class="panel-title">Advanced Filters</span><button class="panel-close" id="filter-close-btn">✕</button></div>
                 <div class="filter-section">
                     <div class="filter-section-title">Groups</div>
-                    <div class="filter-options">${this.availableGroups.map(g => `
+                    <div class="filter-options">${this.availableGroups.map((g) => `
                         <label class="filter-option"><input type="checkbox" class="group-checkbox" value="${g.id}" ${this.filters.groups.includes(g.id) ? 'checked' : ''}>
                         <span class="option-icon">${this.getGroupIcon(g.id)}</span><span class="option-label">${g.name}</span></label>
                     `).join('')}</div>
                 </div>
                 <div class="filter-section">
                     <div class="filter-section-title">Categories</div>
-                    <div class="filter-options">${this.availableCategories.map(c => `
+                    <div class="filter-options">${this.availableCategories.map((c) => `
                         <label class="filter-option"><input type="checkbox" class="category-checkbox" value="${c.id}" ${this.filters.categories.includes(c.id) ? 'checked' : ''}>
                         <span class="option-icon">${this.getCategoryIcon(c.id)}</span><span class="option-label">${c.name}</span></label>
                     `).join('')}</div>
@@ -398,7 +414,7 @@ class FinSiteTransactions extends HTMLElement {
                             <div class="form-group"><label class="form-label" for="tx-group">Group</label>
                                 <select class="form-select" id="tx-group" name="group" required>
                                     <option value="" disabled selected>Select a group</option>
-                                    ${this.availableGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
+                                    ${this.availableGroups.map((g) => `<option value="${g.id}">${g.name}</option>`).join('')}
                                     <option value="manual">Manual Entry</option>
                                 </select></div>
                             <div class="form-group"><label class="form-label" for="tx-category">Category</label>
@@ -585,12 +601,12 @@ class FinSiteTransactions extends HTMLElement {
         if (!root) return;
 
         // Add Transaction buttons
-        root.querySelectorAll('#add-transaction-btn, #empty-add-btn').forEach(btn => {
+        root.querySelectorAll('#add-transaction-btn, #empty-add-btn').forEach((btn) => {
             btn?.addEventListener('click', () => this.openModal());
         });
 
         // Clear all filters
-        root.querySelectorAll('#clear-all-btn, #empty-clear-btn').forEach(btn => {
+        root.querySelectorAll('#clear-all-btn, #empty-clear-btn').forEach((btn) => {
             btn?.addEventListener('click', () => this.clearAllFilters());
         });
 
@@ -647,8 +663,8 @@ class FinSiteTransactions extends HTMLElement {
             const endInput = root.querySelector('#date-end');
             if (startInput?.value && endInput?.value) {
                 this.filters.dateRange = {
-                    start: new Date(startInput.value + 'T00:00:00'),
-                    end: new Date(endInput.value + 'T23:59:59')
+                    start: new Date(`${startInput.value}T00:00:00`),
+                    end: new Date(`${endInput.value}T23:59:59`),
                 };
             }
             this.isDatePickerOpen = false;
@@ -657,11 +673,12 @@ class FinSiteTransactions extends HTMLElement {
         });
 
         // Date presets
-        root.querySelectorAll('.preset-btn').forEach(btn => {
+        root.querySelectorAll('.preset-btn').forEach((btn) => {
             btn.addEventListener('click', () => {
-                const preset = btn.dataset.preset;
+                const { preset } = btn.dataset;
                 const now = new Date();
-                let start, end;
+                let start; let
+                    end;
 
                 switch (preset) {
                     case 'today':
@@ -717,8 +734,8 @@ class FinSiteTransactions extends HTMLElement {
         });
 
         root.querySelector('#filter-apply-btn')?.addEventListener('click', () => {
-            this.filters.groups = Array.from(root.querySelectorAll('.group-checkbox:checked')).map(cb => cb.value);
-            this.filters.categories = Array.from(root.querySelectorAll('.category-checkbox:checked')).map(cb => cb.value);
+            this.filters.groups = Array.from(root.querySelectorAll('.group-checkbox:checked')).map((cb) => cb.value);
+            this.filters.categories = Array.from(root.querySelectorAll('.category-checkbox:checked')).map((cb) => cb.value);
             this.isFilterPanelOpen = false;
             this.render();
             this.setupEventListeners();
@@ -747,7 +764,7 @@ class FinSiteTransactions extends HTMLElement {
         });
 
         // Transaction row clicks
-        root.querySelectorAll('.transaction-row').forEach(row => {
+        root.querySelectorAll('.transaction-row').forEach((row) => {
             row.addEventListener('click', (e) => {
                 if (e.target.classList.contains('tx-checkbox')) return;
                 console.log('Transaction clicked:', row.dataset.id);
@@ -755,7 +772,7 @@ class FinSiteTransactions extends HTMLElement {
         });
 
         // Checkbox changes
-        root.querySelectorAll('.tx-checkbox').forEach(cb => {
+        root.querySelectorAll('.tx-checkbox').forEach((cb) => {
             cb.addEventListener('change', (e) => {
                 const txId = e.target.dataset.id;
                 if (e.target.checked) this.selectedTransactions.add(txId);
@@ -822,7 +839,9 @@ class FinSiteTransactions extends HTMLElement {
         if (!group) { this.showNotification('Please select a group', false); return; }
         if (!category) { this.showNotification('Please select a category', false); return; }
 
-        const transactionData = { amount, date, group, category, merchant, notes, name: merchant || category, account: 'Manual Entry', type: category, status: 'complete' };
+        const transactionData = {
+            amount, date, group, category, merchant, notes, name: merchant || category, account: 'Manual Entry', type: category, status: 'complete',
+        };
         this.dispatchEvent(new CustomEvent('add-transaction', { bubbles: true, composed: true, detail: transactionData }));
     }
 

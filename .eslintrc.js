@@ -14,5 +14,6 @@ module.exports = {
     "no-plusplus": "off",
     "no-underscore-dangle": "off",
     'import/extensions': 'off',
+    'indent': ['error', 4, { SwitchCase: 1 }],
   }
 };

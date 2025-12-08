@@ -7,140 +7,140 @@
  * This is the ONLY component in the app that directly interacts with Chart.js
  */
 import {
-  initChartCore,
-  getChart,
-  isInitialized,
-  createLineChartConfig,
-  createBarChartConfig,
-  formatCurrency,
-  CHART_COLORS,
+    initChartCore,
+    getChart,
+    isInitialized,
+    createLineChartConfig,
+    createBarChartConfig,
+    formatCurrency,
+    CHART_COLORS,
 } from '../chart/chart-core.js';
 
 class FinSiteSpendingChart extends HTMLElement {
-  constructor() {
-    super();
-    this.attachShadow({ mode: 'open' });
+    constructor() {
+        super();
+        this.attachShadow({ mode: 'open' });
 
-    // Chart.js instances - one per chart type
-    this._lineChart = null;
-    this._barChart = null;
-    this._Chart = null; // Chart.js constructor reference
+        // Chart.js instances - one per chart type
+        this._lineChart = null;
+        this._barChart = null;
+        this._Chart = null; // Chart.js constructor reference
 
-    // Default chart data structure (pre-aggregated from model)
-    this.chartData = {
-      // Time series for line chart (money x time)
-      timeSeries: {
-        labels: ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb'],
-        values: [1650, 1720, 1580, 1820, 1780, 1890],
-      },
-      // Group breakdown for bar chart (money x group)
-      groupBreakdown: {
-        labels: ['Household', 'Dining', 'Transport', 'Entertainment', 'Utilities'],
-        values: [850, 420, 380, 240, 180],
-      },
-      // KPI metrics
-      metrics: {
-        thisMonth: 1890,
-        lastMonth: 1780,
-        percentChange: 6.18,
-        sixMonthAvg: 1740,
-      },
-    };
+        // Default chart data structure (pre-aggregated from model)
+        this.chartData = {
+            // Time series for line chart (money x time)
+            timeSeries: {
+                labels: ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb'],
+                values: [1650, 1720, 1580, 1820, 1780, 1890],
+            },
+            // Group breakdown for bar chart (money x group)
+            groupBreakdown: {
+                labels: ['Household', 'Dining', 'Transport', 'Entertainment', 'Utilities'],
+                values: [850, 420, 380, 240, 180],
+            },
+            // KPI metrics
+            metrics: {
+                thisMonth: 1890,
+                lastMonth: 1780,
+                percentChange: 6.18,
+                sixMonthAvg: 1740,
+            },
+        };
 
-    // Animation settings
-    this._isHeavyUpdate = false;
-    this._isInitializing = false;
-  }
-
-  static get observedAttributes() {
-    return ['data'];
-  }
-
-  attributeChangedCallback(name, oldValue, newValue) {
-    if (name === 'data' && newValue) {
-      try {
-        this.updateChartData(JSON.parse(newValue));
-      } catch (e) {
-        console.warn('Invalid chart data provided:', e);
-      }
+        // Animation settings
+        this._isHeavyUpdate = false;
+        this._isInitializing = false;
     }
-  }
 
-  connectedCallback() {
-    this.render();
-    // Initialize charts asynchronously (lazy load Chart.js)
-    this._initChartsAsync();
-  }
+    static get observedAttributes() {
+        return ['data'];
+    }
 
-  disconnectedCallback() {
+    attributeChangedCallback(name, oldValue, newValue) {
+        if (name === 'data' && newValue) {
+            try {
+                this.updateChartData(JSON.parse(newValue));
+            } catch (e) {
+                console.warn('Invalid chart data provided:', e);
+            }
+        }
+    }
+
+    connectedCallback() {
+        this.render();
+        // Initialize charts asynchronously (lazy load Chart.js)
+        this._initChartsAsync();
+    }
+
+    disconnectedCallback() {
     // Properly destroy Chart.js instances to prevent memory leaks
-    this._destroyCharts();
-  }
+        this._destroyCharts();
+    }
 
-  /**
+    /**
      * Async initialization - lazy loads Chart.js via chart-core module
      */
-  async _initChartsAsync() {
-    if (this._isInitializing) return;
-    this._isInitializing = true;
+    async _initChartsAsync() {
+        if (this._isInitializing) return;
+        this._isInitializing = true;
 
-    try {
-      // Lazy load Chart.js through chart-core module
-      this._Chart = await initChartCore();
+        try {
+            // Lazy load Chart.js through chart-core module
+            this._Chart = await initChartCore();
 
-      // Create charts now that Chart.js is loaded
-      requestAnimationFrame(() => {
-        this._initCharts();
-      });
-    } catch (error) {
-      console.error('Failed to initialize charts:', error);
+            // Create charts now that Chart.js is loaded
+            requestAnimationFrame(() => {
+                this._initCharts();
+            });
+        } catch (error) {
+            console.error('Failed to initialize charts:', error);
 
-      // Fallback: try global Chart if available
-      const globalChart = getChart();
-      if (globalChart) {
-        this._Chart = globalChart;
-        requestAnimationFrame(() => {
-          this._initCharts();
-        });
-      }
-    } finally {
-      this._isInitializing = false;
+            // Fallback: try global Chart if available
+            const globalChart = getChart();
+            if (globalChart) {
+                this._Chart = globalChart;
+                requestAnimationFrame(() => {
+                    this._initCharts();
+                });
+            }
+        } finally {
+            this._isInitializing = false;
+        }
     }
-  }
 
-  /**
+    /**
      * Update chart data from external source (model via view)
      * @param {Object} newData - Pre-aggregated chart data
      * @param {boolean} isHeavyUpdate - True for bulk updates (CSV import), disables animation
      */
-  updateChartData(newData, isHeavyUpdate = false) {
-    this._isHeavyUpdate = isHeavyUpdate;
+    updateChartData(newData, isHeavyUpdate = false) {
+        this._isHeavyUpdate = isHeavyUpdate;
 
-    // Merge new data with existing
-    if (newData.timeSeries) {
-      this.chartData.timeSeries = { ...this.chartData.timeSeries, ...newData.timeSeries };
+        // Merge new data with existing
+        if (newData.timeSeries) {
+            this.chartData.timeSeries = { ...this.chartData.timeSeries, ...newData.timeSeries };
+        }
+        if (newData.groupBreakdown) {
+            this.chartData.groupBreakdown = { ...this.chartData.groupBreakdown, ...newData.groupBreakdown };
+        }
+        if (newData.metrics) {
+            this.chartData.metrics = { ...this.chartData.metrics, ...newData.metrics };
+        }
+
+        // Update existing chart instances without recreating
+        this._updateCharts();
+
+        // Update metric displays
+        this._updateMetricsDisplay();
     }
-    if (newData.groupBreakdown) {
-      this.chartData.groupBreakdown = { ...this.chartData.groupBreakdown, ...newData.groupBreakdown };
-    }
-    if (newData.metrics) {
-      this.chartData.metrics = { ...this.chartData.metrics, ...newData.metrics };
-    }
 
-    // Update existing chart instances without recreating
-    this._updateCharts();
+    render() {
+        const { metrics } = this.chartData;
+        const percentChange = metrics.percentChange || 0;
+        const changeClass = percentChange >= 0 ? 'positive' : 'negative';
+        const changeSymbol = percentChange >= 0 ? '+' : '';
 
-    // Update metric displays
-    this._updateMetricsDisplay();
-  }
-
-  render() {
-    const { metrics } = this.chartData;
-    const percentChange = metrics.percentChange || 0;
-    const changeClass = percentChange >= 0 ? 'positive' : 'negative';
-    const changeSymbol = percentChange >= 0 ? '+' : '';
-
-    this.shadowRoot.innerHTML = `
+        this.shadowRoot.innerHTML = `
             <style>
                 * {
                     margin: 0;
@@ -327,167 +327,167 @@ class FinSiteSpendingChart extends HTMLElement {
                 </div>
             </div>
         `;
-  }
+    }
 
-  /**
+    /**
      * Initialize Chart.js instances
      * Only called once per component lifecycle
      * Uses chart-core module instead of global Chart
      */
-  _initCharts() {
+    _initCharts() {
     // Use module-provided Chart or fallback to global
-    const Chart = this._Chart || getChart();
+        const Chart = this._Chart || getChart();
 
-    if (!Chart) {
-      console.error('Chart.js not available. Initialization failed.');
-      return;
+        if (!Chart) {
+            console.error('Chart.js not available. Initialization failed.');
+            return;
+        }
+
+        this._createLineChart(Chart);
+        this._createBarChart(Chart);
+
+        console.log('📊 Chart.js instances created via chart-core module');
     }
 
-    this._createLineChart(Chart);
-    this._createBarChart(Chart);
-
-    console.log('📊 Chart.js instances created via chart-core module');
-  }
-
-  /**
+    /**
      * Create the line chart (money x time)
      * @param {typeof Chart} Chart - Chart.js constructor
      */
-  _createLineChart(Chart) {
-    const canvas = this.shadowRoot.querySelector('#line-chart');
-    if (!canvas) return;
+    _createLineChart(Chart) {
+        const canvas = this.shadowRoot.querySelector('#line-chart');
+        if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
-    const { labels, values } = this.chartData.timeSeries;
+        const ctx = canvas.getContext('2d');
+        const { labels, values } = this.chartData.timeSeries;
 
-    // Use chart-core factory for configuration
-    const config = createLineChartConfig({
-      labels,
-      values,
-      ctx,
-      animate: !this._isHeavyUpdate,
-    });
+        // Use chart-core factory for configuration
+        const config = createLineChartConfig({
+            labels,
+            values,
+            ctx,
+            animate: !this._isHeavyUpdate,
+        });
 
-    this._lineChart = new Chart(ctx, config);
-  }
+        this._lineChart = new Chart(ctx, config);
+    }
 
-  /**
+    /**
      * Create the bar chart (money x group)
      * @param {typeof Chart} Chart - Chart.js constructor
      */
-  _createBarChart(Chart) {
-    const canvas = this.shadowRoot.querySelector('#bar-chart');
-    if (!canvas) return;
+    _createBarChart(Chart) {
+        const canvas = this.shadowRoot.querySelector('#bar-chart');
+        if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
-    const { labels, values } = this.chartData.groupBreakdown;
+        const ctx = canvas.getContext('2d');
+        const { labels, values } = this.chartData.groupBreakdown;
 
-    // Use chart-core factory for configuration
-    const config = createBarChartConfig({
-      labels,
-      values,
-      animate: !this._isHeavyUpdate,
-    });
+        // Use chart-core factory for configuration
+        const config = createBarChartConfig({
+            labels,
+            values,
+            animate: !this._isHeavyUpdate,
+        });
 
-    this._barChart = new Chart(ctx, config);
-  }
+        this._barChart = new Chart(ctx, config);
+    }
 
-  /**
+    /**
      * Update existing chart instances with new data
      * Does NOT recreate charts - mutates data and calls update()
      */
-  _updateCharts() {
-    const animationDuration = this._isHeavyUpdate ? 0 : 400;
+    _updateCharts() {
+        const animationDuration = this._isHeavyUpdate ? 0 : 400;
 
-    // Update line chart
-    if (this._lineChart) {
-      const { labels, values } = this.chartData.timeSeries;
-      this._lineChart.data.labels = labels;
-      this._lineChart.data.datasets[0].data = values;
-      this._lineChart.options.animation.duration = animationDuration;
-      this._lineChart.update();
+        // Update line chart
+        if (this._lineChart) {
+            const { labels, values } = this.chartData.timeSeries;
+            this._lineChart.data.labels = labels;
+            this._lineChart.data.datasets[0].data = values;
+            this._lineChart.options.animation.duration = animationDuration;
+            this._lineChart.update();
+        }
+
+        // Update bar chart
+        if (this._barChart) {
+            const { labels, values } = this.chartData.groupBreakdown;
+            this._barChart.data.labels = labels;
+            this._barChart.data.datasets[0].data = values;
+            this._barChart.options.animation.duration = animationDuration;
+            this._barChart.update();
+        }
+
+        // Reset heavy update flag
+        this._isHeavyUpdate = false;
     }
 
-    // Update bar chart
-    if (this._barChart) {
-      const { labels, values } = this.chartData.groupBreakdown;
-      this._barChart.data.labels = labels;
-      this._barChart.data.datasets[0].data = values;
-      this._barChart.options.animation.duration = animationDuration;
-      this._barChart.update();
-    }
-
-    // Reset heavy update flag
-    this._isHeavyUpdate = false;
-  }
-
-  /**
+    /**
      * Update the metrics display without re-rendering
      */
-  _updateMetricsDisplay() {
-    const { metrics } = this.chartData;
+    _updateMetricsDisplay() {
+        const { metrics } = this.chartData;
 
-    const thisMonthEl = this.shadowRoot.querySelector('#metric-this-month');
-    const changeEl = this.shadowRoot.querySelector('#metric-change');
-    const lastMonthEl = this.shadowRoot.querySelector('#metric-last-month');
-    const avgEl = this.shadowRoot.querySelector('#metric-avg');
+        const thisMonthEl = this.shadowRoot.querySelector('#metric-this-month');
+        const changeEl = this.shadowRoot.querySelector('#metric-change');
+        const lastMonthEl = this.shadowRoot.querySelector('#metric-last-month');
+        const avgEl = this.shadowRoot.querySelector('#metric-avg');
 
-    if (thisMonthEl) {
-      thisMonthEl.textContent = `$${formatCurrency(metrics.thisMonth)}`;
+        if (thisMonthEl) {
+            thisMonthEl.textContent = `$${formatCurrency(metrics.thisMonth)}`;
+        }
+
+        if (changeEl) {
+            const changeClass = metrics.percentChange >= 0 ? 'positive' : 'negative';
+            const changeSymbol = metrics.percentChange >= 0 ? '+' : '';
+            changeEl.textContent = `${changeSymbol}${metrics.percentChange.toFixed(1)}%`;
+            changeEl.className = `metric-value ${changeClass}`;
+        }
+
+        if (lastMonthEl) {
+            lastMonthEl.textContent = `$${formatCurrency(metrics.lastMonth)}`;
+        }
+
+        if (avgEl) {
+            avgEl.textContent = `$${formatCurrency(metrics.sixMonthAvg)}`;
+        }
     }
 
-    if (changeEl) {
-      const changeClass = metrics.percentChange >= 0 ? 'positive' : 'negative';
-      const changeSymbol = metrics.percentChange >= 0 ? '+' : '';
-      changeEl.textContent = `${changeSymbol}${metrics.percentChange.toFixed(1)}%`;
-      changeEl.className = `metric-value ${changeClass}`;
-    }
-
-    if (lastMonthEl) {
-      lastMonthEl.textContent = `$${formatCurrency(metrics.lastMonth)}`;
-    }
-
-    if (avgEl) {
-      avgEl.textContent = `$${formatCurrency(metrics.sixMonthAvg)}`;
-    }
-  }
-
-  /**
+    /**
      * Destroy Chart.js instances to prevent memory leaks
      */
-  _destroyCharts() {
-    if (this._lineChart) {
-      this._lineChart.destroy();
-      this._lineChart = null;
+    _destroyCharts() {
+        if (this._lineChart) {
+            this._lineChart.destroy();
+            this._lineChart = null;
+        }
+        if (this._barChart) {
+            this._barChart.destroy();
+            this._barChart = null;
+        }
+        console.log('📊 Chart.js instances destroyed');
     }
-    if (this._barChart) {
-      this._barChart.destroy();
-      this._barChart = null;
-    }
-    console.log('📊 Chart.js instances destroyed');
-  }
 
-  /**
+    /**
      * Format currency value for display
      * Uses chart-core module's formatCurrency
      * @param {number} value - Amount in dollars
      * @returns {string} Formatted string
      */
-  _formatCurrency(value) {
-    return formatCurrency(value);
-  }
+    _formatCurrency(value) {
+        return formatCurrency(value);
+    }
 
-  /**
+    /**
      * Handle resize events
      */
-  resize() {
-    if (this._lineChart) {
-      this._lineChart.resize();
+    resize() {
+        if (this._lineChart) {
+            this._lineChart.resize();
+        }
+        if (this._barChart) {
+            this._barChart.resize();
+        }
     }
-    if (this._barChart) {
-      this._barChart.resize();
-    }
-  }
 }
 
 // Define the custom element
