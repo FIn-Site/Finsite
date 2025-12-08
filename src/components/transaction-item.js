@@ -33,11 +33,20 @@ class FinSiteTransactionItem extends HTMLElement {
     }
 
     render() {
+        let iconClass;
         if (!this.transactionData) return;
 
         const transaction = this.transactionData;
         const isPositive = transaction.amount > 0;
-        const iconClass = transaction.status === 'Pending' ? 'pending' : (isPositive ? 'income' : 'expense');
+
+        // Determine icon class based on transaction status
+        if (transaction.status === 'Pending') {
+            iconClass = 'pending';
+        } else if (isPositive) {
+            iconClass = 'income';
+        } else {
+            iconClass = 'expense';
+        }
 
         this.shadowRoot.innerHTML = `
             <style>

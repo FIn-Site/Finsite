@@ -15,6 +15,8 @@ module.exports = {
     "no-underscore-dangle": "off",
     'import/extensions': 'off',
     'import/prefer-default-export': 'off',
+    'class-methods-use-this': 'off',
+    'max-len': 'off',
     'indent': ['error', 4, { SwitchCase: 1 }],
     'no-use-before-define': ['error', {
         functions: false,
@@ -23,6 +25,24 @@ module.exports = {
     }],
     'no-param-reassign': ['error', {
         props: false,
+    }],
+    'no-restricted-syntax': ['error', {
+      selector: 'ForInStatement',
+      message: 'for..in is discouraged. Use Object.keys/entries + array methods instead.',
+    },
+    {
+      selector: 'LabeledStatement',
+      message: 'Labels are discouraged.',
+    },
+    {
+      selector: 'WithStatement',
+      message: '`with` is forbidden in strict mode.',
+    }],
+    'prefer-destructuring': ['error', {
+      array: false,   // don’t enforce for arrays
+      object: true,   // still enforce for objects
+    }, {
+      enforceForRenamedProperties: false,
     }],
   },
     

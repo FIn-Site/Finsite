@@ -42,7 +42,7 @@ class FinSiteDashboard extends HTMLElement {
      * @param {number} amount
      * @returns {string} Formatted currency string
      */
-    static _formatCurrency(amount) {
+    _formatCurrency(amount) {
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: 'USD',

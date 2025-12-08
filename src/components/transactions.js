@@ -685,12 +685,13 @@ class FinSiteTransactions extends HTMLElement {
                         start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
                         end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
                         break;
-                    case 'week':
+                    case 'week': {
                         const dayOfWeek = now.getDay();
                         start = new Date(now);
                         start.setDate(now.getDate() - dayOfWeek);
                         start.setHours(0, 0, 0, 0);
                         end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+                    }
                         break;
                     case 'month':
                         start = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -699,6 +700,8 @@ class FinSiteTransactions extends HTMLElement {
                     case 'year':
                         start = new Date(now.getFullYear(), 0, 1);
                         end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+                        break;
+                    default:
                         break;
                 }
 

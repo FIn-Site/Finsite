@@ -352,3 +352,166 @@ function _applyDefaults(Chart) {
 
 ---
 
+### 9. `"class-methods-use-this": "off"`
+
+**What the rule does:**
+- Flags any class method that doesn't reference `this`
+- Suggests converting such methods to static methods or moving them outside the class
+- Aims to ensure instance methods actually need instance context
+
+**Why we disabled it:**
+- Our web components contain small helper methods (e.g., `_formatCurrency()`) that are intentionally instance methods for organizational clarity
+- These helpers are called as `this._formatCurrency(...)` which is readable and consistent with the component's API
+- They don't need to access instance state, but keeping them as instance methods maintains logical cohesion
+- Making every helper `static` or extracting it outside the class would fragment the component's structure without improving correctness
+
+**Example pattern we use:**
+```javascript
+class FinSiteDashboard extends HTMLElement {
+    _formatCurrency(amount) {
+        // Doesn't use 'this', but logically belongs to the component
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD'
+        }).format(amount);
+    }
+    
+    updateBalance(amount) {
+        // Uses the helper as an instance method
+        this.shadowRoot.querySelector('.balance').textContent = this._formatCurrency(amount);
+    }
+}
+```
+
+**Impact:** Allows organizing helper methods within classes for cohesion without forcing artificial static declarations.
+
+---
+
+### 10. `"max-len": "off"`
+
+**What the rule does:**
+- Enforces a maximum line length (Airbnb default: 100 characters)
+- Flags any line exceeding the limit, regardless of context
+- Intended to improve readability by preventing overly long lines
+
+**Why we disabled it:**
+- Our code occasionally uses wider lines in contexts where they're more readable than forced breaks:
+  - Long object spreads with many properties
+  - HTML template strings in web components
+  - Chained method calls with descriptive names
+  - Detailed configuration objects
+- Breaking these lines purely to satisfy character count often reduces readability rather than improving it
+- Line width is primarily an editor/display concern—modern editors handle wrapping well
+- For this project, semantic clarity matters more than arbitrary character limits
+
+**Example scenarios:**
+```javascript
+// Long template string that reads better as one line
+return `<div class="transaction-row" data-id="${id}" data-type="${type}" data-amount="${amount}" data-category="${category}">`;
+
+// Object spread with many properties
+const config = { ...baseDefaults, backgroundColor: '#1e293b', borderColor: '#334155', pointRadius: 4, tension: 0.4 };
+```
+
+**Impact:** Eliminates cosmetic line-length errors while maintaining focus on functional code quality.
+
+---
+
+### 11. `"no-restricted-syntax": [customized]`
+
+**What the rule does (Airbnb default):**
+- Bans several JavaScript constructs: `for...in`, `for...of`, labeled statements, and `with`
+- Original rationale: Avoid iterators and generators that require regenerator-runtime polyfills
+- Applies blanket restrictions across all loop types
+
+**Why we customized it:**
+- **`for...of` loops:** We use these extensively for iterating arrays and Maps (e.g., transaction grouping, rendering lists)
+- Modern browser-only environment: No polyfill concerns with `for...of`—it's native and performant
+- **Kept restrictions on:**
+  - `for...in`: Dangerous for arrays (iterates prototype chain); better to use `Object.keys()`/`Object.entries()`
+  - Labeled statements: Rare, confusing control flow with `break label`/`continue label`
+  - `with`: Forbidden in strict mode and creates scope ambiguity
+
+**Our configuration:**
+```json
+"no-restricted-syntax": [
+    "error",
+    {
+        "selector": "ForInStatement",
+        "message": "for..in is discouraged. Use Object.keys/entries + array methods instead."
+    },
+    {
+        "selector": "LabeledStatement",
+        "message": "Labels are discouraged."
+    },
+    {
+        "selector": "WithStatement",
+        "message": "`with` is forbidden in strict mode."
+    }
+]
+```
+
+**Example of allowed pattern:**
+```javascript
+// ✅ Allowed: for...of with arrays and Maps
+for (const transaction of transactions) {
+    processTransaction(transaction);
+}
+
+for (const [date, items] of groupedByDate) {
+    renderDateGroup(date, items);
+}
+
+// ❌ Still blocked: for...in over arrays
+for (const key in transactions) { // Error!
+    console.log(transactions[key]);
+}
+```
+
+**Impact:** Enables idiomatic `for...of` usage for modern JavaScript while maintaining safety warnings for problematic constructs.
+
+---
+
+### 12. `"prefer-destructuring": ["error", { "array": false, "object": true }]`
+
+**What the rule does (Airbnb default):**
+- Enforces destructuring for both objects and arrays
+- Pushes patterns like `const { foo } = obj;` instead of `const foo = obj.foo;`
+- For arrays: `const [first] = arr;` instead of `const first = arr[0];`
+
+**Why we customized it:**
+- **Object destructuring:** Generally improves clarity and conciseness—we keep this enabled
+- **Array destructuring:** Not always more readable, especially for single-element access
+- Explicit array indexing (`arr[0]`, `arr[1]`) is often clearer than destructuring in our codebase
+- The rule was generating noise for perfectly clear index-based access patterns
+
+**Our configuration:**
+```json
+"prefer-destructuring": [
+    "error",
+    {
+        "array": false,
+        "object": true
+    },
+    {
+        "enforceForRenamedProperties": false
+    }
+]
+```
+
+**Examples:**
+```javascript
+// ✅ Object destructuring: still encouraged
+const { amount, category, date } = transaction;
+
+// ✅ Allowed: explicit array indexing (clearer for single elements)
+const firstTransaction = transactions[0];
+const lastItem = items[items.length - 1];
+
+// ❌ Would be required if array: true
+const [firstTransaction] = transactions; // Less clear for single access
+```
+
+**Impact:** Maintains object destructuring benefits while avoiding forced array destructuring that reduces clarity.
+
+---

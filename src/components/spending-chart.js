@@ -9,11 +9,9 @@
 import {
     initChartCore,
     getChart,
-    isInitialized,
     createLineChartConfig,
     createBarChartConfig,
     formatCurrency,
-    CHART_COLORS,
 } from '../chart/chart-core.js';
 
 class FinSiteSpendingChart extends HTMLElement {
