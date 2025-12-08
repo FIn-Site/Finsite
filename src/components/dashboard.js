@@ -7,70 +7,70 @@ import './spending-chart.js';
  * Receives pre-aggregated chart data and panel summary from model via view
  */
 class FinSiteDashboard extends HTMLElement {
-    constructor() {
-        super();
-        this.attachShadow({ mode: 'open' });
-        
-        // Dashboard panel data - starts empty, populated from model
-        this.panelData = {
-            totalSpentAllTime: 0,
-            transactionsThisWeek: 0,
-            monthlySpendingCurrent: 0,
-            monthlySpendingLast: 0,
-            monthlyChangePercent: 0,
-            monthlyDirection: 'neutral',
-            recentTransactions: []
-        };
-        
-        // Chart data structure (pre-aggregated from model)
-        this.chartData = null;
-        
-        // Reference to chart component
-        this._chartComponent = null;
-    }
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
 
-    connectedCallback() {
-        this.render();
-        // Get reference to chart component after render
-        requestAnimationFrame(() => {
-            this._chartComponent = this.shadowRoot.querySelector('finsite-spending-chart');
-        });
-    }
+    // Dashboard panel data - starts empty, populated from model
+    this.panelData = {
+      totalSpentAllTime: 0,
+      transactionsThisWeek: 0,
+      monthlySpendingCurrent: 0,
+      monthlySpendingLast: 0,
+      monthlyChangePercent: 0,
+      monthlyDirection: 'neutral',
+      recentTransactions: [],
+    };
 
-    /**
+    // Chart data structure (pre-aggregated from model)
+    this.chartData = null;
+
+    // Reference to chart component
+    this._chartComponent = null;
+  }
+
+  connectedCallback() {
+    this.render();
+    // Get reference to chart component after render
+    requestAnimationFrame(() => {
+      this._chartComponent = this.shadowRoot.querySelector('finsite-spending-chart');
+    });
+  }
+
+  /**
      * Format currency for display
-     * @param {number} amount 
+     * @param {number} amount
      * @returns {string} Formatted currency string
      */
-    _formatCurrency(amount) {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }).format(amount || 0);
-    }
+  _formatCurrency(amount) {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount || 0);
+  }
 
-    render() {
-        const { 
-            totalSpentAllTime, 
-            transactionsThisWeek, 
-            monthlySpendingCurrent,
-            monthlyChangePercent,
-            monthlyDirection,
-            recentTransactions 
-        } = this.panelData;
+  render() {
+    const {
+      totalSpentAllTime,
+      transactionsThisWeek,
+      monthlySpendingCurrent,
+      monthlyChangePercent,
+      monthlyDirection,
+      recentTransactions,
+    } = this.panelData;
 
-        // Determine change indicator styling
-        const changeClass = monthlyDirection === 'up' ? 'negative' : 
-                           monthlyDirection === 'down' ? 'positive' : '';
-        const changePrefix = monthlyDirection === 'up' ? '+' : 
-                            monthlyDirection === 'down' ? '' : '';
-        const changeText = monthlyChangePercent !== 0 
-            ? `${changePrefix}${monthlyChangePercent.toFixed(1)}% vs last month`
-            : 'No change vs last month';
+    // Determine change indicator styling
+    const changeClass = monthlyDirection === 'up' ? 'negative'
+      : monthlyDirection === 'down' ? 'positive' : '';
+    const changePrefix = monthlyDirection === 'up' ? '+'
+      : monthlyDirection === 'down' ? '' : '';
+    const changeText = monthlyChangePercent !== 0
+      ? `${changePrefix}${monthlyChangePercent.toFixed(1)}% vs last month`
+      : 'No change vs last month';
 
-        this.shadowRoot.innerHTML = `
+    this.shadowRoot.innerHTML = `
             <style>
                 /* Reset-aware styles for shadow DOM */
                 * {
@@ -327,25 +327,25 @@ class FinSiteDashboard extends HTMLElement {
                 </div>
             </div>
         `;
-    }
+  }
 
-    /**
+  /**
      * Render activity items or empty state
      * @returns {string} HTML for activity list
      */
-    _renderActivities() {
-        const { recentTransactions } = this.panelData;
+  _renderActivities() {
+    const { recentTransactions } = this.panelData;
 
-        if (!recentTransactions || recentTransactions.length === 0) {
-            return `
+    if (!recentTransactions || recentTransactions.length === 0) {
+      return `
                 <div class="empty-state">
                     <div class="empty-state-icon">📭</div>
                     <div class="empty-state-text">No recent transactions</div>
                 </div>
             `;
-        }
+    }
 
-        return recentTransactions.map(tx => `
+    return recentTransactions.map((tx) => `
             <div class="activity-item">
                 <span class="activity-icon">${tx.icon}</span>
                 <div class="activity-info">
@@ -355,79 +355,79 @@ class FinSiteDashboard extends HTMLElement {
                 <div class="activity-amount">-${this._formatCurrency(tx.amount)}</div>
             </div>
         `).join('');
-    }
+  }
 
-    /**
+  /**
      * Update dashboard from panel summary (stats, recent activity)
      * Called by view when model provides new dashboard panel summary
      * @param {Object} summary - Dashboard panel summary from model
      */
-    updateFromSummary(summary) {
-        if (!summary) return;
+  updateFromSummary(summary) {
+    if (!summary) return;
 
-        this.panelData = {
-            ...this.panelData,
-            ...summary
-        };
+    this.panelData = {
+      ...this.panelData,
+      ...summary,
+    };
 
-        // Re-render the component
-        this.render();
-        
-        // Re-acquire chart reference after render
-        requestAnimationFrame(() => {
-            this._chartComponent = this.shadowRoot.querySelector('finsite-spending-chart');
-            
-            // Re-apply chart data if we have it
-            if (this.chartData && this._chartComponent && this._chartComponent.updateChartData) {
-                this._chartComponent.updateChartData(this.chartData);
-            }
-        });
+    // Re-render the component
+    this.render();
 
-        console.log('📋 Dashboard panel updated from summary:', summary);
-    }
+    // Re-acquire chart reference after render
+    requestAnimationFrame(() => {
+      this._chartComponent = this.shadowRoot.querySelector('finsite-spending-chart');
 
-    /**
+      // Re-apply chart data if we have it
+      if (this.chartData && this._chartComponent && this._chartComponent.updateChartData) {
+        this._chartComponent.updateChartData(this.chartData);
+      }
+    });
+
+    console.log('📋 Dashboard panel updated from summary:', summary);
+  }
+
+  /**
      * Update chart data - passes pre-aggregated data to spending-chart
      * Called by view when model provides new dashboard summary
      * @param {Object} chartData - Pre-aggregated chart data from model
      * @param {boolean} isHeavyUpdate - True for bulk updates (CSV import)
      */
-    updateChartData(chartData, isHeavyUpdate = false) {
-        this.chartData = chartData;
-        
-        // Get or find chart component reference
-        if (!this._chartComponent) {
-            this._chartComponent = this.shadowRoot.querySelector('finsite-spending-chart');
-        }
-        
-        // Pass data to chart component
-        if (this._chartComponent && this._chartComponent.updateChartData) {
-            this._chartComponent.updateChartData(chartData, isHeavyUpdate);
-        }
+  updateChartData(chartData, isHeavyUpdate = false) {
+    this.chartData = chartData;
+
+    // Get or find chart component reference
+    if (!this._chartComponent) {
+      this._chartComponent = this.shadowRoot.querySelector('finsite-spending-chart');
     }
 
-    /**
+    // Pass data to chart component
+    if (this._chartComponent && this._chartComponent.updateChartData) {
+      this._chartComponent.updateChartData(chartData, isHeavyUpdate);
+    }
+  }
+
+  /**
      * Legacy method - Update dashboard data
      * @deprecated Use updateFromSummary instead
      * @param {Object} newData - New data to display
      */
-    updateData(newData) {
-        // Map old format to new if needed
-        if (newData.stats) {
-            this.panelData.transactionsThisWeek = newData.stats.transactions || 0;
-        }
-        this.render();
-        
-        // Re-acquire chart reference after render
-        requestAnimationFrame(() => {
-            this._chartComponent = this.shadowRoot.querySelector('finsite-spending-chart');
-            
-            // Re-apply chart data if we have it
-            if (this.chartData && this._chartComponent) {
-                this._chartComponent.updateChartData(this.chartData);
-            }
-        });
+  updateData(newData) {
+    // Map old format to new if needed
+    if (newData.stats) {
+      this.panelData.transactionsThisWeek = newData.stats.transactions || 0;
     }
+    this.render();
+
+    // Re-acquire chart reference after render
+    requestAnimationFrame(() => {
+      this._chartComponent = this.shadowRoot.querySelector('finsite-spending-chart');
+
+      // Re-apply chart data if we have it
+      if (this.chartData && this._chartComponent) {
+        this._chartComponent.updateChartData(this.chartData);
+      }
+    });
+  }
 }
 
 // Define the custom element

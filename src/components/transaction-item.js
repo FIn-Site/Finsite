@@ -2,44 +2,44 @@
  * Transaction Item Web Component for FinSite
  */
 class FinSiteTransactionItem extends HTMLElement {
-    constructor() {
-        super();
-        this.attachShadow({ mode: 'open' });
-        
-        // Transaction data properties
-        this.transactionData = null;
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+
+    // Transaction data properties
+    this.transactionData = null;
+  }
+
+  // Define observed attributes for property changes
+  static get observedAttributes() {
+    return ['transaction-data'];
+  }
+
+  connectedCallback() {
+    this.render();
+  }
+
+  attributeChangedCallback(name, oldValue, newValue) {
+    if (name === 'transaction-data' && newValue) {
+      this.transactionData = JSON.parse(newValue);
+      this.render();
     }
+  }
 
-    // Define observed attributes for property changes
-    static get observedAttributes() {
-        return ['transaction-data'];
-    }
+  // Method to set transaction data programmatically
+  setTransactionData(data) {
+    this.transactionData = data;
+    this.render();
+  }
 
-    connectedCallback() {
-        this.render();
-    }
+  render() {
+    if (!this.transactionData) return;
 
-    attributeChangedCallback(name, oldValue, newValue) {
-        if (name === 'transaction-data' && newValue) {
-            this.transactionData = JSON.parse(newValue);
-            this.render();
-        }
-    }
+    const transaction = this.transactionData;
+    const isPositive = transaction.amount > 0;
+    const iconClass = transaction.status === 'Pending' ? 'pending' : (isPositive ? 'income' : 'expense');
 
-    // Method to set transaction data programmatically
-    setTransactionData(data) {
-        this.transactionData = data;
-        this.render();
-    }
-
-    render() {
-        if (!this.transactionData) return;
-
-        const transaction = this.transactionData;
-        const isPositive = transaction.amount > 0;
-        const iconClass = transaction.status === 'Pending' ? 'pending' : (isPositive ? 'income' : 'expense');
-
-        this.shadowRoot.innerHTML = `
+    this.shadowRoot.innerHTML = `
             <style>
                 /* Reset-aware styles for shadow DOM */
                 * {
@@ -166,7 +166,7 @@ class FinSiteTransactionItem extends HTMLElement {
                 ${transaction.status === 'Pending' ? '<div class="transaction-status status-pending">(Pending)</div>' : ''}
             </div>
         `;
-    }
+  }
 }
 
 // Define the custom element

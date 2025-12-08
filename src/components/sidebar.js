@@ -4,20 +4,20 @@
  * Contains header with logo/icons, navigation items, and collapse toggle
  */
 class SidebarComponent extends HTMLElement {
-    constructor() {
-        super();
-        this.attachShadow({ mode: 'open' });
-        this.currentPage = 'dashboard';
-        this.isCollapsed = false;
-    }
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this.currentPage = 'dashboard';
+    this.isCollapsed = false;
+  }
 
-    connectedCallback() {
-        this.render();
-        this.setupEventListeners();
-    }
+  connectedCallback() {
+    this.render();
+    this.setupEventListeners();
+  }
 
-    render() {
-        this.shadowRoot.innerHTML = `
+  render() {
+    this.shadowRoot.innerHTML = `
             <style>
                 /* Reset-aware styles for shadow DOM */
                 * {
@@ -363,117 +363,117 @@ class SidebarComponent extends HTMLElement {
                 </button>
             </div>
         `;
+  }
+
+  setupEventListeners() {
+    const navItems = this.shadowRoot.querySelectorAll('.nav-item');
+
+    navItems.forEach((item) => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
+        const page = item.getAttribute('data-page');
+        this.navigate(page, item);
+      });
+    });
+
+    // Collapse toggle
+    const collapseBtn = this.shadowRoot.querySelector('#collapse-btn');
+    if (collapseBtn) {
+      collapseBtn.addEventListener('click', () => {
+        this.toggleCollapse();
+      });
     }
 
-    setupEventListeners() {
-        const navItems = this.shadowRoot.querySelectorAll('.nav-item');
-        
-        navItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
-                const page = item.getAttribute('data-page');
-                this.navigate(page, item);
-            });
-        });
+    // Settings and Notifications buttons
+    const settingsBtn = this.shadowRoot.querySelector('#settings-btn');
+    const notificationsBtn = this.shadowRoot.querySelector('#notifications-btn');
 
-        // Collapse toggle
-        const collapseBtn = this.shadowRoot.querySelector('#collapse-btn');
-        if (collapseBtn) {
-            collapseBtn.addEventListener('click', () => {
-                this.toggleCollapse();
-            });
-        }
-
-        // Settings and Notifications buttons
-        const settingsBtn = this.shadowRoot.querySelector('#settings-btn');
-        const notificationsBtn = this.shadowRoot.querySelector('#notifications-btn');
-
-        if (settingsBtn) {
-            settingsBtn.addEventListener('click', () => {
-                this.dispatchEvent(new CustomEvent('open-settings', {
-                    bubbles: true,
-                    composed: true
-                }));
-            });
-        }
-
-        if (notificationsBtn) {
-            notificationsBtn.addEventListener('click', () => {
-                this.dispatchEvent(new CustomEvent('open-notifications', {
-                    bubbles: true,
-                    composed: true
-                }));
-            });
-        }
-    }
-
-    toggleCollapse() {
-        this.isCollapsed = !this.isCollapsed;
-        
-        if (this.isCollapsed) {
-            this.classList.add('collapsed');
-        } else {
-            this.classList.remove('collapsed');
-        }
-
-        // Dispatch event so the main content area can adjust
-        this.dispatchEvent(new CustomEvent('sidebar-toggle', {
-            detail: { collapsed: this.isCollapsed },
-            bubbles: true,
-            composed: true
+    if (settingsBtn) {
+      settingsBtn.addEventListener('click', () => {
+        this.dispatchEvent(new CustomEvent('open-settings', {
+          bubbles: true,
+          composed: true,
         }));
-
-        console.log(`🔄 Sidebar ${this.isCollapsed ? 'collapsed' : 'expanded'}`);
+      });
     }
 
-    navigate(page, clickedItem) {
-        // Update active state
-        const allItems = this.shadowRoot.querySelectorAll('.nav-item');
-        allItems.forEach(item => item.classList.remove('active'));
-        clickedItem.classList.add('active');
-        
-        // Update current page
-        this.currentPage = page;
-        
-        // Dispatch custom event for navigation
-        this.dispatchEvent(new CustomEvent('navigate', {
-            detail: { page },
-            bubbles: true,
-            composed: true
+    if (notificationsBtn) {
+      notificationsBtn.addEventListener('click', () => {
+        this.dispatchEvent(new CustomEvent('open-notifications', {
+          bubbles: true,
+          composed: true,
         }));
-        
-        console.log(`🧭 Sidebar navigated to: ${page}`);
+      });
+    }
+  }
+
+  toggleCollapse() {
+    this.isCollapsed = !this.isCollapsed;
+
+    if (this.isCollapsed) {
+      this.classList.add('collapsed');
+    } else {
+      this.classList.remove('collapsed');
     }
 
-    /**
+    // Dispatch event so the main content area can adjust
+    this.dispatchEvent(new CustomEvent('sidebar-toggle', {
+      detail: { collapsed: this.isCollapsed },
+      bubbles: true,
+      composed: true,
+    }));
+
+    console.log(`🔄 Sidebar ${this.isCollapsed ? 'collapsed' : 'expanded'}`);
+  }
+
+  navigate(page, clickedItem) {
+    // Update active state
+    const allItems = this.shadowRoot.querySelectorAll('.nav-item');
+    allItems.forEach((item) => item.classList.remove('active'));
+    clickedItem.classList.add('active');
+
+    // Update current page
+    this.currentPage = page;
+
+    // Dispatch custom event for navigation
+    this.dispatchEvent(new CustomEvent('navigate', {
+      detail: { page },
+      bubbles: true,
+      composed: true,
+    }));
+
+    console.log(`🧭 Sidebar navigated to: ${page}`);
+  }
+
+  /**
      * Set the active page programmatically
      * @param {string} page - Page to set as active
      */
-    setActivePage(page) {
-        const targetItem = this.shadowRoot.querySelector(`[data-page="${page}"]`);
-        if (targetItem) {
-            const allItems = this.shadowRoot.querySelectorAll('.nav-item');
-            allItems.forEach(item => item.classList.remove('active'));
-            targetItem.classList.add('active');
-            this.currentPage = page;
-        }
+  setActivePage(page) {
+    const targetItem = this.shadowRoot.querySelector(`[data-page="${page}"]`);
+    if (targetItem) {
+      const allItems = this.shadowRoot.querySelectorAll('.nav-item');
+      allItems.forEach((item) => item.classList.remove('active'));
+      targetItem.classList.add('active');
+      this.currentPage = page;
     }
+  }
 
-    /**
+  /**
      * Get the current active page
      * @returns {string} Current page name
      */
-    getCurrentPage() {
-        return this.currentPage;
-    }
+  getCurrentPage() {
+    return this.currentPage;
+  }
 
-    /**
+  /**
      * Get collapsed state
      * @returns {boolean} Whether sidebar is collapsed
      */
-    getIsCollapsed() {
-        return this.isCollapsed;
-    }
+  getIsCollapsed() {
+    return this.isCollapsed;
+  }
 }
 
 // Define the custom element
