@@ -1,0 +1,29 @@
+{
+  "name": "finsite",
+  "version": "1.0.0",
+  "description": "Track your money",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "vitest"
+
+
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FIn-Site/Finsite.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/FIn-Site/Finsite/issues"
+  },
+  "homepage": "https://github.com/FIn-Site/Finsite#readme",
+  "devDependencies": {
+    "vitest": "^4.0.15"
+  }
+}
