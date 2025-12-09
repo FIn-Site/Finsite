@@ -40,7 +40,7 @@ Key sections:
 | [01](./01-use-mvc-architecture.md) | Use Model-View-Controller (MVC) Architecture Pattern | Accepted | 2025-12-08 |
 | [02](./02-choose-indexeddb-for-storage.md) | Choose IndexedDB for Client-Side Storage | Accepted | 2025-12-08 |
 | [03](./03-adopt-chartjs-for-visualization.md) | Adopt Chart.js for Data Visualization | Accepted | 2025-12-08 |
-| [04](./04-organize-ui-with-modular-components.md) | Organize UI with Modular Components | Accepted | 2025-12-08 |
+| [04](./04-organize-ui-with-modular-components.md) | Organize UI with Web Components | Accepted | 2025-12-08 |
 | [05](./05-use-vanilla-javascript.md) | Use Vanilla JavaScript (No Framework) | Accepted | 2025-12-08 |
 
 ## ADR Statuses
