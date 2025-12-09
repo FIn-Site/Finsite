@@ -1,23 +1,13 @@
 // Import the category chart component
 import './category-chart.js';
 
-// Import Chart.js core for week-over-week chart
+// Import Chart.js core for the modal chart
 import { initChartCore, CHART_COLORS, formatCurrency } from '../chart/chart-core.js';
-
-// Import storage service for IndexedDB persistence
-import { 
-    getAllGroups, 
-    addGroup,
-    deleteGroup,
-    getAllCategories, 
-    addCategory,
-    getAllTransactions 
-} from '../storage/storageService.js';
 
 /**
  * Categories Web Component for FinSite
  * Page container that displays spending breakdown by groups
- * Each group (Household, Wealth, Expenses) is rendered as a category-chart component
+ * Each group is rendered as a category-chart component
  * Includes modal for viewing transactions when a group is clicked
  */
 class FinSiteCategories extends HTMLElement {
@@ -25,98 +15,13 @@ class FinSiteCategories extends HTMLElement {
         super();
         this.attachShadow({ mode: 'open' });
 
+        this._model = null;
+        this._connected = false;
+
         // Groups and categories data
-        this.groups = [
-            { id: 'household', name: 'Household' },
-            { id: 'investments', name: 'Wealth' },
-            { id: 'expenses', name: 'Expenses' }
-        ];
-
-        this.categories = [
-            { id: 'groceries', groupId: 'household', name: 'Groceries', amount: 0 },
-            { id: 'utilities', groupId: 'household', name: 'Utilities', amount: 0 },
-            { id: 'fuel', groupId: 'household', name: 'Fuel', amount: 0 },
-            { id: 'stocks', groupId: 'investments', name: 'Stocks', amount: 0 },
-            { id: 'bonds', groupId: 'investments', name: 'Bonds', amount: 0 },
-            { id: 'dining-out', groupId: 'expenses', name: 'Dining Out', amount: 0 },
-            { id: 'shopping', groupId: 'expenses', name: 'Shopping', amount: 0 }
-        ];
-
-        // Sample transactions following IndexedDB structure:
-        // { id, group, category, amount, date, merchant, notes }
-        // Today is Dec 8, 2025 (Sunday) - This week: Dec 8 (Sun), Last week: Dec 1-7 (Sun-Sat)
-        this.transactions = [
-            // ============ LAST WEEK (Dec 1 - Dec 6, 2025) ============
-            // Sunday Dec 1
-            { id: 1, group: 'household', category: 'groceries', amount: 127.54, date: '2025-12-01', merchant: 'Whole Foods', notes: 'Weekly groceries' },
-            { id: 2, group: 'household', category: 'utilities', amount: 156.78, date: '2025-12-01', merchant: 'PG&E', notes: 'Electric bill' },
-            { id: 3, group: 'household', category: 'utilities', amount: 89.50, date: '2025-12-01', merchant: 'Comcast', notes: 'Internet' },
-            { id: 4, group: 'investments', category: 'stocks', amount: 250.00, date: '2025-12-01', merchant: 'Robinhood', notes: 'AAPL purchase' },
-            { id: 5, group: 'expenses', category: 'dining-out', amount: 35.20, date: '2025-12-01', merchant: 'Panera Bread', notes: 'Sunday brunch' },
-
-            // Monday Dec 2
-            { id: 6, group: 'household', category: 'fuel', amount: 58.42, date: '2025-12-02', merchant: 'Shell', notes: 'Gas fillup' },
-            { id: 7, group: 'household', category: 'utilities', amount: 112.34, date: '2025-12-02', merchant: 'Water Company', notes: 'Water bill' },
-            { id: 8, group: 'investments', category: 'bonds', amount: 150.00, date: '2025-12-02', merchant: 'Treasury Direct', notes: 'I-Bonds' },
-            { id: 9, group: 'expenses', category: 'shopping', amount: 67.89, date: '2025-12-02', merchant: 'Amazon', notes: 'Books' },
-
-            // Tuesday Dec 3
-            { id: 10, group: 'household', category: 'groceries', amount: 89.23, date: '2025-12-03', merchant: 'Trader Joes', notes: 'Snacks and produce' },
-            { id: 11, group: 'expenses', category: 'dining-out', amount: 45.67, date: '2025-12-03', merchant: 'Chipotle', notes: 'Lunch with team' },
-            { id: 12, group: 'expenses', category: 'shopping', amount: 34.99, date: '2025-12-03', merchant: 'Target', notes: 'Cleaning supplies' },
-
-            // Wednesday Dec 4
-            { id: 13, group: 'investments', category: 'stocks', amount: 300.00, date: '2025-12-04', merchant: 'Fidelity', notes: 'Index fund' },
-            { id: 14, group: 'expenses', category: 'shopping', amount: 124.99, date: '2025-12-04', merchant: 'Amazon', notes: 'Electronics' },
-            { id: 15, group: 'expenses', category: 'dining-out', amount: 22.50, date: '2025-12-04', merchant: 'Starbucks', notes: 'Coffee meeting' },
-            { id: 16, group: 'household', category: 'fuel', amount: 45.00, date: '2025-12-04', merchant: 'Arco', notes: 'Quick fillup' },
-
-            // Thursday Dec 5
-            { id: 17, group: 'household', category: 'groceries', amount: 65.80, date: '2025-12-05', merchant: 'Costco', notes: 'Bulk items' },
-            { id: 18, group: 'household', category: 'fuel', amount: 62.15, date: '2025-12-05', merchant: 'Chevron', notes: 'Premium gas' },
-            { id: 19, group: 'expenses', category: 'dining-out', amount: 78.90, date: '2025-12-05', merchant: 'Olive Garden', notes: 'Dinner date' },
-            { id: 20, group: 'investments', category: 'bonds', amount: 100.00, date: '2025-12-05', merchant: 'Vanguard', notes: 'Bond ETF' },
-
-            // Friday Dec 6
-            { id: 21, group: 'household', category: 'groceries', amount: 43.12, date: '2025-12-06', merchant: 'Safeway', notes: 'Quick trip' },
-            { id: 22, group: 'investments', category: 'bonds', amount: 200.00, date: '2025-12-06', merchant: 'Vanguard', notes: 'Bond ETF' },
-            { id: 23, group: 'expenses', category: 'shopping', amount: 89.50, date: '2025-12-06', merchant: 'Target', notes: 'Household items' },
-            { id: 24, group: 'expenses', category: 'dining-out', amount: 55.00, date: '2025-12-06', merchant: 'Buffalo Wild Wings', notes: 'Friday dinner' },
-            { id: 25, group: 'household', category: 'fuel', amount: 52.30, date: '2025-12-06', merchant: 'Shell', notes: 'Weekend prep' },
-
-            // Saturday Dec 7
-            { id: 26, group: 'household', category: 'groceries', amount: 78.90, date: '2025-12-07', merchant: 'Whole Foods', notes: 'Weekend groceries' },
-            { id: 27, group: 'household', category: 'fuel', amount: 55.80, date: '2025-12-07', merchant: 'Costco Gas', notes: 'Discount gas' },
-            { id: 28, group: 'expenses', category: 'dining-out', amount: 32.45, date: '2025-12-07', merchant: 'Starbucks', notes: 'Coffee and pastry' },
-            { id: 29, group: 'expenses', category: 'shopping', amount: 156.00, date: '2025-12-07', merchant: 'Best Buy', notes: 'Headphones' },
-            { id: 30, group: 'investments', category: 'stocks', amount: 150.00, date: '2025-12-07', merchant: 'Robinhood', notes: 'TSLA shares' },
-
-            // ============ THIS WEEK (Dec 8, 2025 - Sunday/Today) ============
-            // Sunday Dec 8 (Today)
-            { id: 31, group: 'household', category: 'groceries', amount: 142.33, date: '2025-12-08', merchant: 'Whole Foods', notes: 'Weekly groceries' },
-            { id: 32, group: 'household', category: 'groceries', amount: 56.78, date: '2025-12-08', merchant: 'Trader Joes', notes: 'Specialty items' },
-            { id: 33, group: 'household', category: 'fuel', amount: 61.50, date: '2025-12-08', merchant: 'Chevron', notes: 'Sunday fillup' },
-            { id: 34, group: 'expenses', category: 'dining-out', amount: 48.90, date: '2025-12-08', merchant: 'IHOP', notes: 'Sunday brunch' },
-            { id: 35, group: 'expenses', category: 'dining-out', amount: 67.50, date: '2025-12-08', merchant: 'Applebees', notes: 'Dinner' },
-            { id: 36, group: 'investments', category: 'stocks', amount: 400.00, date: '2025-12-08', merchant: 'Fidelity', notes: 'Weekly investment' },
-            { id: 37, group: 'expenses', category: 'shopping', amount: 234.99, date: '2025-12-08', merchant: 'Amazon', notes: 'Holiday gifts' },
-            { id: 38, group: 'expenses', category: 'shopping', amount: 89.00, date: '2025-12-08', merchant: 'Walmart', notes: 'Household essentials' },
-            { id: 39, group: 'household', category: 'utilities', amount: 175.00, date: '2025-12-08', merchant: 'PG&E', notes: 'Gas bill' },
-            { id: 40, group: 'investments', category: 'bonds', amount: 250.00, date: '2025-12-08', merchant: 'Treasury Direct', notes: 'Series I Bonds' },
-
-            // ============ ADDITIONAL HISTORICAL DATA (Nov 24-30) ============
-            // For context - two weeks ago
-            { id: 41, group: 'household', category: 'groceries', amount: 98.45, date: '2025-11-24', merchant: 'Costco', notes: 'Thanksgiving prep' },
-            { id: 42, group: 'household', category: 'groceries', amount: 187.23, date: '2025-11-25', merchant: 'Whole Foods', notes: 'Thanksgiving shopping' },
-            { id: 43, group: 'expenses', category: 'dining-out', amount: 125.00, date: '2025-11-27', merchant: 'The Cheesecake Factory', notes: 'Thanksgiving dinner out' },
-            { id: 44, group: 'household', category: 'fuel', amount: 72.30, date: '2025-11-28', merchant: 'Shell', notes: 'Black Friday travel' },
-            { id: 45, group: 'expenses', category: 'shopping', amount: 345.67, date: '2025-11-29', merchant: 'Amazon', notes: 'Black Friday deals' },
-            { id: 46, group: 'expenses', category: 'shopping', amount: 189.99, date: '2025-11-29', merchant: 'Best Buy', notes: 'Black Friday electronics' },
-            { id: 47, group: 'investments', category: 'stocks', amount: 500.00, date: '2025-11-30', merchant: 'Fidelity', notes: 'End of month investment' },
-            { id: 48, group: 'household', category: 'utilities', amount: 145.00, date: '2025-11-30', merchant: 'Comcast', notes: 'Internet + TV bundle' },
-            { id: 49, group: 'expenses', category: 'dining-out', amount: 43.50, date: '2025-11-30', merchant: 'Olive Garden', notes: 'Weekend dinner' },
-            { id: 50, group: 'household', category: 'groceries', amount: 67.89, date: '2025-11-30', merchant: 'Safeway', notes: 'End of month groceries' }
-        ];
+        this.groups = [];
+        this.categories = [];
+        this.transactions = [];
 
         // Modal state
         this.isModalOpen = false;
@@ -135,67 +40,54 @@ class FinSiteCategories extends HTMLElement {
     }
 
     async connectedCallback() {
-        // Load data from IndexedDB first
-        await this.loadFromStorage();
-        
-        this.calculateCategoryAmounts();
-        this.render();
-        this.setupEventListeners();
-        // Delay chart update to ensure DOM is ready
-        requestAnimationFrame(() => {
-            this.updateChartComponents();
-        });
+        this._connected = true;
+        if (this._model) {
+            await this.loadFromModel();
+        } else {
+            // Render a lightweight shell until the model is injected
+            this.render();
+            this.setupEventListeners();
+        }
     }
 
     /**
-     * Load groups, categories, and transactions from IndexedDB
-     * Seeds default data if storage is empty
+     * Expose model setter for parent components (controller/view) to inject the shared model
      */
-    async loadFromStorage() {
+    set model(model) {
+        this._model = model;
+        if (this._connected) {
+            this.loadFromModel();
+        }
+    }
+
+    get model() {
+        return this._model;
+    }
+
+    /**
+     * Load groups, categories, and transactions from the injected model
+     * Model remains the single source of truth; no direct storage access here
+     */
+    async loadFromModel() {
+        if (!this._model) {
+            console.warn('Categories component has no model reference');
+            return;
+        }
+
         try {
-            // Load groups from IndexedDB
-            const storedGroups = await getAllGroups();
-            
-            // If no groups in storage, seed the defaults
-            if (storedGroups.length === 0) {
-                console.log('📦 No groups in IndexedDB, seeding defaults...');
-                for (const group of this.groups) {
-                    await addGroup(group);
-                }
-            } else {
-                // Use stored groups (includes any custom groups)
-                this.groups = storedGroups;
-                console.log('📦 Loaded groups from IndexedDB:', this.groups);
-            }
+            this.groups = this._model.getGroups?.() || [];
+            this.categories = (this._model.getCategories?.() || []).map((cat) => ({ ...cat, amount: 0 }));
+            this.transactions = this._model.getTransactions?.() || [];
 
-            // Load categories from IndexedDB
-            const storedCategories = await getAllCategories();
-            
-            if (storedCategories.length === 0) {
-                console.log('📦 No categories in IndexedDB, seeding defaults...');
-                for (const cat of this.categories) {
-                    await addCategory(cat);
-                }
-            } else {
-                // Merge stored categories with defaults (keep amounts at 0, will recalculate)
-                this.categories = storedCategories.map(cat => ({ ...cat, amount: 0 }));
-                console.log('📦 Loaded categories from IndexedDB:', this.categories);
-            }
-
-            // Load transactions from IndexedDB
-            const storedTransactions = await getAllTransactions();
-            
-            if (storedTransactions.length > 0) {
-                this.transactions = storedTransactions;
-                console.log('📦 Loaded transactions from IndexedDB:', this.transactions.length, 'records');
-            } else {
-                // Keep sample transactions as fallback for demo
-                console.log('📦 No transactions in IndexedDB, using sample data');
-            }
-
+            this.calculateCategoryAmounts();
+            this.render();
+            this.setupEventListeners();
+            // Delay chart update to ensure DOM is ready
+            requestAnimationFrame(() => {
+                this.updateChartComponents();
+            });
         } catch (error) {
-            console.error('❌ Error loading from IndexedDB:', error);
-            // Continue with default data on error
+            console.error('❌ Error loading data from model:', error);
         }
     }
 
@@ -214,7 +106,9 @@ class FinSiteCategories extends HTMLElement {
             this.transactions = data.transactions;
         }
         this.calculateCategoryAmounts();
-        this.updateChartComponents();
+        this.render();
+        this.setupEventListeners();
+        requestAnimationFrame(() => this.updateChartComponents());
     }
 
     /**
@@ -335,12 +229,11 @@ class FinSiteCategories extends HTMLElement {
         }
 
         try {
-            // Delete from IndexedDB
-            await deleteGroup(groupId);
-            console.log(`🗑️ Deleted group from IndexedDB: ${groupName}`);
+            if (!this._model?.deleteGroup) {
+                throw new Error('Model does not support group deletion');
+            }
 
-            // Remove from local groups array
-            this.groups = this.groups.filter(g => g.id !== groupId);
+            await this._model.deleteGroup(groupId);
 
             // Dispatch event for controller awareness
             this.dispatchEvent(new CustomEvent('group-deleted', {
@@ -349,13 +242,9 @@ class FinSiteCategories extends HTMLElement {
                 composed: true
             }));
 
-            // Close modal and re-render
+            // Close modal and re-sync from model
             this.closeModal();
-            this.render();
-            this.setupEventListeners();
-            requestAnimationFrame(() => {
-                this.updateChartComponents();
-            });
+            await this.loadFromModel();
 
             console.log(`✅ Successfully deleted group: ${groupName}`);
 
@@ -427,6 +316,11 @@ class FinSiteCategories extends HTMLElement {
         // Collect selected category IDs for the custom group
         const selectedCategoryIdsArray = Array.from(this.selectedCategoryIds);
 
+        if (!this._model) {
+            console.error('Model not available for creating group');
+            return;
+        }
+
         // Get new subcategories from inputs and save them
         const newSubInputs = this.shadowRoot.querySelectorAll('.new-subcategory-input');
         for (const input of newSubInputs) {
@@ -441,16 +335,14 @@ class FinSiteCategories extends HTMLElement {
                         name: subName,
                         amount: 0
                     };
-                    this.categories.push(newCategory);
                     // Add new category ID to the selection
                     selectedCategoryIdsArray.push(subId);
                     
-                    // Save new category to IndexedDB
                     try {
-                        await addCategory(newCategory);
-                        console.log(`💾 Saved new category: ${subName}`);
+                        await this._model.addCategory(newCategory);
+                        console.log(`💾 Saved new category via model: ${subName}`);
                     } catch (error) {
-                        console.error('❌ Failed to save category:', error);
+                        console.error('❌ Failed to save category via model:', error);
                     }
                 }
             }
@@ -464,37 +356,26 @@ class FinSiteCategories extends HTMLElement {
             categoryIds: selectedCategoryIdsArray // Store which categories belong to this custom group
         };
 
-        this.groups.push(newGroup);
-
-        // Save the new group to IndexedDB
         try {
-            await addGroup(newGroup);
-            console.log(`💾 Saved custom group to IndexedDB: ${groupName}`);
-            console.log('   Category IDs:', selectedCategoryIdsArray);
+            await this._model.addGroup(newGroup);
+            console.log(`💾 Saved custom group via model: ${groupName}`);
+
+            // Dispatch event for controller/model
+            this.dispatchEvent(new CustomEvent('group-created', {
+                detail: {
+                    group: newGroup,
+                    categories: this.getCategoriesForGroup(groupId)
+                },
+                bubbles: true,
+                composed: true
+            }));
+
+            // Close modal and re-sync
+            this.closeAddGroupModal();
+            await this.loadFromModel();
         } catch (error) {
-            console.error('❌ Failed to save group to IndexedDB:', error);
+            console.error('❌ Failed to save group via model:', error);
         }
-
-        console.log(`✅ Created new group: ${groupName}`);
-        console.log('Updated groups:', this.groups);
-
-        // Dispatch event for controller/model
-        this.dispatchEvent(new CustomEvent('group-created', {
-            detail: {
-                group: newGroup,
-                categories: this.getCategoriesForGroup(groupId)
-            },
-            bubbles: true,
-            composed: true
-        }));
-
-        // Close modal and re-render
-        this.closeAddGroupModal();
-        this.render();
-        this.setupEventListeners();
-        requestAnimationFrame(() => {
-            this.updateChartComponents();
-        });
     }
 
     /**

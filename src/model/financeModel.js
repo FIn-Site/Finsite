@@ -5,6 +5,7 @@ import {
     clearAllTransactions,
     getAllGroups,
     addGroup,
+    deleteGroup,
     getAllCategories,
     addCategory,
 } from '../storage/storageService.js';
@@ -341,6 +342,14 @@ export class FinSiteModel {
     }
 
     /**
+     * Expose default config for consumers that need reference data
+     * without duplicating constants in the view layer.
+     */
+    getDefaultConfig() {
+        return this._getDefaultConfig();
+    }
+
+    /**
      * Add a new transaction (and persist it).
      * OPTIMIZATION A: O(1) aggregate update instead of O(n) rescan
      * Expected shape: { group, category, amount, date, ... }
@@ -503,13 +512,112 @@ export class FinSiteModel {
     }
 
     /**
+     * Read-only helper for all categories.
+     */
+    getCategories() {
+        return [...this.data.categories];
+    }
+
+    /**
      * Read-only helper for categories by group.
      * @param {string} groupId
      */
     getCategoriesByGroup(groupId) {
-        return this.data.categories.filter(
-            (cat) => cat.groupId === groupId,
-        );
+        const group = this.data.groups.find((g) => g.id === groupId);
+
+        // Custom groups may store categoryIds instead of groupId
+        if (group?.isCustom && Array.isArray(group.categoryIds)) {
+            const idSet = new Set(group.categoryIds);
+            return this.data.categories.filter((cat) => idSet.has(cat.id));
+        }
+
+        return this.data.categories.filter((cat) => cat.groupId === groupId);
+    }
+
+    /**
+     * Create or update a group.
+     * @param {Object} group - { id, name, isCustom?, categoryIds? }
+     */
+    async addGroup(group) {
+        const safeGroup = group || {};
+        const existingIndex = this.data.groups.findIndex((g) => g.id === safeGroup.id);
+
+        await addGroup(safeGroup);
+
+        if (existingIndex >= 0) {
+            this.data.groups.splice(existingIndex, 1, safeGroup);
+        } else {
+            this.data.groups = [...this.data.groups, safeGroup];
+        }
+
+        return safeGroup;
+    }
+
+    /**
+     * Create or update a category.
+     * @param {Object} category - { id, groupId, name, ... }
+     */
+    async addCategory(category) {
+        const safeCategory = category || {};
+        const existingIndex = this.data.categories.findIndex((c) => c.id === safeCategory.id);
+
+        await addCategory(safeCategory);
+
+        if (existingIndex >= 0) {
+            this.data.categories.splice(existingIndex, 1, safeCategory);
+        } else {
+            this.data.categories = [...this.data.categories, safeCategory];
+        }
+
+        return safeCategory;
+    }
+
+    /**
+     * Delete a group and safely update dependent data.
+     * Categories tied to the group are reassigned to 'uncategorized'.
+     * Transactions remain but keep their original group for history.
+     * @param {string} groupId
+     */
+    async deleteGroup(groupId) {
+        if (!groupId) return this.getData();
+
+        const group = this.data.groups.find((g) => g.id === groupId);
+
+        await deleteGroup(groupId);
+
+        // Remove group from memory
+        this.data.groups = this.data.groups.filter((g) => g.id !== groupId);
+
+        // Ensure an 'uncategorized' group exists for orphaned categories
+        const uncategorizedGroup = this.data.groups.find((g) => g.id === 'uncategorized')
+            || { id: 'uncategorized', name: 'Uncategorized' };
+
+        if (!this.data.groups.find((g) => g.id === 'uncategorized')) {
+            this.data.groups = [...this.data.groups, uncategorizedGroup];
+            await addGroup(uncategorizedGroup);
+        }
+
+        // Reassign categories previously tied to the deleted group
+        const idSet = group?.isCustom && Array.isArray(group.categoryIds)
+            ? new Set(group.categoryIds)
+            : null;
+
+        const updatedCategories = [];
+        for (const cat of this.data.categories) {
+            const belongsToCustom = idSet ? idSet.has(cat.id) : false;
+            if (cat.groupId === groupId || belongsToCustom) {
+                const updated = { ...cat, groupId: 'uncategorized' };
+                // Persist reassignment
+                await addCategory(updated);
+                updatedCategories.push(updated);
+            } else {
+                updatedCategories.push(cat);
+            }
+        }
+
+        this.data.categories = updatedCategories;
+
+        return this.getData();
     }
 
     // ============================================================

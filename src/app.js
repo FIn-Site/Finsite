@@ -16,7 +16,7 @@ async function initializeApp() {
     try {
     // 1) Create model & view
         const model = new FinSiteModel();
-        const view = new FinSiteView();
+        const view = new FinSiteView(model);
 
         // 2) Render the view shell into #app
         view.render('#app');

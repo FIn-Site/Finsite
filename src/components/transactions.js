@@ -7,6 +7,8 @@ class FinSiteTransactions extends HTMLElement {
         super();
         this.attachShadow({ mode: 'open' });
 
+        this._model = null;
+
         // Core state: all transactions
         this.transactions = [];
 
@@ -29,20 +31,17 @@ class FinSiteTransactions extends HTMLElement {
         this.selectedTransactions = new Set();
 
         // Available groups and categories for filters
-        this.availableGroups = [
-            { id: 'household', name: 'Household' },
-            { id: 'investments', name: 'Investments' },
-            { id: 'expenses', name: 'General Expenses' },
-        ];
-        this.availableCategories = [
-            { id: 'groceries', name: 'Groceries', groupId: 'household' },
-            { id: 'utilities', name: 'Utilities', groupId: 'household' },
-            { id: 'fuel', name: 'Fuel', groupId: 'household' },
-            { id: 'stocks', name: 'Stocks', groupId: 'investments' },
-            { id: 'bonds', name: 'Bonds', groupId: 'investments' },
-            { id: 'dining-out', name: 'Dining Out', groupId: 'expenses' },
-            { id: 'shopping', name: 'Shopping', groupId: 'expenses' },
-        ];
+        this.availableGroups = [];
+        this.availableCategories = [];
+    }
+
+    set model(model) {
+        this._model = model;
+        this._syncTaxonomyFromModel();
+    }
+
+    get model() {
+        return this._model;
     }
 
     /**
@@ -60,8 +59,30 @@ class FinSiteTransactions extends HTMLElement {
         if (!Array.isArray(this.transactions)) {
             this.transactions = [];
         }
+        this._syncTaxonomyFromModel();
         this.render();
         this.setupEventListeners();
+    }
+
+    /**
+     * Allow external injection of taxonomy data (groups/categories)
+     * so this component does not define defaults itself.
+     */
+    setTaxonomy({ groups = [], categories = [] } = {}) {
+        this.availableGroups = Array.isArray(groups) ? [...groups] : [];
+        this.availableCategories = Array.isArray(categories) ? [...categories] : [];
+        if (this.isConnected) {
+            this.render();
+            this.setupEventListeners();
+        }
+    }
+
+    _syncTaxonomyFromModel() {
+        if (!this._model) return;
+        const groups = this._model.getGroups?.() || [];
+        const categories = this._model.getCategories?.() || [];
+        this.availableGroups = groups;
+        this.availableCategories = categories;
     }
 
     // ============================================================
@@ -420,12 +441,7 @@ class FinSiteTransactions extends HTMLElement {
                             <div class="form-group"><label class="form-label" for="tx-category">Category</label>
                                 <select class="form-select" id="tx-category" name="category" required>
                                     <option value="" disabled selected>Select a category</option>
-                                    <option value="bills">Bills</option><option value="utilities">Utilities</option>
-                                    <option value="groceries">Groceries</option><option value="dining">Dining</option>
-                                    <option value="transport">Transport</option><option value="loans">Loans</option>
-                                    <option value="healthcare">Healthcare</option><option value="entertainment">Entertainment</option>
-                                    <option value="education">Education</option><option value="luxuries">Luxuries</option>
-                                    <option value="other">Other</option>
+                                    ${this.availableCategories.map((c) => `<option value="${c.id}">${c.name}</option>`).join('')}
                                 </select></div>
                         </div>
                         <div class="form-group"><label class="form-label" for="tx-merchant">Merchant</label>

@@ -28,20 +28,20 @@ class FinSiteSpendingChart extends HTMLElement {
         this.chartData = {
             // Time series for line chart (money x time)
             timeSeries: {
-                labels: ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb'],
-                values: [1650, 1720, 1580, 1820, 1780, 1890],
+                labels: [],
+                values: [],
             },
             // Group breakdown for bar chart (money x group)
             groupBreakdown: {
-                labels: ['Household', 'Dining', 'Transport', 'Entertainment', 'Utilities'],
-                values: [850, 420, 380, 240, 180],
+                labels: [],
+                values: [],
             },
             // KPI metrics
             metrics: {
-                thisMonth: 1890,
-                lastMonth: 1780,
-                percentChange: 6.18,
-                sixMonthAvg: 1740,
+                thisMonth: 0,
+                lastMonth: 0,
+                percentChange: 0,
+                sixMonthAvg: 0,
             },
         };
 

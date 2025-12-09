@@ -8,11 +8,12 @@ import '../components/categories.js';
  * Mint-style two-pane layout with persistent sidebar and main content area
  */
 export class FinSiteView {
-    constructor() {
+    constructor(model = null) {
         this.container = null;
         this.currentPage = 'dashboard';
         this.handlers = {};
         this.sidebarCollapsed = false;
+        this.model = model;
     }
 
     /**
@@ -53,6 +54,9 @@ export class FinSiteView {
 
         // Set up component event listeners
         this.setupComponentEvents();
+
+        // Pass model reference to categories component if available
+        this._wireModelToCategories();
 
         console.log('✅ FinSite layout rendered successfully');
     }
@@ -117,6 +121,9 @@ export class FinSiteView {
         if (contentArea) {
             contentArea.innerHTML = this.renderPageComponent(page);
         }
+
+        // Ensure freshly-rendered categories receive the model
+        this._wireModelToCategories();
         console.log(`📄 Navigated to ${page} page`);
     }
 
@@ -165,6 +172,28 @@ export class FinSiteView {
             const transactionsPage = this.container.querySelector('finsite-transactions');
             if (transactionsPage && typeof transactionsPage.setTransactions === 'function') {
                 transactionsPage.setTransactions(data.transactions || []);
+                if (this.model) {
+                    transactionsPage.model = this.model;
+                    if (typeof transactionsPage.setTaxonomy === 'function') {
+                        transactionsPage.setTaxonomy({
+                            groups: data.groups || [],
+                            categories: data.categories || [],
+                        });
+                    }
+                }
+            }
+        }
+
+        // Keep categories component in sync with latest model data
+        if (this.currentPage === 'categories') {
+            const categoriesPage = this.container.querySelector('finsite-categories');
+            if (categoriesPage) {
+                if (this.model && 'model' in categoriesPage) {
+                    categoriesPage.model = this.model;
+                }
+                if (typeof categoriesPage.setData === 'function') {
+                    categoriesPage.setData(data);
+                }
             }
         }
 
@@ -198,6 +227,20 @@ export class FinSiteView {
             dashboard.updateFromSummary(panelSummary);
             console.log('📋 Dashboard panel updated with:', panelSummary);
         }
+    }
+
+    /**
+     * Inject the shared model into any categories components currently rendered.
+     */
+    _wireModelToCategories() {
+        if (!this.model || !this.container) return;
+        this.container.querySelectorAll('finsite-categories').forEach((el) => {
+            try {
+                el.model = this.model;
+            } catch (err) {
+                console.warn('Failed to wire model to categories component', err);
+            }
+        });
     }
 
     /**
