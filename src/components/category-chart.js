@@ -1,6 +1,7 @@
 // Import Chart.js core
 import { initChartCore, CHART_COLORS, formatCurrency } from '../chart/chart-core.js';
 
+//...
 /**
  * Category Chart Web Component for FinSite
  * Reusable bar chart card that displays spending breakdown for a single group
