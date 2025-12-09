@@ -1,6 +1,9 @@
 // Import the category chart component
 import './category-chart.js';
 
+// Import Chart.js core for week-over-week chart
+import { initChartCore, CHART_COLORS, formatCurrency } from '../chart/chart-core.js';
+
 // Import storage service for IndexedDB persistence
 import { 
     getAllGroups, 
@@ -126,6 +129,9 @@ class FinSiteCategories extends HTMLElement {
         this.newGroupName = '';
         this.selectedCategoryIds = new Set();
         this.newSubcategories = []; // User-created subcategories for the new group
+
+        // Week chart instance (for cleanup)
+        this._weekChart = null;
     }
 
     async connectedCallback() {
@@ -291,9 +297,21 @@ class FinSiteCategories extends HTMLElement {
      */
     closeModal() {
         this.isModalOpen = false;
+        // Destroy week chart to prevent memory leaks
+        this._destroyWeekChart();
         const overlay = this.shadowRoot.querySelector('.modal-overlay');
         if (overlay) {
             overlay.classList.add('hidden');
+        }
+    }
+
+    /**
+     * Destroy the week-over-week chart instance
+     */
+    _destroyWeekChart() {
+        if (this._weekChart) {
+            this._weekChart.destroy();
+            this._weekChart = null;
         }
     }
 
@@ -783,30 +801,23 @@ class FinSiteCategories extends HTMLElement {
 
     /**
      * Generate HTML for the week-over-week comparison chart
+     * Uses Chart.js canvas with daily % change badges below
      */
     _generateWeekChartHtml(weekData) {
         // Get current day of week (0 = Sunday, 6 = Saturday)
         const today = new Date();
         const currentDayIndex = today.getDay();
 
-        const barsHtml = weekData.days.map((day, index) => {
-            const thisWeekHeight = weekData.maxValue > 0 
-                ? (weekData.thisWeek[index] / weekData.maxValue) * 100 
-                : 0;
-            const lastWeekHeight = weekData.maxValue > 0 
-                ? (weekData.lastWeek[index] / weekData.maxValue) * 100 
-                : 0;
-
-            // Calculate daily % change
-            let dailyChangeHtml = '';
+        // Generate daily % change badges (kept as HTML below chart)
+        const badgesHtml = weekData.days.map((day, index) => {
             const lastWeekAmt = weekData.lastWeek[index];
             const thisWeekAmt = weekData.thisWeek[index];
             
             // Only show comparison for today and past days (not future days)
             const isFutureDay = index > currentDayIndex;
             
+            let dailyChangeHtml = '';
             if (isFutureDay) {
-                // Future day - show blank
                 dailyChangeHtml = `<div class="day-change neutral"></div>`;
             } else if (lastWeekAmt > 0 && thisWeekAmt > 0) {
                 const dailyChange = ((thisWeekAmt - lastWeekAmt) / lastWeekAmt) * 100;
@@ -818,21 +829,12 @@ class FinSiteCategories extends HTMLElement {
             } else if (lastWeekAmt > 0 && thisWeekAmt === 0) {
                 dailyChangeHtml = `<div class="day-change change-down">-100%</div>`;
             } else {
-                // Today or past with no spending either week
                 dailyChangeHtml = `<div class="day-change neutral">--</div>`;
             }
 
             return `
-                <div class="chart-day">
-                    <div class="chart-bars">
-                        <div class="bar-group">
-                            <div class="bar bar-last-week" style="height: ${lastWeekHeight}%"
-                                 title="Last week: ${this._formatCurrency(weekData.lastWeek[index])}"></div>
-                            <div class="bar bar-this-week" style="height: ${thisWeekHeight}%" 
-                                 title="This week: ${this._formatCurrency(weekData.thisWeek[index])}"></div>
-                        </div>
-                    </div>
-                    <div class="chart-day-label">${day}</div>
+                <div class="badge-day">
+                    <div class="badge-day-label">${day}</div>
                     ${dailyChangeHtml}
                 </div>
             `;
@@ -842,30 +844,15 @@ class FinSiteCategories extends HTMLElement {
         const changeClass = weekData.percentChange >= 0 ? 'change-up' : 'change-down';
         const changeSign = weekData.percentChange >= 0 ? '+' : '';
 
-        // Generate Y-axis labels (4 tick marks: 0, 1/3, 2/3, max)
-        const maxVal = weekData.maxValue;
-        const yAxisLabels = [
-            maxVal,
-            Math.round(maxVal * 2 / 3),
-            Math.round(maxVal / 3),
-            0
-        ];
-
-        const yAxisHtml = yAxisLabels.map(val => `
-            <div class="y-axis-label">${this._formatCurrencyShort(val)}</div>
-        `).join('');
-
         return `
             <div class="section">
                 <h3 class="section-title">This Week vs Last Week</h3>
                 <div class="week-chart-container">
-                    <div class="week-chart-wrapper">
-                        <div class="y-axis">
-                            ${yAxisHtml}
-                        </div>
-                        <div class="week-chart">
-                            ${barsHtml}
-                        </div>
+                    <div class="week-chart-canvas-wrapper">
+                        <canvas id="weekComparisonChart"></canvas>
+                    </div>
+                    <div class="daily-badges">
+                        ${badgesHtml}
                     </div>
                     <div class="chart-legend">
                         <div class="legend-item">
@@ -892,6 +879,105 @@ class FinSiteCategories extends HTMLElement {
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * Initialize the week-over-week Chart.js chart
+     */
+    async _initWeekChart(weekData) {
+        const canvas = this.shadowRoot.querySelector('#weekComparisonChart');
+        if (!canvas) return;
+
+        // Destroy existing chart
+        this._destroyWeekChart();
+
+        try {
+            const Chart = await initChartCore();
+            const ctx = canvas.getContext('2d');
+
+            this._weekChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: weekData.days,
+                    datasets: [
+                        {
+                            label: 'Last Week',
+                            data: weekData.lastWeek,
+                            backgroundColor: 'rgba(100, 116, 139, 0.8)',
+                            borderRadius: 4,
+                            borderSkipped: false,
+                            barPercentage: 0.8,
+                            categoryPercentage: 0.7
+                        },
+                        {
+                            label: 'This Week',
+                            data: weekData.thisWeek,
+                            backgroundColor: 'rgba(59, 130, 246, 0.9)',
+                            borderRadius: 4,
+                            borderSkipped: false,
+                            barPercentage: 0.8,
+                            categoryPercentage: 0.7
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 400
+                    },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                font: { size: 11 }
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#64748b',
+                                font: { size: 10 },
+                                callback: (value) => '$' + formatCurrency(value)
+                            },
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1e293b',
+                            titleColor: '#f1f5f9',
+                            bodyColor: '#94a3b8',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            padding: 10,
+                            callbacks: {
+                                title: (context) => {
+                                    // Map abbreviated day to full day name
+                                    const fullDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                                    const dayIndex = context[0].dataIndex;
+                                    return fullDays[dayIndex];
+                                },
+                                label: (context) => `${context.dataset.label}: $${formatCurrency(context.raw)}`
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Failed to initialize week chart:', error);
+        }
     }
 
     /**
@@ -990,6 +1076,11 @@ class FinSiteCategories extends HTMLElement {
             if (e.target === overlay) {
                 this.closeModal();
             }
+        });
+
+        // Initialize week-over-week chart after DOM is ready
+        requestAnimationFrame(() => {
+            this._initWeekChart(weekData);
         });
     }
 
@@ -1203,95 +1294,44 @@ class FinSiteCategories extends HTMLElement {
                     padding: 1rem;
                 }
 
-                .week-chart-wrapper {
+                .week-chart-canvas-wrapper {
+                    height: 180px;
+                    margin-bottom: 0.5rem;
+                    position: relative;
+                }
+
+                .week-chart-canvas-wrapper canvas {
+                    width: 100% !important;
+                    height: 100% !important;
+                }
+
+                .daily-badges {
                     display: flex;
-                    align-items: stretch;
+                    justify-content: space-around;
                     margin-bottom: 1rem;
+                    padding: 0 2rem;
                 }
 
-                .y-axis {
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: space-between;
-                    padding-right: 0.5rem;
-                    padding-bottom: 2.5rem;
-                    min-width: 45px;
-                    text-align: right;
-                }
-
-                .y-axis-label {
-                    font-size: 0.65rem;
-                    color: #64748b;
-                    line-height: 1;
-                }
-
-                .week-chart {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: flex-end;
-                    height: 160px;
-                    flex: 1;
-                    padding: 0 0.5rem;
-                    border-bottom: 1px solid #334155;
-                    border-left: 1px solid #334155;
-                }
-
-                .chart-day {
+                .badge-day {
                     display: flex;
                     flex-direction: column;
                     align-items: center;
                     flex: 1;
                 }
 
-                .chart-bars {
-                    display: flex;
-                    align-items: flex-end;
-                    height: 120px;
-                    width: 100%;
-                    justify-content: center;
-                }
-
-                .bar-group {
-                    display: flex;
-                    gap: 4px;
-                    align-items: flex-end;
-                    height: 100%;
-                }
-
-                .bar {
-                    width: 18px;
-                    min-height: 2px;
-                    border-radius: 3px 3px 0 0;
-                    transition: height 0.3s ease;
-                    cursor: pointer;
-                }
-
-                .bar:hover {
-                    opacity: 0.8;
-                }
-
-                .bar-this-week {
-                    background: linear-gradient(to top, #3b82f6, #60a5fa);
-                }
-
-                .bar-last-week {
-                    background: linear-gradient(to top, #475569, #64748b);
-                }
-
-                .chart-day-label {
-                    font-size: 0.7rem;
-                    color: #94a3b8;
-                    margin-top: 0.5rem;
+                .badge-day-label {
+                    font-size: 0.65rem;
+                    color: #64748b;
+                    margin-bottom: 0.25rem;
                     text-transform: uppercase;
-                    font-weight: 500;
                 }
 
                 .day-change {
                     font-size: 0.65rem;
                     font-weight: 600;
-                    margin-top: 0.25rem;
                     padding: 0.125rem 0.25rem;
                     border-radius: 0.25rem;
+                    min-height: 1.25rem;
                 }
 
                 .day-change.change-up {

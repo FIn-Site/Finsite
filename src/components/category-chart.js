@@ -1,9 +1,12 @@
+// Import Chart.js core
+import { initChartCore, CHART_COLORS, formatCurrency } from '../chart/chart-core.js';
+
 /**
  * Category Chart Web Component for FinSite
  * Reusable bar chart card that displays spending breakdown for a single group
  * Used by the Categories page to show Household, Wealth, Expenses, etc.
  * 
- * Displays subcategories as bars with heights proportional to spending
+ * Displays subcategories as bars using Chart.js
  * Clicking opens a modal with transaction details
  */
 class FinSiteCategoryChart extends HTMLElement {
@@ -17,10 +20,19 @@ class FinSiteCategoryChart extends HTMLElement {
         this.categories = [];      // { id, name, amount }
         this.transactions = [];    // Raw transactions for this group
         this.totalSpent = 0;
+
+        // Chart.js instance
+        this._chart = null;
+        this._chartInitialized = false;
     }
 
     connectedCallback() {
         this.render();
+    }
+
+    disconnectedCallback() {
+        // Clean up chart when component is removed
+        this._destroyChart();
     }
 
     /**
@@ -34,6 +46,115 @@ class FinSiteCategoryChart extends HTMLElement {
         this.transactions = Array.isArray(data.transactions) ? data.transactions : [];
         this.totalSpent = this.categories.reduce((sum, cat) => sum + (cat.amount || 0), 0);
         this.render();
+        // Initialize chart after render
+        this._initChart();
+    }
+
+    /**
+     * Destroy existing chart instance
+     */
+    _destroyChart() {
+        if (this._chart) {
+            this._chart.destroy();
+            this._chart = null;
+        }
+    }
+
+    /**
+     * Initialize Chart.js bar chart
+     */
+    async _initChart() {
+        // Don't create chart if no categories
+        if (this.categories.length === 0) return;
+
+        const canvas = this.shadowRoot.querySelector('#categoryChart');
+        if (!canvas) return;
+
+        // Destroy existing chart
+        this._destroyChart();
+
+        try {
+            // Initialize Chart.js core (lazy loads if needed)
+            const Chart = await initChartCore();
+
+            const ctx = canvas.getContext('2d');
+            
+            // Prepare data for Chart.js
+            const labels = this.categories.map(cat => cat.name);
+            const values = this.categories.map(cat => cat.amount || 0);
+            const colors = this.categories.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]);
+
+            this._chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderRadius: 4,
+                        borderSkipped: false,
+                        barThickness: 28,
+                        maxBarThickness: 40
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 400
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                font: { size: 10 },
+                                maxRotation: 0,
+                                callback: function(value, index) {
+                                    // Truncate labels to 4 chars
+                                    const label = this.getLabelForValue(value);
+                                    return label.substring(0, 4);
+                                }
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#64748b',
+                                font: { size: 10 },
+                                callback: (value) => '$' + formatCurrency(value)
+                            },
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1e293b',
+                            titleColor: '#f1f5f9',
+                            bodyColor: '#94a3b8',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false,
+                            callbacks: {
+                                title: (context) => context[0].label,
+                                label: (context) => `$${formatCurrency(context.raw)}`
+                            }
+                        }
+                    }
+                }
+            });
+
+            this._chartInitialized = true;
+        } catch (error) {
+            console.error('Failed to initialize category chart:', error);
+        }
     }
 
     /**
@@ -49,22 +170,6 @@ class FinSiteCategoryChart extends HTMLElement {
     }
 
     /**
-     * Get color for category bars
-     */
-    _getCategoryColor(index) {
-        const colors = [
-            '#3b82f6', // blue
-            '#10b981', // green
-            '#f59e0b', // amber
-            '#ef4444', // red
-            '#8b5cf6', // purple
-            '#ec4899', // pink
-            '#06b6d4'  // cyan
-        ];
-        return colors[index % colors.length];
-    }
-
-    /**
      * Format currency
      */
     _formatCurrency(amount) {
@@ -76,31 +181,13 @@ class FinSiteCategoryChart extends HTMLElement {
         }).format(amount || 0);
     }
 
-    /**
-     * Format date for display
-     */
-    _formatDate(dateStr) {
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    }
-
     render() {
-        // Calculate max amount for scaling bars
-        const maxAmount = Math.max(...this.categories.map(c => c.amount || 0), 1);
+        // Destroy existing chart before re-rendering
+        this._destroyChart();
 
-        // Generate bar chart HTML
-        const barsHtml = this.categories.length > 0 
-            ? this.categories.map((cat, index) => {
-                const percentage = ((cat.amount || 0) / maxAmount) * 100;
-                const color = this._getCategoryColor(index);
-                return `
-                    <div class="bar-container" data-category-id="${cat.id}">
-                        <div class="bar" style="height: ${Math.max(percentage, 5)}%; background: ${color};" title="${cat.name}: ${this._formatCurrency(cat.amount)}"></div>
-                        <span class="bar-label">${cat.name.substring(0, 4)}</span>
-                        <span class="bar-amount">${this._formatCurrency(cat.amount)}</span>
-                    </div>
-                `;
-            }).join('')
+        // Generate chart area HTML - either canvas or no-data message
+        const chartAreaHtml = this.categories.length > 0 
+            ? `<canvas id="categoryChart"></canvas>`
             : `<div class="no-data">No categories</div>`;
 
         this.shadowRoot.innerHTML = `
@@ -168,55 +255,14 @@ class FinSiteCategoryChart extends HTMLElement {
 
                 .chart-area {
                     height: 140px;
-                    display: flex;
-                    align-items: flex-end;
-                    justify-content: space-around;
-                    gap: 0.75rem;
                     padding: 0.5rem 0;
                     border-top: 1px solid #334155;
+                    position: relative;
                 }
 
-                .bar-container {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    gap: 0.25rem;
-                    flex: 1;
-                    max-width: 60px;
-                    height: 100%;
-                    justify-content: flex-end;
-                    cursor: pointer;
-                    transition: transform 0.15s ease;
-                }
-
-                .bar-container:hover {
-                    transform: scale(1.05);
-                }
-
-                .bar-container:hover .bar {
-                    filter: brightness(1.2);
-                }
-
-                .bar {
-                    width: 100%;
-                    min-height: 4px;
-                    border-radius: 4px 4px 0 0;
-                    transition: all 0.3s ease;
-                }
-
-                .bar-label {
-                    font-size: 0.625rem;
-                    color: #94a3b8;
-                    text-transform: uppercase;
-                    letter-spacing: 0.02em;
-                    text-align: center;
-                    white-space: nowrap;
-                }
-
-                .bar-amount {
-                    font-size: 0.625rem;
-                    color: #64748b;
-                    font-weight: 500;
+                .chart-area canvas {
+                    width: 100% !important;
+                    height: 100% !important;
                 }
 
                 .no-data {
@@ -225,6 +271,10 @@ class FinSiteCategoryChart extends HTMLElement {
                     text-align: center;
                     padding: 2rem;
                     width: 100%;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
                 }
 
                 .category-count {
@@ -260,7 +310,7 @@ class FinSiteCategoryChart extends HTMLElement {
                     <span class="total-amount">${this._formatCurrency(this.totalSpent)}</span>
                 </div>
                 <div class="chart-area">
-                    ${barsHtml}
+                    ${chartAreaHtml}
                 </div>
                 <div class="category-count">${this.transactions.length} transactions · ${this.categories.length} categories</div>
                 <div class="view-details">Click to view details →</div>
