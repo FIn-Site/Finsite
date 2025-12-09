@@ -1,8 +1,28 @@
 /**
- * Transactions Web Component for FinSite
- * Refactored UI/UX with sticky header, date grouping, and advanced filters
+ * @fileoverview Transactions Web Component for FinSite.
+ * Full-featured transaction list with filtering, sorting, and manual entry.
+ * @module components/transactions
+ */
+
+/**
+ * Transactions Web Component.
+ * 
+ * Features:
+ * - Date-grouped transaction list with sticky headers
+ * - Advanced filtering (scope, search, date range, groups, categories)
+ * - Sorting (newest, oldest, amount high/low)
+ * - Multi-select for bulk operations
+ * - Manual transaction entry modal
+ * 
+ * @extends HTMLElement
+ * @fires add-transaction - When new transaction submitted {group, category, amount, date, merchant, notes}
+ * @fires open-manual-entry - When manual entry modal opened {source: string}
  */
 class FinSiteTransactions extends HTMLElement {
+    /**
+     * Initialize transactions component.
+     * Sets up Shadow DOM, filter state, and UI state.
+     */
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });

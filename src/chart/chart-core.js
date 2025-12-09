@@ -1,17 +1,17 @@
 /**
- * Chart Core Module for FinSite
+ * @fileoverview Chart.js integration layer for FinSite.
  * 
+ * Performance Optimization:
+ * - Lazy-loads Chart.js only when needed (on dashboard render)
+ * - Registers only required components (no time scale adapter)
+ * - Applies global defaults in one place
+ * - Provides factory functions for dashboard charts
  * 
+ * Architecture Note:
+ * Uses string labels for X-axis, not time scale, so date-fns adapter
+ * is intentionally not loaded (reduces bundle size).
  * 
- * This module:
- * 1. Lazy-loads Chart.js only when needed (on dashboard render)
- * 2. Registers only the components we actually use
- * 3. Applies global defaults in one place
- * 4. Exports factory functions for creating dashboard charts
- * 
- * 
- * We use string labels for the X-axis, not a time scale,
- * so the date adapter is intentionally not loaded.
+ * @module chart-core
  */
 
 // Module state
@@ -63,9 +63,14 @@ export const CHART_COLORS = [
 ];
 
 /**
- * Dynamically load a script and return a promise
+ * Dynamically load a script and return a promise.
+ * 
+ * Checks if script is already loaded before injecting.
+ * 
+ * @private
  * @param {string} src - Script source URL
  * @returns {Promise<void>}
+ * @throws {Error} If script fails to load
  */
 function loadScript(src) {
     return new Promise((resolve, reject) => {
@@ -85,9 +90,17 @@ function loadScript(src) {
 }
 
 /**
- * Initialize Chart.js with required components
- * Uses dynamic script loading for lazy loading
+ * Initialize Chart.js with required components.
+ * 
+ * Uses dynamic script loading for lazy initialization. Returns cached
+ * instance if already loaded. Call this before creating any charts.
+ * 
+ * Performance: Only loads Chart.js when first chart is rendered,
+ * not on initial page load.
+ * 
+ * @async
  * @returns {Promise<typeof Chart>} The configured Chart constructor
+ * @throws {Error} If Chart.js fails to load
  */
 export async function initChartCore() {
     // Return cached instance if already initialized
@@ -114,8 +127,15 @@ export async function initChartCore() {
 }
 
 /**
- * Internal initialization logic
- * Loads Chart.js via script injection (no date adapter - OPTIMIZATION C)
+ * Internal initialization logic.
+ * 
+ * Loads Chart.js via script injection. Does NOT load date-fns adapter
+ * as we use categorical X-axis with string labels.
+ * 
+ * @private
+ * @async
+ * @returns {Promise<typeof Chart>} The Chart constructor
+ * @throws {Error} If Chart.js fails to load or initialize
  */
 async function _doInit() {
     try {
@@ -159,8 +179,13 @@ async function _doInit() {
 }
 
 /**
- * Apply global defaults to Chart.js
- * @param {typeof Chart} Chart 
+ * Apply global defaults to Chart.js instance.
+ * 
+ * Sets font, color, animation, layout, and plugin defaults
+ * for consistent styling across all charts.
+ * 
+ * @private
+ * @param {typeof Chart} Chart - Chart.js constructor
  */
 function _applyDefaults(Chart) {
     // Font defaults
@@ -181,8 +206,12 @@ function _applyDefaults(Chart) {
 }
 
 /**
- * Check if Chart.js is available (either via module or global)
- * @returns {typeof Chart | null}
+ * Get Chart.js constructor if available.
+ * 
+ * Checks for cached instance first, then global Chart variable.
+ * Returns null if Chart.js not yet loaded.
+ * 
+ * @returns {typeof Chart | null} Chart.js constructor or null
  */
 export function getChart() {
     if (_chartInstance) return _chartInstance;
@@ -191,8 +220,9 @@ export function getChart() {
 }
 
 /**
- * Check if chart core is initialized
- * @returns {boolean}
+ * Check if Chart.js has been initialized.
+ * 
+ * @returns {boolean} True if Chart.js is loaded and ready
  */
 export function isInitialized() {
     return _isInitialized || typeof Chart !== 'undefined';
@@ -203,12 +233,16 @@ export function isInitialized() {
 // ============================================================
 
 /**
- * Create a line chart configuration for spending over time
- * @param {Object} options
- * @param {string[]} options.labels - Month labels
- * @param {number[]} options.values - Spending values
+ * Create a line chart configuration for spending over time.
+ * 
+ * Generates a gradient-filled line chart with hover effects.
+ * Used for 6-month spending trend visualization.
+ * 
+ * @param {Object} options - Configuration options
+ * @param {string[]} options.labels - Month labels (e.g., ['Jun', 'Jul', 'Aug'])
+ * @param {number[]} options.values - Spending values for each month
  * @param {CanvasRenderingContext2D} options.ctx - Canvas context (for gradient)
- * @param {boolean} options.animate - Whether to animate
+ * @param {boolean} [options.animate=true] - Whether to animate chart
  * @returns {Object} Chart.js configuration object
  */
 export function createLineChartConfig({ labels, values, ctx, animate = true }) {
@@ -287,11 +321,15 @@ export function createLineChartConfig({ labels, values, ctx, animate = true }) {
 }
 
 /**
- * Create a bar chart configuration for spending by category
- * @param {Object} options
- * @param {string[]} options.labels - Category labels
- * @param {number[]} options.values - Spending values
- * @param {boolean} options.animate - Whether to animate
+ * Create a bar chart configuration for spending by category.
+ * 
+ * Generates a horizontal bar chart with color-coded categories.
+ * Used for top 5 spending groups visualization.
+ * 
+ * @param {Object} options - Configuration options
+ * @param {string[]} options.labels - Category/group labels
+ * @param {number[]} options.values - Spending values for each category
+ * @param {boolean} [options.animate=true] - Whether to animate chart
  * @returns {Object} Chart.js configuration object
  */
 export function createBarChartConfig({ labels, values, animate = true }) {
@@ -352,9 +390,16 @@ export function createBarChartConfig({ labels, values, animate = true }) {
 }
 
 /**
- * Format currency value for display
- * @param {number} value 
- * @returns {string}
+ * Format currency value for display in charts.
+ * 
+ * Uses compact format for values >= 1000 (no decimals),
+ * and 2 decimal places for smaller values.
+ * 
+ * @param {number} value - Numeric value to format
+ * @returns {string} Formatted currency string (without $ symbol)
+ * @example
+ * formatCurrency(1234.56) // "1,234"
+ * formatCurrency(42.50) // "42.50"
  */
 export function formatCurrency(value) {
     if (value >= 1000) {

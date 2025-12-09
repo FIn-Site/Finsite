@@ -1,8 +1,29 @@
 /**
- * FinSiteController - Coordinates between Model and View
- * Handles user interactions and application logic
+ * @fileoverview Controller layer for FinSite application.
+ * Coordinates between Model and View following MVC pattern.
+ * @module financeController
+ */
+
+/**
+ * FinSite Controller - Coordinates between Model and View.
+ * 
+ * Responsibilities:
+ * - Handles user interactions and application events
+ * - Orchestrates data flow between Model and View
+ * - Manages navigation and routing
+ * - Coordinates dashboard updates with aggregated data
+ * 
+ * @class
  */
 export class FinSiteController {
+    /**
+     * Create a new FinSiteController.
+     * 
+     * Binds navigation and transaction handlers to the view.
+     * 
+     * @param {import('./financeModel.js').FinSiteModel} model - Model instance
+     * @param {import('./financeView.js').FinSiteView} view - View instance
+     */
     constructor(model, view) {
         this.model = model;
         this.view = view;
@@ -18,8 +39,13 @@ export class FinSiteController {
     }
 
     /**
-     * Initialize the controller
-     * Sets up event listeners and initial data
+     * Initialize the controller.
+     * 
+     * Loads data from storage via model, sets default route,
+     * renders initial view, and populates dashboard charts.
+     * 
+     * @async
+     * @returns {Promise<void>}
      */
     async init() {
         console.log('Controller initialization started');
@@ -53,8 +79,11 @@ export class FinSiteController {
   
 
     /**
-     * Handle user interactions
-     * @param {string} action - Action type
+     * Handle generic user interactions.
+     * 
+     * Routes actions to appropriate handler methods.
+     * 
+     * @param {string} action - Action type (e.g., 'navigate')
      * @param {Object} payload - Action data
      */
     handleAction(action, payload) {
@@ -68,8 +97,12 @@ export class FinSiteController {
     }
 
     /**
-     * Navigate to different views
-     * @param {string} route - Route to navigate to
+     * Navigate to different views.
+     * 
+     * Updates model state, refreshes view, and triggers dashboard
+     * data refresh when navigating to dashboard.
+     * 
+     * @param {string} route - Route to navigate to (e.g., 'dashboard', 'transactions')
      */
     navigate(route) {
         console.log(`🧭 Navigating to: ${route}`);
@@ -84,9 +117,14 @@ export class FinSiteController {
     }
 
     /**
-     * Refresh dashboard with aggregated data from model
-     * Called after initialization, navigation to dashboard, and data changes
-     * @param {boolean} isHeavyUpdate - True for bulk updates (CSV import)
+     * Refresh dashboard with aggregated data from model.
+     * 
+     * Fetches pre-computed chart data and panel summary from model,
+     * then passes to view for rendering. Called after initialization,
+     * navigation to dashboard, and data changes.
+     * 
+     * @private
+     * @param {boolean} [isHeavyUpdate=false] - True for bulk updates (CSV import), disables animations
      */
     _refreshDashboard(isHeavyUpdate = false) {
         // Get pre-aggregated chart data from model
@@ -118,8 +156,20 @@ export class FinSiteController {
     }
 
     /**
-     * Handle adding a new transaction from the manual entry form
+     * Handle adding a new transaction from the manual entry form.
+     * 
+     * Persists transaction via model, notifies transactions component,
+     * updates view, and refreshes dashboard with animation.
+     * 
+     * @async
      * @param {Object} transactionData - Transaction data from the form
+     * @param {string} transactionData.group - Group ID
+     * @param {string} transactionData.category - Category ID
+     * @param {number} transactionData.amount - Transaction amount
+     * @param {string} transactionData.date - ISO date string (YYYY-MM-DD)
+     * @param {string} [transactionData.merchant] - Merchant name
+     * @param {string} [transactionData.notes] - Additional notes
+     * @returns {Promise<void>}
      */
     async handleAddTransaction(transactionData) {
         console.log('💰 Handling add transaction:', transactionData);
@@ -155,9 +205,15 @@ export class FinSiteController {
     }
 
     /**
-     * Handle bulk transaction import (CSV)
-     * OPTIMIZATION A: Uses model.addTransactionsBulk for single-pass aggregate rebuild
-     * @param {Array} transactions - Array of transaction objects
+     * Handle bulk transaction import (e.g., CSV upload).
+     * 
+     * Performance: Uses model.addTransactionsBulk for single-pass
+     * aggregate rebuild. Dashboard refresh without animations for
+     * better performance with large datasets.
+     * 
+     * @async
+     * @param {Array<Object>} transactions - Array of transaction objects
+     * @returns {Promise<void>}
      */
     async handleBulkImport(transactions) {
         console.log('📦 Handling bulk import:', transactions.length, 'transactions');
@@ -180,8 +236,14 @@ export class FinSiteController {
     }
 
     /**
-     * Handle deleting transactions
-     * @param {Array} ids - Array of transaction IDs to delete
+     * Handle deleting one or more transactions.
+     * 
+     * Deletes via model, updates view, and refreshes dashboard.
+     * Disables animations if deleting more than 5 transactions.
+     * 
+     * @async
+     * @param {Array<number|string>} ids - Array of transaction IDs to delete
+     * @returns {Promise<void>}
      */
     async handleDeleteTransactions(ids) {
         console.log('🗑️ Handling delete transactions:', ids);

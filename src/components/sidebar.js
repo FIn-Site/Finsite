@@ -1,9 +1,27 @@
 /**
- * Sidebar Web Component for FinSite
- * Mint-style persistent sidebar with collapsible feature
- * Contains header with logo/icons, navigation items, and collapse toggle
+ * @fileoverview Sidebar Web Component for FinSite.
+ * Persistent navigation sidebar with collapsible feature.
+ * @module components/sidebar
+ */
+
+/**
+ * Sidebar Web Component.
+ * 
+ * Features:
+ * - Mint-style persistent sidebar
+ * - Collapsible to icon-only mode
+ * - Logo and navigation items
+ * - Emits 'navigate' and 'sidebar-toggle' events
+ * 
+ * @extends HTMLElement
+ * @fires navigate - When navigation item clicked {page: string}
+ * @fires sidebar-toggle - When collapse state changes {collapsed: boolean}
  */
 class SidebarComponent extends HTMLElement {
+    /**
+     * Initialize sidebar component.
+     * Sets up Shadow DOM and default state.
+     */
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
@@ -11,11 +29,19 @@ class SidebarComponent extends HTMLElement {
         this.isCollapsed = false;
     }
 
+    /**
+     * Lifecycle: Called when component is added to DOM.
+     * Renders UI and sets up event listeners.
+     */
     connectedCallback() {
         this.render();
         this.setupEventListeners();
     }
 
+    /**
+     * Render sidebar UI.
+     * Creates header, navigation items, and collapse toggle.
+     */
     render() {
         this.shadowRoot.innerHTML = `
             <style>
