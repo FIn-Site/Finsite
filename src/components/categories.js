@@ -41,7 +41,6 @@ class FinSiteCategories extends HTMLElement {
         this.newGroupName = '';
         this.selectedCategoryIds = new Set();
         this.newSubcategories = []; // User-created subcategories for the new group
-
     }
 
     connectedCallback() {
@@ -183,9 +182,9 @@ class FinSiteCategories extends HTMLElement {
      */
     updateChartComponents() {
         const charts = this.shadowRoot.querySelectorAll('finsite-category-chart');
-        charts.forEach(chart => {
+        charts.forEach((chart) => {
             const groupId = chart.getAttribute('data-group-id');
-            const breakdown = this.groupBreakdowns.find(b => b.groupId === groupId);
+            const breakdown = this.groupBreakdowns.find((b) => b.groupId === groupId);
             if (breakdown) {
                 chart.setData(breakdown);
             }
@@ -217,7 +216,6 @@ class FinSiteCategories extends HTMLElement {
         }
     }
 
-
     /**
      * Handle deleting a custom group
      */
@@ -232,7 +230,7 @@ class FinSiteCategories extends HTMLElement {
 
         // Confirm deletion
         const confirmed = confirm(`Are you sure you want to delete the group "${groupName}"?\n\nThis will remove the custom group but will not delete any transactions.`);
-        
+
         if (!confirmed) {
             return;
         }
@@ -248,7 +246,7 @@ class FinSiteCategories extends HTMLElement {
             this.dispatchEvent(new CustomEvent('group-deleted', {
                 detail: { groupId, groupName },
                 bubbles: true,
-                composed: true
+                composed: true,
             }));
 
             // Close modal and re-sync from model
@@ -256,7 +254,6 @@ class FinSiteCategories extends HTMLElement {
             await this.loadFromModel();
 
             console.log(`✅ Successfully deleted group: ${groupName}`);
-
         } catch (error) {
             console.error('❌ Failed to delete group:', error);
             alert('Failed to delete group. Please try again.');
@@ -317,7 +314,7 @@ class FinSiteCategories extends HTMLElement {
         const groupId = groupName.toLowerCase().replace(/\s+/g, '-');
 
         // Check if group already exists
-        if (this.groups.find(g => g.id === groupId)) {
+        if (this.groups.find((g) => g.id === groupId)) {
             alert('A group with this name already exists');
             return;
         }
@@ -337,16 +334,16 @@ class FinSiteCategories extends HTMLElement {
             if (subName) {
                 const subId = subName.toLowerCase().replace(/\s+/g, '-');
                 // Only add if not duplicate
-                if (!this.categories.find(c => c.id === subId)) {
+                if (!this.categories.find((c) => c.id === subId)) {
                     const newCategory = {
                         id: subId,
-                        groupId: groupId,
+                        groupId,
                         name: subName,
-                        amount: 0
+                        amount: 0,
                     };
                     // Add new category ID to the selection
                     selectedCategoryIdsArray.push(subId);
-                    
+
                     try {
                         await this._model.addCategory(newCategory);
                         console.log(`💾 Saved new category via model: ${subName}`);
@@ -362,7 +359,7 @@ class FinSiteCategories extends HTMLElement {
             id: groupId,
             name: groupName,
             isCustom: true,
-            categoryIds: selectedCategoryIdsArray // Store which categories belong to this custom group
+            categoryIds: selectedCategoryIdsArray, // Store which categories belong to this custom group
         };
 
         try {
@@ -373,10 +370,10 @@ class FinSiteCategories extends HTMLElement {
             this.dispatchEvent(new CustomEvent('group-created', {
                 detail: {
                     group: newGroup,
-                    categories: []
+                    categories: [],
                 },
                 bubbles: true,
-                composed: true
+                composed: true,
             }));
 
             // Close modal and re-sync
@@ -400,7 +397,7 @@ class FinSiteCategories extends HTMLElement {
         // Group categories by their current group for display
         const categoryGroups = {};
         for (const cat of allCategories) {
-            const group = this.groups.find(g => g.id === cat.groupId);
+            const group = this.groups.find((g) => g.id === cat.groupId);
             const groupName = group?.name || 'Unassigned';
             if (!categoryGroups[groupName]) {
                 categoryGroups[groupName] = [];
@@ -415,7 +412,7 @@ class FinSiteCategories extends HTMLElement {
                 <div class="category-group">
                     <div class="category-group-label">${groupName}</div>
                     <div class="category-checkboxes">
-                        ${cats.map(cat => `
+                        ${cats.map((cat) => `
                             <label class="checkbox-item">
                                 <input type="checkbox" 
                                        class="category-checkbox" 
@@ -526,7 +523,7 @@ class FinSiteCategories extends HTMLElement {
         addSubBtn?.addEventListener('click', () => this.addSubcategoryField());
 
         // Remove subcategory buttons
-        overlay.querySelectorAll('.remove-subcategory-btn').forEach(btn => {
+        overlay.querySelectorAll('.remove-subcategory-btn').forEach((btn) => {
             btn.addEventListener('click', (e) => {
                 const index = parseInt(e.target.dataset.index);
                 this.removeSubcategoryField(index);
@@ -534,9 +531,9 @@ class FinSiteCategories extends HTMLElement {
         });
 
         // Category checkboxes
-        overlay.querySelectorAll('.category-checkbox').forEach(checkbox => {
+        overlay.querySelectorAll('.category-checkbox').forEach((checkbox) => {
             checkbox.addEventListener('change', (e) => {
-                const categoryId = e.target.dataset.categoryId;
+                const { categoryId } = e.target.dataset;
                 if (e.target.checked) {
                     this.selectedCategoryIds.add(categoryId);
                 } else {
@@ -576,7 +573,7 @@ class FinSiteCategories extends HTMLElement {
             style: 'currency',
             currency: 'USD',
             minimumFractionDigits: 2,
-            maximumFractionDigits: 2
+            maximumFractionDigits: 2,
         }).format(amount || 0);
     }
 
@@ -593,9 +590,9 @@ class FinSiteCategories extends HTMLElement {
      */
     _formatCurrencyShort(amount) {
         if (amount >= 1000) {
-            return '$' + (amount / 1000).toFixed(1) + 'k';
+            return `$${(amount / 1000).toFixed(1)}k`;
         }
-        return '$' + Math.round(amount);
+        return `$${Math.round(amount)}`;
     }
 
     /**
@@ -606,11 +603,11 @@ class FinSiteCategories extends HTMLElement {
         if (!overlay) return;
 
         // Check if this is a custom group (can be deleted)
-        const group = this.groups.find(g => g.id === this.selectedGroup?.groupId);
+        const group = this.groups.find((g) => g.id === this.selectedGroup?.groupId);
         const isCustomGroup = group?.isCustom === true;
 
         const transactionsHtml = this.selectedTransactions.length > 0
-            ? this.selectedTransactions.map(tx => `
+            ? this.selectedTransactions.map((tx) => `
                 <div class="transaction-row">
                     <div class="tx-icon">${getCategoryIcon(tx.category)}</div>
                     <div class="tx-details">
@@ -622,7 +619,7 @@ class FinSiteCategories extends HTMLElement {
             `).join('')
             : '<div class="no-transactions">No transactions found</div>';
 
-        const categoryBreakdownHtml = this.selectedCategories.map(cat => `
+        const categoryBreakdownHtml = this.selectedCategories.map((cat) => `
             <div class="category-row">
                 <span class="cat-icon">${getCategoryIcon(cat.id)}</span>
                 <span class="cat-name">${cat.name}</span>
@@ -704,9 +701,9 @@ class FinSiteCategories extends HTMLElement {
 
     render() {
         // Sort groups: default groups first (in original order), then custom groups alphabetically
-        const defaultGroups = this.groups.filter(g => !g.isCustom);
+        const defaultGroups = this.groups.filter((g) => !g.isCustom);
         const customGroups = this.groups
-            .filter(g => g.isCustom)
+            .filter((g) => g.isCustom)
             .sort((a, b) => a.name.localeCompare(b.name));
         const sortedGroups = [...defaultGroups, ...customGroups];
 
@@ -716,7 +713,7 @@ class FinSiteCategories extends HTMLElement {
 
         // Generate chart components for each group or show placeholder
         const chartsHtml = sortedGroups.length > 0
-            ? sortedGroups.map(group => `
+            ? sortedGroups.map((group) => `
                 <finsite-category-chart data-group-id="${group.id}"></finsite-category-chart>
             `).join('')
             : `<div class="loading-card">${this._isLoading ? 'Loading categories…' : 'No categories available'}</div>`;

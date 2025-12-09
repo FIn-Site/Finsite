@@ -2,12 +2,12 @@
 import { initChartCore, createBarChartConfig } from '../chart/chart-core.js';
 import { getGroupIcon } from '../constants/icons.js';
 
-//...
+// ...
 /**
  * Category Chart Web Component for FinSite
  * Reusable bar chart card that displays spending breakdown for a single group
  * Used by the Categories page to show Household, Wealth, Expenses, etc.
- * 
+ *
  * Displays subcategories as bars using Chart.js
  * Clicking opens a modal with transaction details
  */
@@ -19,8 +19,8 @@ class FinSiteCategoryChart extends HTMLElement {
         // Chart data
         this.groupId = '';
         this.groupName = '';
-        this.categories = [];      // { id, name, amount }
-        this.transactions = [];    // Raw transactions for this group
+        this.categories = []; // { id, name, amount }
+        this.transactions = []; // Raw transactions for this group
         this.totalSpent = 0;
         this.hasTransactions = false;
 
@@ -85,8 +85,8 @@ class FinSiteCategoryChart extends HTMLElement {
             const ctx = canvas.getContext('2d');
 
             // Prepare data for Chart.js
-            const labels = this.categories.map(cat => cat.name);
-            const values = this.categories.map(cat => cat.amount || 0);
+            const labels = this.categories.map((cat) => cat.name);
+            const values = this.categories.map((cat) => cat.amount || 0);
 
             const config = createBarChartConfig(labels, values, {
                 datasetOptions: {
@@ -147,7 +147,7 @@ class FinSiteCategoryChart extends HTMLElement {
             style: 'currency',
             currency: 'USD',
             minimumFractionDigits: 0,
-            maximumFractionDigits: 0
+            maximumFractionDigits: 0,
         }).format(amount || 0);
     }
 
@@ -157,8 +157,8 @@ class FinSiteCategoryChart extends HTMLElement {
 
         // Generate chart area HTML - either canvas or no-data message
         const chartAreaHtml = this.hasTransactions && this.categories.length > 0 && this.totalSpent > 0
-            ? `<canvas id="categoryChart"></canvas>`
-            : `<div class="no-data">No transactions yet for this group</div>`;
+            ? '<canvas id="categoryChart"></canvas>'
+            : '<div class="no-data">No transactions yet for this group</div>';
 
         this.shadowRoot.innerHTML = `
             <style>
@@ -295,15 +295,15 @@ class FinSiteCategoryChart extends HTMLElement {
         if (card) {
             card.addEventListener('click', () => {
                 this.dispatchEvent(new CustomEvent('group-selected', {
-                    detail: { 
-                        groupId: this.groupId, 
+                    detail: {
+                        groupId: this.groupId,
                         groupName: this.groupName,
                         categories: this.categories,
                         transactions: this.transactions,
-                        totalSpent: this.totalSpent
+                        totalSpent: this.totalSpent,
                     },
                     bubbles: true,
-                    composed: true
+                    composed: true,
                 }));
             });
         }

@@ -70,7 +70,9 @@ export function filterTransactionsByCategory(transactions = [], categoryIdSet = 
  * @param {string} params.groupId
  * @returns {Object|null}
  */
-export function buildGroupBreakdown({ groups = [], categories = [], transactions = [], groupId }) {
+export function buildGroupBreakdown({
+    groups = [], categories = [], transactions = [], groupId,
+}) {
     const group = groups.find((g) => g.id === groupId);
     if (!group) return null;
 
