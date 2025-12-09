@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      # Linting
+      - name: Run ESLint
+        run: npm run lint
+
+      # Prettier formatting check
+      - name: Check formatting
+        run: npm run format -- --check
+
+      # UNIT TESTS (Node built-in)
+      - name: Run unit tests
+        run: npm test
+
+      # INSTALL PLAYWRIGHT
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      # RUN PLAYWRIGHT E2E TESTS (subject to change paths)
+      - name: Run Playwright tests
+        run: npm run test:e2e
