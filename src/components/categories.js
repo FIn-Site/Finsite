@@ -24,6 +24,8 @@ class FinSiteCategories extends HTMLElement {
         this.categories = [];
         this.transactions = [];
 
+        this._isLoading = true;
+
         // Aggregated views
         this.groupBreakdowns = [];
         this.categoriesWithAmounts = [];
@@ -42,12 +44,21 @@ class FinSiteCategories extends HTMLElement {
 
     }
 
-    async connectedCallback() {
+    connectedCallback() {
         this._connected = true;
-        if (this._model) {
+        // Render immediately with placeholders/loading state
+        this.render();
+        this.setupEventListeners();
+        // Hydrate asynchronously without blocking first paint
+        this._hydrateFromModel();
+    }
+
+    async _hydrateFromModel() {
+        try {
             await this.loadFromModel();
-        } else {
-            // Render a lightweight shell until the model is injected
+        } catch (error) {
+            console.error('❌ Error hydrating categories from model:', error);
+            this._isLoading = false;
             this.render();
             this.setupEventListeners();
         }
@@ -72,24 +83,34 @@ class FinSiteCategories extends HTMLElement {
      * Model remains the single source of truth; no direct storage access here
      */
     async loadFromModel() {
+        this._isLoading = true;
         if (!this._model) {
             console.warn('Categories component has no model reference');
+            this._isLoading = false;
+            this.render();
+            this.setupEventListeners();
             return;
         }
 
         try {
-            this.groups = this._model.getGroups?.() || [];
-            this.categories = this._model.getCategories?.() || [];
-            this.transactions = this._model.getTransactions?.() || [];
+            const groups = this._model.getGroups?.() || [];
+            const categories = this._model.getCategories?.() || [];
+            const transactions = this._model.getTransactions?.() || [];
+
+            this.groups = groups;
+            this.categories = categories;
+            this.transactions = transactions;
             this._refreshAggregates();
+        } catch (error) {
+            console.error('❌ Error loading data from model:', error);
+        } finally {
+            this._isLoading = false;
             this.render();
             this.setupEventListeners();
             // Delay chart update to ensure DOM is ready
             requestAnimationFrame(() => {
                 this.updateChartComponents();
             });
-        } catch (error) {
-            console.error('❌ Error loading data from model:', error);
         }
     }
 
@@ -98,6 +119,7 @@ class FinSiteCategories extends HTMLElement {
      * @param {Object} data - { groups, categories, transactions }
      */
     setData(data) {
+        this._isLoading = false;
         if (data.groups) {
             this.groups = data.groups;
         }
@@ -688,10 +710,16 @@ class FinSiteCategories extends HTMLElement {
             .sort((a, b) => a.name.localeCompare(b.name));
         const sortedGroups = [...defaultGroups, ...customGroups];
 
-        // Generate chart components for each group
-        const chartsHtml = sortedGroups.map(group => `
-            <finsite-category-chart data-group-id="${group.id}"></finsite-category-chart>
-        `).join('');
+        const loadingIndicator = this._isLoading ? `
+            <div class="loading-indicator">Loading categories…</div>
+        ` : '';
+
+        // Generate chart components for each group or show placeholder
+        const chartsHtml = sortedGroups.length > 0
+            ? sortedGroups.map(group => `
+                <finsite-category-chart data-group-id="${group.id}"></finsite-category-chart>
+            `).join('')
+            : `<div class="loading-card">${this._isLoading ? 'Loading categories…' : 'No categories available'}</div>`;
 
         this.shadowRoot.innerHTML = `
             <style>
@@ -734,6 +762,23 @@ class FinSiteCategories extends HTMLElement {
                     font-size: 0.875rem;
                     color: #64748b;
                     margin-top: 0.25rem;
+                }
+
+                .loading-indicator {
+                    color: #94a3b8;
+                    font-size: 0.875rem;
+                }
+
+                .loading-card {
+                    background: #0f172a;
+                    border: 1px dashed #334155;
+                    border-radius: 0.75rem;
+                    padding: 1.5rem;
+                    color: #94a3b8;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-height: 160px;
                 }
 
                 .charts-grid {
@@ -1380,6 +1425,7 @@ class FinSiteCategories extends HTMLElement {
                         <h1 class="page-title">Categories</h1>
                         <p class="page-subtitle">View spending breakdown by group</p>
                     </div>
+                    ${loadingIndicator}
                 </div>
 
                 <div class="charts-grid">
