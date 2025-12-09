@@ -1,6 +1,7 @@
 import '../components/sidebar.js';
 import '../components/dashboard.js';
 import '../components/transactions.js';
+import '../components/categories.js';
 
 /**
  * FinSiteView - Handles all UI rendering and DOM manipulation
@@ -130,6 +131,8 @@ export class FinSiteView {
                 return '<finsite-dashboard></finsite-dashboard>';
             case 'transactions':
                 return '<finsite-transactions></finsite-transactions>';
+            case 'categories':
+                return '<finsite-categories></finsite-categories>';
             default:
                 return `
                     <div class="page-header">

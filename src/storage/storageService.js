@@ -163,6 +163,7 @@ export async function getAllGroups() {
 /**
  * Add or overwrite a group.
  * Group shape: { id: string, name: string, color?: string, icon?: string }
+ * Custom groups also have: { isCustom: true, categoryIds: string[] }
  */
 export async function addGroup(group) {
     const db = await openDatabase();
@@ -178,6 +179,28 @@ export async function addGroup(group) {
 
         request.onerror = (event) => {
             reject(`Failed to add group: ${event.target.error}`);
+        };
+    });
+}
+
+/**
+ * Delete a group by ID.
+ * @param {string} groupId - The ID of the group to delete
+ */
+export async function deleteGroup(groupId) {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction([GROUPS_STORE], 'readwrite');
+        const store = tx.objectStore(GROUPS_STORE);
+
+        const request = store.delete(groupId);
+
+        request.onsuccess = () => {
+            resolve();
+        };
+
+        request.onerror = (event) => {
+            reject(`Failed to delete group: ${event.target.error}`);
         };
     });
 }
