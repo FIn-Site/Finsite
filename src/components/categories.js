@@ -130,8 +130,8 @@ class FinSiteCategories extends HTMLElement {
         this.selectedCategoryIds = new Set();
         this.newSubcategories = []; // User-created subcategories for the new group
 
-        // Week chart instance (for cleanup)
-        this._weekChart = null;
+        // Modal category chart instance (for cleanup)
+        this._modalCategoryChart = null;
     }
 
     async connectedCallback() {
@@ -297,8 +297,8 @@ class FinSiteCategories extends HTMLElement {
      */
     closeModal() {
         this.isModalOpen = false;
-        // Destroy week chart to prevent memory leaks
-        this._destroyWeekChart();
+        // Destroy modal category chart to prevent memory leaks
+        this._destroyModalCategoryChart();
         const overlay = this.shadowRoot.querySelector('.modal-overlay');
         if (overlay) {
             overlay.classList.add('hidden');
@@ -306,12 +306,12 @@ class FinSiteCategories extends HTMLElement {
     }
 
     /**
-     * Destroy the week-over-week chart instance
+     * Destroy the modal category chart instance
      */
-    _destroyWeekChart() {
-        if (this._weekChart) {
-            this._weekChart.destroy();
-            this._weekChart = null;
+    _destroyModalCategoryChart() {
+        if (this._modalCategoryChart) {
+            this._modalCategoryChart.destroy();
+            this._modalCategoryChart = null;
         }
     }
 
@@ -725,155 +725,24 @@ class FinSiteCategories extends HTMLElement {
     }
 
     /**
-     * Get week-over-week spending data for the chart
-     * Returns spending aggregated by day for this week and last week
+     * Generate HTML for the modal category chart (money × category)
      */
-    _getWeekOverWeekData(transactions) {
-        const today = new Date();
-        const dayOfWeek = today.getDay(); // 0 = Sunday
-        
-        // Calculate start of this week (Sunday)
-        const thisWeekStart = new Date(today);
-        thisWeekStart.setDate(today.getDate() - dayOfWeek);
-        thisWeekStart.setHours(0, 0, 0, 0);
-        
-        // Calculate start of last week (Sunday)
-        const lastWeekStart = new Date(thisWeekStart);
-        lastWeekStart.setDate(thisWeekStart.getDate() - 7);
-        
-        // Calculate end of last week (Saturday)
-        const lastWeekEnd = new Date(thisWeekStart);
-        lastWeekEnd.setDate(thisWeekStart.getDate() - 1);
-        lastWeekEnd.setHours(23, 59, 59, 999);
-
-        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        
-        // Initialize data structure
-        const weekData = {
-            thisWeek: Array(7).fill(0),
-            lastWeek: Array(7).fill(0),
-            thisWeekTotal: 0,
-            lastWeekTotal: 0,
-            days: days
-        };
-
-        // Aggregate transactions by day
-        for (const tx of transactions) {
-            const txDate = new Date(tx.date);
-            txDate.setHours(0, 0, 0, 0);
-            const amount = Math.abs(Number(tx.amount) || 0);
-            
-            // Check if transaction is in this week
-            if (txDate >= thisWeekStart && txDate <= today) {
-                const dayIndex = txDate.getDay();
-                weekData.thisWeek[dayIndex] += amount;
-                weekData.thisWeekTotal += amount;
-            }
-            // Check if transaction is in last week
-            else if (txDate >= lastWeekStart && txDate <= lastWeekEnd) {
-                const dayIndex = txDate.getDay();
-                weekData.lastWeek[dayIndex] += amount;
-                weekData.lastWeekTotal += amount;
-            }
-        }
-
-        // Calculate max value for scaling
-        weekData.maxValue = Math.max(
-            ...weekData.thisWeek,
-            ...weekData.lastWeek,
-            1 // Prevent division by zero
-        );
-
-        // Calculate percent change
-        if (weekData.lastWeekTotal > 0) {
-            weekData.percentChange = ((weekData.thisWeekTotal - weekData.lastWeekTotal) / weekData.lastWeekTotal) * 100;
-        } else {
-            weekData.percentChange = weekData.thisWeekTotal > 0 ? 100 : 0;
-        }
-
-        // Calculate daily averages (only count days with data for this week up to today)
-        const daysThisWeek = dayOfWeek + 1; // Days elapsed this week including today
-        weekData.thisWeekAvg = weekData.thisWeekTotal / daysThisWeek;
-        weekData.lastWeekAvg = weekData.lastWeekTotal / 7;
-
-        return weekData;
-    }
-
-    /**
-     * Generate HTML for the week-over-week comparison chart
-     * Uses Chart.js canvas with daily % change badges below
-     */
-    _generateWeekChartHtml(weekData) {
-        // Get current day of week (0 = Sunday, 6 = Saturday)
-        const today = new Date();
-        const currentDayIndex = today.getDay();
-
-        // Generate daily % change badges (kept as HTML below chart)
-        const badgesHtml = weekData.days.map((day, index) => {
-            const lastWeekAmt = weekData.lastWeek[index];
-            const thisWeekAmt = weekData.thisWeek[index];
-            
-            // Only show comparison for today and past days (not future days)
-            const isFutureDay = index > currentDayIndex;
-            
-            let dailyChangeHtml = '';
-            if (isFutureDay) {
-                dailyChangeHtml = `<div class="day-change neutral"></div>`;
-            } else if (lastWeekAmt > 0 && thisWeekAmt > 0) {
-                const dailyChange = ((thisWeekAmt - lastWeekAmt) / lastWeekAmt) * 100;
-                const dailyChangeClass = dailyChange >= 0 ? 'change-up' : 'change-down';
-                const dailyChangeSign = dailyChange >= 0 ? '+' : '';
-                dailyChangeHtml = `<div class="day-change ${dailyChangeClass}">${dailyChangeSign}${dailyChange.toFixed(0)}%</div>`;
-            } else if (thisWeekAmt > 0 && lastWeekAmt === 0) {
-                dailyChangeHtml = `<div class="day-change change-up">NEW</div>`;
-            } else if (lastWeekAmt > 0 && thisWeekAmt === 0) {
-                dailyChangeHtml = `<div class="day-change change-down">-100%</div>`;
-            } else {
-                dailyChangeHtml = `<div class="day-change neutral">--</div>`;
-            }
-
-            return `
-                <div class="badge-day">
-                    <div class="badge-day-label">${day}</div>
-                    ${dailyChangeHtml}
-                </div>
-            `;
-        }).join('');
-
-        const changeIcon = weekData.percentChange >= 0 ? '📈' : '📉';
-        const changeClass = weekData.percentChange >= 0 ? 'change-up' : 'change-down';
-        const changeSign = weekData.percentChange >= 0 ? '+' : '';
+    _generateCategoryChartHtml(categories) {
+        const safeCategories = Array.isArray(categories) ? categories : [];
+        const total = safeCategories.reduce((sum, cat) => sum + (Math.abs(Number(cat.amount)) || 0), 0);
 
         return `
             <div class="section">
-                <h3 class="section-title">This Week vs Last Week</h3>
-                <div class="week-chart-container">
-                    <div class="week-chart-canvas-wrapper">
-                        <canvas id="weekComparisonChart"></canvas>
-                    </div>
-                    <div class="daily-badges">
-                        ${badgesHtml}
+                <h3 class="section-title">Spending by Category</h3>
+                <div class="category-chart-container">
+                    <div class="category-chart-canvas-wrapper">
+                        <canvas id="modalCategoryChart"></canvas>
                     </div>
                     <div class="chart-legend">
                         <div class="legend-item">
-                            <span class="legend-color legend-this-week"></span>
-                            <span class="legend-label">This Week</span>
-                            <span class="legend-value">${this._formatCurrency(weekData.thisWeekTotal)}</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-color legend-last-week"></span>
-                            <span class="legend-label">Last Week</span>
-                            <span class="legend-value">${this._formatCurrency(weekData.lastWeekTotal)}</span>
-                        </div>
-                    </div>
-                    <div class="chart-stats">
-                        <div class="stat-item">
-                            <span class="stat-icon">${changeIcon}</span>
-                            <span class="stat-text ${changeClass}">${changeSign}${weekData.percentChange.toFixed(1)}% vs last week</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-icon">📊</span>
-                            <span class="stat-text">Avg/day: ${this._formatCurrency(weekData.thisWeekAvg)} (this) vs ${this._formatCurrency(weekData.lastWeekAvg)} (last)</span>
+                            <span class="legend-color legend-total"></span>
+                            <span class="legend-label">Total</span>
+                            <span class="legend-value">${this._formatCurrency(total)}</span>
                         </div>
                     </div>
                 </div>
@@ -882,72 +751,69 @@ class FinSiteCategories extends HTMLElement {
     }
 
     /**
-     * Initialize the week-over-week Chart.js chart
+     * Initialize the modal category Chart.js chart (money × category)
      */
-    async _initWeekChart(weekData) {
-        const canvas = this.shadowRoot.querySelector('#weekComparisonChart');
+    async _initCategoryChart(categories) {
+        const canvas = this.shadowRoot.querySelector('#modalCategoryChart');
         if (!canvas) return;
 
-        // Destroy existing chart
-        this._destroyWeekChart();
+        this._destroyModalCategoryChart();
+
+        const safeCategories = Array.isArray(categories) ? categories : [];
+        if (safeCategories.length === 0) return;
 
         try {
             const Chart = await initChartCore();
             const ctx = canvas.getContext('2d');
 
-            this._weekChart = new Chart(ctx, {
+            const labels = safeCategories.map((cat) => cat.name);
+            const values = safeCategories.map((cat) => Math.abs(Number(cat.amount)) || 0);
+
+            this._modalCategoryChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: weekData.days,
+                    labels,
                     datasets: [
                         {
-                            label: 'Last Week',
-                            data: weekData.lastWeek,
-                            backgroundColor: 'rgba(100, 116, 139, 0.8)',
-                            borderRadius: 4,
+                            data: values,
+                            backgroundColor: labels.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+                            borderRadius: 6,
                             borderSkipped: false,
-                            barPercentage: 0.8,
-                            categoryPercentage: 0.7
-                        },
-                        {
-                            label: 'This Week',
-                            data: weekData.thisWeek,
-                            backgroundColor: 'rgba(59, 130, 246, 0.9)',
-                            borderRadius: 4,
-                            borderSkipped: false,
-                            barPercentage: 0.8,
-                            categoryPercentage: 0.7
+                            barThickness: 32,
+                            maxBarThickness: 40
                         }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    animation: {
-                        duration: 400
-                    },
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
-                    },
+                    indexAxis: 'x',
+                    animation: { duration: 400 },
                     scales: {
                         x: {
+                            type: 'category',
                             grid: {
-                                display: false
+                                color: 'rgba(148, 163, 184, 0.1)',
+                                drawBorder: false
                             },
                             ticks: {
-                                color: '#94a3b8',
-                                font: { size: 11 }
+                                color: '#e2e8f0',
+                                font: { size: 11, weight: '500' },
+                                callback: (value) => {
+                                    const label = typeof value === 'string' ? value : labels[value] ?? '';
+                                    return String(label).substring(0, 12);
+                                }
                             }
                         },
                         y: {
+                            type: 'linear',
                             grid: {
                                 color: 'rgba(148, 163, 184, 0.1)',
                                 drawBorder: false
                             },
                             ticks: {
                                 color: '#64748b',
-                                font: { size: 10 },
+                                font: { size: 11 },
                                 callback: (value) => '$' + formatCurrency(value)
                             },
                             beginAtZero: true
@@ -956,27 +822,15 @@ class FinSiteCategories extends HTMLElement {
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: '#1e293b',
-                            titleColor: '#f1f5f9',
-                            bodyColor: '#94a3b8',
-                            borderColor: '#334155',
-                            borderWidth: 1,
-                            padding: 10,
                             callbacks: {
-                                title: (context) => {
-                                    // Map abbreviated day to full day name
-                                    const fullDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                                    const dayIndex = context[0].dataIndex;
-                                    return fullDays[dayIndex];
-                                },
-                                label: (context) => `${context.dataset.label}: $${formatCurrency(context.raw)}`
+                                label: (context) => `$${formatCurrency(context.raw)}`
                             }
                         }
                     }
                 }
             });
         } catch (error) {
-            console.error('Failed to initialize week chart:', error);
+            console.error('Failed to initialize category chart:', error);
         }
     }
 
@@ -991,9 +845,8 @@ class FinSiteCategories extends HTMLElement {
         const group = this.groups.find(g => g.id === this.selectedGroup?.groupId);
         const isCustomGroup = group?.isCustom === true;
 
-        // Generate week-over-week chart data
-        const weekData = this._getWeekOverWeekData(this.selectedTransactions);
-        const weekChartHtml = this._generateWeekChartHtml(weekData);
+        // Generate category chart data for modal
+        const categoryChartHtml = this._generateCategoryChartHtml(this.selectedCategories);
 
         const transactionsHtml = this.selectedTransactions.length > 0
             ? this.selectedTransactions.map(tx => `
@@ -1036,7 +889,7 @@ class FinSiteCategories extends HTMLElement {
                 </div>
 
                 <div class="modal-body">
-                    ${weekChartHtml}
+                    ${categoryChartHtml}
 
                     <div class="section">
                         <h3 class="section-title">Category Breakdown</h3>
@@ -1078,9 +931,9 @@ class FinSiteCategories extends HTMLElement {
             }
         });
 
-        // Initialize week-over-week chart after DOM is ready
+        // Initialize modal category chart after DOM is ready
         requestAnimationFrame(() => {
-            this._initWeekChart(weekData);
+            this._initCategoryChart(this.selectedCategories);
         });
     }
 
