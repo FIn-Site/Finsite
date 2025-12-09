@@ -22,6 +22,7 @@ class FinSiteCategoryChart extends HTMLElement {
         this.categories = [];      // { id, name, amount }
         this.transactions = [];    // Raw transactions for this group
         this.totalSpent = 0;
+        this.hasTransactions = false;
 
         // Chart.js instance
         this._chart = null;
@@ -44,8 +45,11 @@ class FinSiteCategoryChart extends HTMLElement {
     setData(data) {
         this.groupId = data.groupId || '';
         this.groupName = data.groupName || 'Unknown';
-        this.categories = Array.isArray(data.categories) ? data.categories : [];
         this.transactions = Array.isArray(data.transactions) ? data.transactions : [];
+        this.hasTransactions = this.transactions.length > 0;
+        this.categories = this.hasTransactions && Array.isArray(data.categories)
+            ? data.categories
+            : [];
         this.totalSpent = this.categories.reduce((sum, cat) => sum + (cat.amount || 0), 0);
         this.render();
         // Initialize chart after render
@@ -66,8 +70,8 @@ class FinSiteCategoryChart extends HTMLElement {
      * Initialize Chart.js bar chart
      */
     async _initChart() {
-        // Don't create chart if no categories
-        if (this.categories.length === 0) return;
+        // Don't create chart if no real data
+        if (!this.hasTransactions || this.categories.length === 0 || this.totalSpent === 0) return;
 
         const canvas = this.shadowRoot.querySelector('#categoryChart');
         if (!canvas) return;
@@ -152,9 +156,9 @@ class FinSiteCategoryChart extends HTMLElement {
         this._destroyChart();
 
         // Generate chart area HTML - either canvas or no-data message
-        const chartAreaHtml = this.categories.length > 0 
+        const chartAreaHtml = this.hasTransactions && this.categories.length > 0 && this.totalSpent > 0
             ? `<canvas id="categoryChart"></canvas>`
-            : `<div class="no-data">No categories</div>`;
+            : `<div class="no-data">No transactions yet for this group</div>`;
 
         this.shadowRoot.innerHTML = `
             <style>

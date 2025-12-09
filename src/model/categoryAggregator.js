@@ -71,10 +71,24 @@ export function filterTransactionsByCategory(transactions = [], categoryIdSet = 
  * @returns {Object|null}
  */
 export function buildGroupBreakdown({ groups = [], categories = [], transactions = [], groupId }) {
-    const totals = calculateCategoryTotals(transactions);
-    const categoriesWithAmounts = attachCategoryAmounts(categories, totals);
     const group = groups.find((g) => g.id === groupId);
-    return buildGroupBreakdownFromPrepared({ group, categoriesWithAmounts, transactions });
+    if (!group) return null;
+
+    const safeTransactions = Array.isArray(transactions) ? transactions : [];
+    if (safeTransactions.length === 0) {
+        return {
+            groupId: group.id,
+            groupName: group.name || 'Group',
+            groupIsCustom: Boolean(group.isCustom),
+            categories: [],
+            transactions: [],
+            totalSpent: 0,
+        };
+    }
+
+    const totals = calculateCategoryTotals(safeTransactions);
+    const categoriesWithAmounts = attachCategoryAmounts(categories, totals);
+    return buildGroupBreakdownFromPrepared({ group, categoriesWithAmounts, transactions: safeTransactions });
 }
 
 /**
@@ -86,13 +100,27 @@ export function buildGroupBreakdown({ groups = [], categories = [], transactions
  * @returns {{ breakdowns: Object[], categoriesWithAmounts: Object[] }}
  */
 export function buildCategoryAggregates({ groups = [], categories = [], transactions = [] }) {
-    const totals = calculateCategoryTotals(transactions);
+    const safeTransactions = Array.isArray(transactions) ? transactions : [];
+
+    if (safeTransactions.length === 0) {
+        const emptyBreakdowns = groups.filter(Boolean).map((group) => ({
+            groupId: group.id,
+            groupName: group.name || 'Group',
+            groupIsCustom: Boolean(group.isCustom),
+            categories: [],
+            transactions: [],
+            totalSpent: 0,
+        }));
+        return { breakdowns: emptyBreakdowns, categoriesWithAmounts: [] };
+    }
+
+    const totals = calculateCategoryTotals(safeTransactions);
     const categoriesWithAmounts = attachCategoryAmounts(categories, totals);
 
     const breakdowns = groups.map((group) => buildGroupBreakdownFromPrepared({
         group,
         categoriesWithAmounts,
-        transactions,
+        transactions: safeTransactions,
     })).filter(Boolean);
 
     return { breakdowns, categoriesWithAmounts };
