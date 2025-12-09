@@ -354,6 +354,10 @@ class SidebarComponent extends HTMLElement {
                     <span class="nav-item-icon">💳</span>
                     <span class="nav-item-text">Transactions</span>
                 </a>
+                <a class="nav-item" data-page="categories" data-tooltip="Categories">
+                    <span class="nav-item-icon">🏷️</span>
+                    <span class="nav-item-text">Categories</span>
+                </a>
             </nav>
 
             <div class="sidebar-footer">
