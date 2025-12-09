@@ -294,60 +294,135 @@ export function createLineChartConfig({
  * @param {boolean} options.animate - Whether to animate
  * @returns {Object} Chart.js configuration object
  */
-export function createBarChartConfig({ labels, values, animate = true }) {
+export function createBarChartConfig(labels, values, overrides = {}) {
+    const {
+        animate = true,
+        title,
+        indexAxis = 'y',
+        legend = { display: false },
+        datasetOptions = {},
+        options: userOptions = {},
+    } = overrides;
+
+    const isHorizontal = indexAxis === 'y';
+
+    const dataset = {
+        data: values,
+        backgroundColor: labels.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+        borderRadius: 6,
+        borderSkipped: false,
+        barThickness: isHorizontal ? 32 : 24,
+        maxBarThickness: 40,
+        ...datasetOptions,
+    };
+
+    const baseScales = isHorizontal
+        ? {
+            x: {
+                grid: {
+                    color: 'rgba(148, 163, 184, 0.1)',
+                    drawBorder: false,
+                },
+                ticks: {
+                    color: '#64748b',
+                    font: { size: 11 },
+                    callback: (value) => `$${formatCurrency(value)}`,
+                },
+                beginAtZero: true,
+            },
+            y: {
+                type: 'category',
+                grid: { display: false },
+                ticks: {
+                    color: '#e2e8f0',
+                    font: { size: 11, weight: '500' },
+                },
+            },
+        }
+        : {
+            x: {
+                type: 'category',
+                grid: { display: false },
+                ticks: {
+                    color: '#e2e8f0',
+                    font: { size: 11, weight: '500' },
+                },
+            },
+            y: {
+                grid: {
+                    color: 'rgba(148, 163, 184, 0.1)',
+                    drawBorder: false,
+                },
+                ticks: {
+                    color: '#64748b',
+                    font: { size: 11 },
+                    callback: (value) => `$${formatCurrency(value)}`,
+                },
+                beginAtZero: true,
+            },
+        };
+
+    const baseOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis,
+        animation: {
+            duration: animate ? 400 : 0,
+        },
+        scales: baseScales,
+        plugins: {
+            legend: typeof legend === 'boolean' ? { display: legend } : { display: true, ...legend },
+            tooltip: {
+                callbacks: {
+                    label: (context) => `$${formatCurrency(context.raw)}`,
+                },
+            },
+            title: title
+                ? {
+                    display: true,
+                    text: title,
+                    color: '#e2e8f0',
+                    font: { size: 14, weight: '600' },
+                    padding: { bottom: 12 },
+                }
+                : { display: false },
+        },
+    };
+
+    const mergedOptions = {
+        ...baseOptions,
+        ...userOptions,
+        scales: {
+            ...baseOptions.scales,
+            ...userOptions.scales,
+            ...(userOptions.scales?.x ? { x: { ...baseOptions.scales.x, ...userOptions.scales.x } } : {}),
+            ...(userOptions.scales?.y ? { y: { ...baseOptions.scales.y, ...userOptions.scales.y } } : {}),
+        },
+        plugins: {
+            ...baseOptions.plugins,
+            ...userOptions.plugins,
+            legend: {
+                ...baseOptions.plugins.legend,
+                ...(userOptions.plugins?.legend || {}),
+            },
+            tooltip: {
+                ...baseOptions.plugins.tooltip,
+                ...(userOptions.plugins?.tooltip || {}),
+            },
+            title: {
+                ...baseOptions.plugins.title,
+                ...(userOptions.plugins?.title || {}),
+            },
+        },
+    };
+
     return {
         type: 'bar',
         data: {
             labels,
-            datasets: [{
-                data: values,
-                backgroundColor: labels.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
-                borderRadius: 6,
-                borderSkipped: false,
-                barThickness: 32,
-                maxBarThickness: 40,
-            }],
+            datasets: [dataset],
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            indexAxis: 'y',
-            animation: {
-                duration: animate ? 400 : 0,
-            },
-            scales: {
-                x: {
-                    grid: {
-                        color: 'rgba(148, 163, 184, 0.1)',
-                        drawBorder: false,
-                    },
-                    ticks: {
-                        color: '#64748b',
-                        font: { size: 11 },
-                        callback: (value) => `$${formatCurrency(value)}`,
-                    },
-                    beginAtZero: true,
-                },
-                y: {
-                    type: 'category',
-                    grid: {
-                        display: false,
-                    },
-                    ticks: {
-                        color: '#e2e8f0',
-                        font: { size: 11, weight: '500' },
-                    },
-                },
-            },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: (context) => `$${formatCurrency(context.raw)}`,
-                    },
-                },
-            },
-        },
+        options: mergedOptions,
     };
 }
 

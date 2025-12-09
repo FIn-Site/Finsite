@@ -2,7 +2,8 @@
 import './category-chart.js';
 
 // Import Chart.js core for the modal chart
-import { initChartCore, CHART_COLORS, formatCurrency } from '../chart/chart-core.js';
+import { initChartCore, createBarChartConfig } from '../chart/chart-core.js';
+import { getCategoryIcon } from '../constants/icons.js';
 
 /**
  * Categories Web Component for FinSite
@@ -412,7 +413,7 @@ class FinSiteCategories extends HTMLElement {
                                        class="category-checkbox" 
                                        data-category-id="${cat.id}"
                                        ${this.selectedCategoryIds.has(cat.id) ? 'checked' : ''}>
-                                <span class="checkbox-icon">${this._getCategoryIcon(cat.id)}</span>
+                                <span class="checkbox-icon">${getCategoryIcon(cat.id)}</span>
                                 <span class="checkbox-label">${cat.name}</span>
                                 <span class="checkbox-amount">${this._formatCurrency(cat.amount)}</span>
                             </label>
@@ -580,22 +581,6 @@ class FinSiteCategories extends HTMLElement {
     }
 
     /**
-     * Get category icon
-     */
-    _getCategoryIcon(categoryId) {
-        const icons = {
-            'groceries': '🛒',
-            'utilities': '💡',
-            'fuel': '⛽',
-            'stocks': '📈',
-            'bonds': '📊',
-            'dining-out': '🍽️',
-            'shopping': '🛍️'
-        };
-        return icons[categoryId] || '💳';
-    }
-
-    /**
      * Format currency in short form for Y-axis labels
      */
     _formatCurrencyShort(amount) {
@@ -650,66 +635,42 @@ class FinSiteCategories extends HTMLElement {
             const labels = safeCategories.map((cat) => cat.name);
             const values = safeCategories.map((cat) => Math.abs(Number(cat.amount)) || 0);
 
-            this._modalCategoryChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels,
-                    datasets: [
-                        {
-                            data: values,
-                            backgroundColor: labels.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
-                            borderRadius: 6,
-                            borderSkipped: false,
-                            barThickness: 32,
-                            maxBarThickness: 40
-                        }
-                    ]
+            const config = createBarChartConfig(labels, values, {
+                title: 'Spending by Category',
+                indexAxis: 'y',
+                datasetOptions: {
+                    barThickness: 32,
+                    maxBarThickness: 44,
+                    borderRadius: 6,
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: 'x',
-                    animation: { duration: 400 },
                     scales: {
                         x: {
-                            type: 'category',
-                            grid: {
-                                color: 'rgba(148, 163, 184, 0.1)',
-                                drawBorder: false
+                            ticks: {
+                                color: '#64748b',
+                                font: { size: 11 },
                             },
+                        },
+                        y: {
                             ticks: {
                                 color: '#e2e8f0',
                                 font: { size: 11, weight: '500' },
                                 callback: (value) => {
                                     const label = typeof value === 'string' ? value : labels[value] ?? '';
-                                    return String(label).substring(0, 12);
-                                }
-                            }
+                                    return String(label).substring(0, 14);
+                                },
+                            },
                         },
-                        y: {
-                            type: 'linear',
-                            grid: {
-                                color: 'rgba(148, 163, 184, 0.1)',
-                                drawBorder: false
-                            },
-                            ticks: {
-                                color: '#64748b',
-                                font: { size: 11 },
-                                callback: (value) => '$' + formatCurrency(value)
-                            },
-                            beginAtZero: true
-                        }
                     },
                     plugins: {
-                        legend: { display: false },
                         tooltip: {
-                            callbacks: {
-                                label: (context) => `$${formatCurrency(context.raw)}`
-                            }
-                        }
-                    }
-                }
+                            displayColors: false,
+                        },
+                    },
+                },
             });
+
+            this._modalCategoryChart = new Chart(ctx, config);
         } catch (error) {
             console.error('Failed to initialize category chart:', error);
         }
@@ -732,7 +693,7 @@ class FinSiteCategories extends HTMLElement {
         const transactionsHtml = this.selectedTransactions.length > 0
             ? this.selectedTransactions.map(tx => `
                 <div class="transaction-row">
-                    <div class="tx-icon">${this._getCategoryIcon(tx.category)}</div>
+                    <div class="tx-icon">${getCategoryIcon(tx.category)}</div>
                     <div class="tx-details">
                         <div class="tx-merchant">${tx.merchant}</div>
                         <div class="tx-meta">${this._formatDate(tx.date)} · ${tx.category}</div>
@@ -744,7 +705,7 @@ class FinSiteCategories extends HTMLElement {
 
         const categoryBreakdownHtml = this.selectedCategories.map(cat => `
             <div class="category-row">
-                <span class="cat-icon">${this._getCategoryIcon(cat.id)}</span>
+                <span class="cat-icon">${getCategoryIcon(cat.id)}</span>
                 <span class="cat-name">${cat.name}</span>
                 <span class="cat-amount">${this._formatCurrency(cat.amount)}</span>
             </div>

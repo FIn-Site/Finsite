@@ -1,5 +1,6 @@
 // Import Chart.js core
-import { initChartCore, CHART_COLORS, formatCurrency } from '../chart/chart-core.js';
+import { initChartCore, createBarChartConfig } from '../chart/chart-core.js';
+import { getGroupIcon } from '../constants/icons.js';
 
 //...
 /**
@@ -77,64 +78,39 @@ class FinSiteCategoryChart extends HTMLElement {
         try {
             // Initialize Chart.js core (lazy loads if needed)
             const Chart = await initChartCore();
-
             const ctx = canvas.getContext('2d');
-            
+
             // Prepare data for Chart.js
             const labels = this.categories.map(cat => cat.name);
             const values = this.categories.map(cat => cat.amount || 0);
-            const colors = this.categories.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]);
 
-            this._chart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels,
-                    datasets: [{
-                        data: values,
-                        backgroundColor: colors,
-                        borderRadius: 4,
-                        borderSkipped: false,
-                        barThickness: 28,
-                        maxBarThickness: 40
-                    }]
+            const config = createBarChartConfig(labels, values, {
+                datasetOptions: {
+                    barThickness: 28,
+                    maxBarThickness: 40,
+                    borderRadius: 4,
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: {
-                        duration: 400
-                    },
                     scales: {
                         x: {
-                            grid: {
-                                display: false
-                            },
+                            grid: { display: false },
                             ticks: {
                                 color: '#94a3b8',
                                 font: { size: 10 },
                                 maxRotation: 0,
-                                callback: function(value, index) {
-                                    // Truncate labels to 4 chars
-                                    const label = this.getLabelForValue(value);
-                                    return label.substring(0, 4);
-                                }
-                            }
+                            },
                         },
                         y: {
-                            grid: {
-                                color: 'rgba(148, 163, 184, 0.1)',
-                                drawBorder: false
-                            },
                             ticks: {
-                                color: '#64748b',
-                                font: { size: 10 },
-                                callback: (value) => '$' + formatCurrency(value)
+                                font: { size: 10, weight: '500' },
+                                callback: (value) => {
+                                    const label = typeof value === 'string' ? value : labels[value] ?? '';
+                                    return String(label).substring(0, 10);
+                                },
                             },
-                            beginAtZero: true
-                        }
+                        },
                     },
                     plugins: {
-                        legend: { display: false },
                         tooltip: {
                             backgroundColor: '#1e293b',
                             titleColor: '#f1f5f9',
@@ -145,29 +121,18 @@ class FinSiteCategoryChart extends HTMLElement {
                             displayColors: false,
                             callbacks: {
                                 title: (context) => context[0].label,
-                                label: (context) => `$${formatCurrency(context.raw)}`
-                            }
-                        }
-                    }
-                }
+                            },
+                        },
+                    },
+                },
             });
+
+            this._chart = new Chart(ctx, config);
 
             this._chartInitialized = true;
         } catch (error) {
             console.error('Failed to initialize category chart:', error);
         }
-    }
-
-    /**
-     * Get icon for group
-     */
-    _getGroupIcon(groupId) {
-        const icons = {
-            'household': '🏠',
-            'investments': '💰',
-            'expenses': '💳'
-        };
-        return icons[groupId] || '📊';
     }
 
     /**
@@ -305,7 +270,7 @@ class FinSiteCategoryChart extends HTMLElement {
             <div class="chart-card" data-group-id="${this.groupId}">
                 <div class="card-header">
                     <div class="group-info">
-                        <div class="group-icon">${this._getGroupIcon(this.groupId)}</div>
+                        <div class="group-icon">${getGroupIcon(this.groupId)}</div>
                         <span class="group-name">${this.groupName}</span>
                     </div>
                     <span class="total-amount">${this._formatCurrency(this.totalSpent)}</span>

@@ -1,3 +1,5 @@
+import { getCategoryIcon, getGroupIcon } from '../constants/icons.js';
+
 /**
  * Transactions Web Component for FinSite
  * Refactored UI/UX with sticky header, date grouping, and advanced filters
@@ -200,39 +202,6 @@ class FinSiteTransactions extends HTMLElement {
                || this.filters.categories.length > 0;
     }
 
-    // ============================================================
-    // ICON HELPERS
-    // ============================================================
-
-    getCategoryIcon(category) {
-        const icons = {
-            groceries: '🛒',
-            utilities: '💡',
-            fuel: '⛽',
-            stocks: '📈',
-            bonds: '📊',
-            'dining-out': '🍽️',
-            dining: '🍽️',
-            shopping: '🛍️',
-            transport: '🚗',
-            healthcare: '🏥',
-            entertainment: '🎬',
-            education: '📚',
-            bills: '📄',
-            loans: '💰',
-            luxuries: '💎',
-            other: '📝',
-        };
-        return icons[(category || '').toLowerCase()] || '💸';
-    }
-
-    getGroupIcon(group) {
-        const icons = {
-            household: '🏠', investments: '📈', expenses: '💳', manual: '✏️',
-        };
-        return icons[(group || '').toLowerCase()] || '📁';
-    }
-
     getGroupName(groupId) {
         const group = this.availableGroups.find((g) => g.id === groupId);
         return group ? group.name : groupId;
@@ -336,8 +305,8 @@ class FinSiteTransactions extends HTMLElement {
         const amount = Number(tx.amount) || 0;
         const isExpense = amount > 0;
         const formatted = Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const catIcon = this.getCategoryIcon(tx.category);
-        const grpIcon = this.getGroupIcon(tx.group);
+        const catIcon = getCategoryIcon(tx.category);
+        const grpIcon = getGroupIcon(tx.group);
         const merchant = tx.merchant || tx.name || tx.category || 'Transaction';
         const isSelected = this.selectedTransactions.has(tx.id);
 
@@ -401,14 +370,14 @@ class FinSiteTransactions extends HTMLElement {
                     <div class="filter-section-title">Groups</div>
                     <div class="filter-options">${this.availableGroups.map((g) => `
                         <label class="filter-option"><input type="checkbox" class="group-checkbox" value="${g.id}" ${this.filters.groups.includes(g.id) ? 'checked' : ''}>
-                        <span class="option-icon">${this.getGroupIcon(g.id)}</span><span class="option-label">${g.name}</span></label>
+                        <span class="option-icon">${getGroupIcon(g.id)}</span><span class="option-label">${g.name}</span></label>
                     `).join('')}</div>
                 </div>
                 <div class="filter-section">
                     <div class="filter-section-title">Categories</div>
                     <div class="filter-options">${this.availableCategories.map((c) => `
                         <label class="filter-option"><input type="checkbox" class="category-checkbox" value="${c.id}" ${this.filters.categories.includes(c.id) ? 'checked' : ''}>
-                        <span class="option-icon">${this.getCategoryIcon(c.id)}</span><span class="option-label">${c.name}</span></label>
+                        <span class="option-icon">${getCategoryIcon(c.id)}</span><span class="option-label">${c.name}</span></label>
                     `).join('')}</div>
                 </div>
                 <div class="panel-actions"><button class="btn-secondary" id="filter-clear-btn">Clear</button><button class="btn-primary" id="filter-apply-btn">Apply</button></div>

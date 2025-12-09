@@ -381,10 +381,9 @@ class FinSiteSpendingChart extends HTMLElement {
         const { labels, values } = this.chartData.groupBreakdown;
 
         // Use chart-core factory for configuration
-        const config = createBarChartConfig({
-            labels,
-            values,
+        const config = createBarChartConfig(labels, values, {
             animate: !this._isHeavyUpdate,
+            title: 'Spending by Group',
         });
 
         this._barChart = new Chart(ctx, config);
