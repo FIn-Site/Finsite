@@ -6,6 +6,15 @@ const TRANSACTION_STORE = 'transactions';
 const GROUPS_STORE = 'groups';
 const CATEGORIES_STORE = 'categories';
 
+function createError(context, detail) {
+    const detailText = detail ? `: ${detail}` : '';
+    const error = new Error(`${context}${detailText}`);
+    if (detail) {
+        error.cause = detail;
+    }
+    return error;
+}
+
 function openDatabase() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -49,7 +58,7 @@ function openDatabase() {
         };
 
         request.onerror = (event) => {
-            reject(`Database error: ${event.target.error}`);
+            reject(createError('Database error', event.target.error));
         };
     });
 }
@@ -69,7 +78,7 @@ export async function getAllTransactions() {
         };
 
         request.onerror = (event) => {
-            reject(`Failed to get all transactions: ${event.target.error}`);
+            reject(createError('Failed to get all transactions', event.target.error));
         };
     });
 }
@@ -87,7 +96,7 @@ export async function addTransaction(transactionData) {
             resolve({ id, ...transactionData });
         };
         request.onerror = (event) => {
-            reject(`Failed to add transaction: ${event.target.error}`);
+            reject(createError('Failed to add transaction', event.target.error));
         };
     });
 }
@@ -109,7 +118,7 @@ export async function deleteTransactions(ids) {
             resolve();
         };
         transaction.onerror = (event) => {
-            reject(`Failed to delete transactions: ${event.target.error}`);
+            reject(createError('Failed to delete transactions', event.target.error));
         };
     });
 }
@@ -128,7 +137,7 @@ export async function clearAllTransactions() {
         };
 
         request.onerror = (event) => {
-            reject(`Failed to clear transactions: ${event.target.error}`);
+            reject(createError('Failed to clear transactions', event.target.error));
         };
     });
 }
@@ -151,7 +160,7 @@ export async function getAllGroups() {
         };
 
         request.onerror = (event) => {
-            reject(`Failed to get all groups: ${event.target.error}`);
+            reject(createError('Failed to get all groups', event.target.error));
         };
     });
 }
@@ -173,7 +182,7 @@ export async function addGroup(group) {
         };
 
         request.onerror = (event) => {
-            reject(`Failed to add group: ${event.target.error}`);
+            reject(createError('Failed to add group', event.target.error));
         };
     });
 }
@@ -196,7 +205,7 @@ export async function getAllCategories() {
         };
 
         request.onerror = (event) => {
-            reject(`Failed to get all categories: ${event.target.error}`);
+            reject(createError('Failed to get all categories', event.target.error));
         };
     });
 }
@@ -218,7 +227,7 @@ export async function addCategory(category) {
         };
 
         request.onerror = (event) => {
-            reject(`Failed to add category: ${event.target.error}`);
+            reject(createError('Failed to add category', event.target.error));
         };
     });
 }

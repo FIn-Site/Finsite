@@ -74,7 +74,7 @@ export class FinSiteModel {
      */
     _getBucketKey(date) {
         const d = date instanceof Date ? date : new Date(date);
-        if (isNaN(d.getTime())) return null;
+        if (Number.isNaN(d.getTime())) return null;
         const year = d.getFullYear();
         const month = String(d.getMonth() + 1).padStart(2, '0');
         return `${year}-${month}`;
@@ -628,7 +628,6 @@ export class FinSiteModel {
      */
     getDashboardPanelSummary() {
         const { transactions } = this.data;
-        const now = new Date();
 
         // Calculate recent transactions (max 5, sorted desc by date)
         const recentTransactions = this._getRecentTransactions(5);
@@ -651,7 +650,14 @@ export class FinSiteModel {
 
         if (monthlySpendingLast > 0) {
             monthlyChangePercent = ((monthlySpendingCurrent - monthlySpendingLast) / monthlySpendingLast) * 100;
-            monthlyDirection = monthlyChangePercent > 0 ? 'up' : monthlyChangePercent < 0 ? 'down' : 'neutral';
+
+            if (monthlyChangePercent > 0) {
+                monthlyDirection = 'up';
+            } else if (monthlyChangePercent < 0) {
+                monthlyDirection = 'down';
+            } else {
+                monthlyDirection = 'neutral';
+            }
         } else if (monthlySpendingCurrent > 0) {
             monthlyChangePercent = 100;
             monthlyDirection = 'up';

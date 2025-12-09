@@ -17,6 +17,7 @@ module.exports = {
     'import/prefer-default-export': 'off',
     'class-methods-use-this': 'off',
     'max-len': 'off',
+    'no-await-in-loop': 'off', //Enable when implementing file parsing
     'indent': ['error', 4, { SwitchCase: 1 }],
     'no-use-before-define': ['error', {
         functions: false,
