@@ -234,7 +234,7 @@ class FinSiteTransactions extends HTMLElement {
                             <button class="action-btn ${this.filters.groups.length || this.filters.categories.length ? 'active' : ''}" id="filter-btn">
                                 <span class="btn-icon">⚙️</span><span class="btn-label">Filters</span>
                             </button>
-                            <button class="add-btn" id="add-transaction-btn">
+                            <button class="add-btn" id="add-transaction-btn" data-testid="btn-add-transaction">
                                 <span class="add-icon">+</span><span>Add Transaction</span>
                             </button>
                         </div>
@@ -264,7 +264,7 @@ class FinSiteTransactions extends HTMLElement {
                     </div>
                 </div>
 
-                <div class="transaction-list-container">
+                <div class="transaction-list-container" data-testid="transaction-list">
                     ${filtered.length === 0 ? this.renderEmptyState(hasFilters) : this.renderTransactionList(grouped)}
                 </div>
 
@@ -390,19 +390,19 @@ class FinSiteTransactions extends HTMLElement {
                     <form class="modal-form" id="transaction-form" novalidate>
                         <div class="form-row">
                             <div class="form-group"><label class="form-label" for="tx-amount">Amount (USD)</label>
-                                <input class="form-input" type="number" id="tx-amount" name="amount" step="0.01" min="0.01" placeholder="e.g., 12.34" required /></div>
+                                <input class="form-input" type="number" id="tx-amount" data-testid="input-amount" name="amount" step="0.01" min="0.01" placeholder="e.g., 12.34" required /></div>
                             <div class="form-group"><label class="form-label" for="tx-date">Date</label>
-                                <input class="form-input" type="date" id="tx-date" name="date" required /></div>
+                                <input class="form-input" type="date" id="tx-date" data-testid="input-date" name="date" required /></div>
                         </div>
                         <div class="form-row">
                             <div class="form-group"><label class="form-label" for="tx-group">Group</label>
-                                <select class="form-select" id="tx-group" name="group" required>
+                                <select class="form-select" id="tx-group" data-testid="select-group" name="group" required>
                                     <option value="" disabled selected>Select a group</option>
                                     ${this.availableGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
                                     <option value="manual">Manual Entry</option>
                                 </select></div>
                             <div class="form-group"><label class="form-label" for="tx-category">Category</label>
-                                <select class="form-select" id="tx-category" name="category" required>
+                                <select class="form-select" id="tx-category" data-testid="select-categroy" name="category" required>
                                     <option value="" disabled selected>Select a category</option>
                                     <option value="bills">Bills</option><option value="utilities">Utilities</option>
                                     <option value="groceries">Groceries</option><option value="dining">Dining</option>
@@ -413,12 +413,12 @@ class FinSiteTransactions extends HTMLElement {
                                 </select></div>
                         </div>
                         <div class="form-group"><label class="form-label" for="tx-merchant">Merchant</label>
-                            <input class="form-input" type="text" id="tx-merchant" name="merchant" placeholder="e.g., Amazon, Walmart" /></div>
+                            <input class="form-input" type="text" id="tx-merchant" data-testid="input-merchant" name="merchant" placeholder="e.g., Amazon, Walmart" /></div>
                         <div class="form-group"><label class="form-label" for="tx-notes">Notes</label>
                             <textarea class="form-textarea" id="tx-notes" name="notes" placeholder="Add any additional notes..."></textarea></div>
                         <div class="modal-actions">
                             <button type="button" class="btn-secondary" id="modal-cancel-btn">Cancel</button>
-                            <button type="submit" class="btn-primary">Add Transaction</button>
+                            <button type="submit" class="btn-primary" data-testid="btn-add-transaction">Add Transaction</button>
                         </div>
                     </form>
                 </div>

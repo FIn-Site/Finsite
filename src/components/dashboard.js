@@ -315,7 +315,7 @@ class FinSiteDashboard extends HTMLElement {
 
                 <!-- Charts Section - spending-chart handles its own metrics and charts -->
                 <div class="charts-section">
-                    <finsite-spending-chart></finsite-spending-chart>
+                    <finsite-spending-chart data-testid="summary-chart"></finsite-spending-chart>
                 </div>
 
                 <!-- Recent Activity -->
