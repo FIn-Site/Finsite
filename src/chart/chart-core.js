@@ -121,8 +121,8 @@ async function _doInit() {
     try {
         // Determine the base path for Chart.js files
         // This works whether we're in /src/ or /src/chart/
-        // Debugging note: window.location.origin includes protocol and host, for Cloudflare compatibility
-        const basePath = new URL('/ChartJS/', window.location.origin).href;
+        // Debugging note: moved ChartJS folder inside of src for easier path resolution
+        const basePath = new URL('../ChartJS/', import.meta.url).href;
 
         // Load only Chart.js core
         await loadScript(`${basePath}chart.umd.min.js`);
