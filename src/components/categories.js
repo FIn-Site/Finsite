@@ -1,8 +1,8 @@
-// Import the category chart component
+// Import chart components
 import './category-chart.js';
+import './category-modal-chart.js';
 
-// Import Chart.js core for the modal chart
-import { initChartCore, createBarChartConfig } from '../chart/chart-core.js';
+import { buildCategoryAggregates, buildGroupBreakdown } from '../model/categoryAggregator.js';
 import { getCategoryIcon } from '../constants/icons.js';
 
 /**
@@ -24,6 +24,10 @@ class FinSiteCategories extends HTMLElement {
         this.categories = [];
         this.transactions = [];
 
+        // Aggregated views
+        this.groupBreakdowns = [];
+        this.categoriesWithAmounts = [];
+
         // Modal state
         this.isModalOpen = false;
         this.selectedGroup = null;
@@ -36,8 +40,6 @@ class FinSiteCategories extends HTMLElement {
         this.selectedCategoryIds = new Set();
         this.newSubcategories = []; // User-created subcategories for the new group
 
-        // Modal category chart instance (for cleanup)
-        this._modalCategoryChart = null;
     }
 
     async connectedCallback() {
@@ -77,10 +79,9 @@ class FinSiteCategories extends HTMLElement {
 
         try {
             this.groups = this._model.getGroups?.() || [];
-            this.categories = (this._model.getCategories?.() || []).map((cat) => ({ ...cat, amount: 0 }));
+            this.categories = this._model.getCategories?.() || [];
             this.transactions = this._model.getTransactions?.() || [];
-
-            this.calculateCategoryAmounts();
+            this._refreshAggregates();
             this.render();
             this.setupEventListeners();
             // Delay chart update to ensure DOM is ready
@@ -101,60 +102,58 @@ class FinSiteCategories extends HTMLElement {
             this.groups = data.groups;
         }
         if (data.categories) {
-            this.categories = data.categories.map(cat => ({ ...cat, amount: 0 }));
+            this.categories = data.categories;
         }
         if (data.transactions) {
             this.transactions = data.transactions;
         }
-        this.calculateCategoryAmounts();
+        this._refreshAggregates();
         this.render();
         this.setupEventListeners();
         requestAnimationFrame(() => this.updateChartComponents());
     }
 
     /**
-     * Calculate spending amounts per category from transactions
+     * Refresh aggregated views using the model (preferred) or local data.
      */
-    calculateCategoryAmounts() {
-        // Reset amounts
-        this.categories = this.categories.map(cat => ({ ...cat, amount: 0 }));
+    _refreshAggregates() {
+        const source = this._model ? {
+            groups: this._model.getGroups?.() || this.groups,
+            categories: this._model.getCategories?.() || this.categories,
+            transactions: this._model.getTransactions?.() || this.transactions,
+        } : {
+            groups: this.groups,
+            categories: this.categories,
+            transactions: this.transactions,
+        };
 
-        // Sum up transactions per category
-        for (const tx of this.transactions) {
-            const category = this.categories.find(c => c.id === tx.category);
-            if (category) {
-                category.amount += Math.abs(Number(tx.amount) || 0);
-            }
-        }
+        const { breakdowns, categoriesWithAmounts } = buildCategoryAggregates(source);
+        this.groupBreakdowns = breakdowns;
+        this.categoriesWithAmounts = categoriesWithAmounts;
+
+        // Keep local snapshots in sync for form usage
+        this.groups = source.groups;
+        this.categories = source.categories;
+        this.transactions = source.transactions;
     }
 
     /**
-     * Get categories for a specific group
-     * For custom groups, uses categoryIds array
-     * For default groups, uses groupId on categories
+     * Get a group breakdown using the model or local aggregates.
+     * @param {string} groupId
+     * @returns {Object|null}
      */
-    getCategoriesForGroup(groupId) {
-        const group = this.groups.find(g => g.id === groupId);
-        
-        // Custom groups have categoryIds array
-        if (group?.isCustom && group.categoryIds) {
-            return this.categories.filter(cat => group.categoryIds.includes(cat.id));
+    _getGroupBreakdown(groupId) {
+        if (!groupId) return null;
+        if (this._model?.getCategoryBreakdownByGroup) {
+            return this._model.getCategoryBreakdownByGroup(groupId);
         }
-        
-        // Default groups use groupId on categories
-        return this.categories.filter(cat => cat.groupId === groupId);
-    }
-
-    /**
-     * Get transactions for a specific group
-     * Filters by category membership (works for both default and custom groups)
-     */
-    getTransactionsForGroup(groupId) {
-        // Get all category IDs that belong to this group
-        const groupCategoryIds = this.getCategoriesForGroup(groupId).map(cat => cat.id);
-        
-        // Filter transactions where the category belongs to this group
-        return this.transactions.filter(tx => groupCategoryIds.includes(tx.category));
+        return this.groupBreakdowns.find((b) => b.groupId === groupId)
+            || buildGroupBreakdown({
+                groups: this.groups,
+                categories: this.categories,
+                transactions: this.transactions,
+                groupId,
+            });
     }
 
     /**
@@ -164,14 +163,9 @@ class FinSiteCategories extends HTMLElement {
         const charts = this.shadowRoot.querySelectorAll('finsite-category-chart');
         charts.forEach(chart => {
             const groupId = chart.getAttribute('data-group-id');
-            const group = this.groups.find(g => g.id === groupId);
-            if (group) {
-                chart.setData({
-                    groupId: group.id,
-                    groupName: group.name,
-                    categories: this.getCategoriesForGroup(group.id),
-                    transactions: this.getTransactionsForGroup(group.id)
-                });
+            const breakdown = this.groupBreakdowns.find(b => b.groupId === groupId);
+            if (breakdown) {
+                chart.setData(breakdown);
             }
         });
     }
@@ -179,10 +173,13 @@ class FinSiteCategories extends HTMLElement {
     /**
      * Open modal with group details
      */
-    openModal(groupData) {
-        this.selectedGroup = groupData;
-        this.selectedTransactions = groupData.transactions || [];
-        this.selectedCategories = groupData.categories || [];
+    openModal(groupId) {
+        const breakdown = this._getGroupBreakdown(groupId);
+        if (!breakdown) return;
+
+        this.selectedGroup = breakdown;
+        this.selectedTransactions = breakdown.transactions || [];
+        this.selectedCategories = breakdown.categories || [];
         this.isModalOpen = true;
         this.renderModal();
     }
@@ -192,23 +189,12 @@ class FinSiteCategories extends HTMLElement {
      */
     closeModal() {
         this.isModalOpen = false;
-        // Destroy modal category chart to prevent memory leaks
-        this._destroyModalCategoryChart();
         const overlay = this.shadowRoot.querySelector('.modal-overlay');
         if (overlay) {
             overlay.classList.add('hidden');
         }
     }
 
-    /**
-     * Destroy the modal category chart instance
-     */
-    _destroyModalCategoryChart() {
-        if (this._modalCategoryChart) {
-            this._modalCategoryChart.destroy();
-            this._modalCategoryChart = null;
-        }
-    }
 
     /**
      * Handle deleting a custom group
@@ -365,7 +351,7 @@ class FinSiteCategories extends HTMLElement {
             this.dispatchEvent(new CustomEvent('group-created', {
                 detail: {
                     group: newGroup,
-                    categories: this.getCategoriesForGroup(groupId)
+                    categories: []
                 },
                 bubbles: true,
                 composed: true
@@ -386,8 +372,8 @@ class FinSiteCategories extends HTMLElement {
         const overlay = this.shadowRoot.querySelector('.add-group-modal-overlay');
         if (!overlay) return;
 
-        // Get all unique categories (not assigned to existing default groups OR all categories)
-        const allCategories = this.categories;
+        // Get all unique categories with amounts when available
+        const allCategories = this.categoriesWithAmounts.length ? this.categoriesWithAmounts : this.categories;
 
         // Group categories by their current group for display
         const categoryGroups = {};
@@ -591,92 +577,6 @@ class FinSiteCategories extends HTMLElement {
     }
 
     /**
-     * Generate HTML for the modal category chart (money × category)
-     */
-    _generateCategoryChartHtml(categories) {
-        const safeCategories = Array.isArray(categories) ? categories : [];
-        const total = safeCategories.reduce((sum, cat) => sum + (Math.abs(Number(cat.amount)) || 0), 0);
-
-        return `
-            <div class="section">
-                <h3 class="section-title">Spending by Category</h3>
-                <div class="category-chart-container">
-                    <div class="category-chart-canvas-wrapper">
-                        <canvas id="modalCategoryChart"></canvas>
-                    </div>
-                    <div class="chart-legend">
-                        <div class="legend-item">
-                            <span class="legend-color legend-total"></span>
-                            <span class="legend-label">Total</span>
-                            <span class="legend-value">${this._formatCurrency(total)}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Initialize the modal category Chart.js chart (money × category)
-     */
-    async _initCategoryChart(categories) {
-        const canvas = this.shadowRoot.querySelector('#modalCategoryChart');
-        if (!canvas) return;
-
-        this._destroyModalCategoryChart();
-
-        const safeCategories = Array.isArray(categories) ? categories : [];
-        if (safeCategories.length === 0) return;
-
-        try {
-            const Chart = await initChartCore();
-            const ctx = canvas.getContext('2d');
-
-            const labels = safeCategories.map((cat) => cat.name);
-            const values = safeCategories.map((cat) => Math.abs(Number(cat.amount)) || 0);
-
-            const config = createBarChartConfig(labels, values, {
-                title: 'Spending by Category',
-                indexAxis: 'y',
-                datasetOptions: {
-                    barThickness: 32,
-                    maxBarThickness: 44,
-                    borderRadius: 6,
-                },
-                options: {
-                    scales: {
-                        x: {
-                            ticks: {
-                                color: '#64748b',
-                                font: { size: 11 },
-                            },
-                        },
-                        y: {
-                            ticks: {
-                                color: '#e2e8f0',
-                                font: { size: 11, weight: '500' },
-                                callback: (value) => {
-                                    const label = typeof value === 'string' ? value : labels[value] ?? '';
-                                    return String(label).substring(0, 14);
-                                },
-                            },
-                        },
-                    },
-                    plugins: {
-                        tooltip: {
-                            displayColors: false,
-                        },
-                    },
-                },
-            });
-
-            this._modalCategoryChart = new Chart(ctx, config);
-        } catch (error) {
-            console.error('Failed to initialize category chart:', error);
-        }
-    }
-
-    /**
      * Render the modal content
      */
     renderModal() {
@@ -686,9 +586,6 @@ class FinSiteCategories extends HTMLElement {
         // Check if this is a custom group (can be deleted)
         const group = this.groups.find(g => g.id === this.selectedGroup?.groupId);
         const isCustomGroup = group?.isCustom === true;
-
-        // Generate category chart data for modal
-        const categoryChartHtml = this._generateCategoryChartHtml(this.selectedCategories);
 
         const transactionsHtml = this.selectedTransactions.length > 0
             ? this.selectedTransactions.map(tx => `
@@ -731,7 +628,10 @@ class FinSiteCategories extends HTMLElement {
                 </div>
 
                 <div class="modal-body">
-                    ${categoryChartHtml}
+                    <div class="section">
+                        <h3 class="section-title">Spending by Category</h3>
+                        <finsite-category-modal-chart id="modal-category-chart" title="Spending by Category"></finsite-category-modal-chart>
+                    </div>
 
                     <div class="section">
                         <h3 class="section-title">Category Breakdown</h3>
@@ -773,10 +673,11 @@ class FinSiteCategories extends HTMLElement {
             }
         });
 
-        // Initialize modal category chart after DOM is ready
-        requestAnimationFrame(() => {
-            this._initCategoryChart(this.selectedCategories);
-        });
+        // Pass data into modal chart component
+        const modalChart = overlay.querySelector('#modal-category-chart');
+        if (modalChart && typeof modalChart.setCategories === 'function') {
+            modalChart.setCategories(this.selectedCategories);
+        }
     }
 
     render() {
@@ -1501,9 +1402,10 @@ class FinSiteCategories extends HTMLElement {
     setupEventListeners() {
         // Listen for group selection from child charts
         this.shadowRoot.addEventListener('group-selected', (event) => {
-            const groupData = event.detail;
-            console.log(`📂 Group selected: ${groupData.groupName} (${groupData.groupId})`);
-            this.openModal(groupData);
+            const { groupId, groupName } = event.detail || {};
+            if (!groupId) return;
+            console.log(`📂 Group selected: ${groupName || 'Group'} (${groupId})`);
+            this.openModal(groupId);
         });
 
         // Add group button - opens the Add Group modal

@@ -9,6 +9,10 @@ import {
     getAllCategories,
     addCategory,
 } from '../storage/storageService.js';
+import {
+    buildCategoryAggregates,
+    buildGroupBreakdown,
+} from './categoryAggregator.js';
 
 /**
  * FinSiteModel - Manages application data and business logic
@@ -516,6 +520,33 @@ export class FinSiteModel {
      */
     getCategories() {
         return [...this.data.categories];
+    }
+
+    /**
+     * Get category aggregates (categories with amounts + group breakdowns).
+     * @returns {{ breakdowns: Object[], categoriesWithAmounts: Object[] }}
+     */
+    getCategoryAggregates() {
+        return buildCategoryAggregates({
+            groups: this.data.groups,
+            categories: this.data.categories,
+            transactions: this.data.transactions,
+        });
+    }
+
+    /**
+     * Get a single group's breakdown (categories, transactions, totals).
+     * @param {string} groupId
+     * @returns {Object|null}
+     */
+    getCategoryBreakdownByGroup(groupId) {
+        if (!groupId) return null;
+        return buildGroupBreakdown({
+            groups: this.data.groups,
+            categories: this.data.categories,
+            transactions: this.data.transactions,
+            groupId,
+        });
     }
 
     /**
