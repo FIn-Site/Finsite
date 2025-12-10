@@ -88,6 +88,7 @@ class FinSiteCategories extends HTMLElement {
     /**
      * Load groups, categories, and transactions from the injected model
      * Model remains the single source of truth; no direct storage access here
+     * Falls back to default groups/categories if none exist yet
      */
     async loadFromModel() {
         this._isLoading = true;
@@ -100,9 +101,23 @@ class FinSiteCategories extends HTMLElement {
         }
 
         try {
-            const groups = this._model.getGroups?.() || [];
-            const categories = this._model.getCategories?.() || [];
+            let groups = this._model.getGroups?.() || [];
+            let categories = this._model.getCategories?.() || [];
             const transactions = this._model.getTransactions?.() || [];
+
+            // Fall back to default config if no groups/categories exist
+            if (groups.length === 0 || categories.length === 0) {
+                const defaults = this._model.getDefaultConfig?.();
+                if (defaults) {
+                    if (groups.length === 0) {
+                        groups = defaults.defaultGroups || [];
+                    }
+                    if (categories.length === 0) {
+                        categories = defaults.defaultCategories || [];
+                    }
+                    log('Using default groups/categories (no data yet)');
+                }
+            }
 
             this.groups = groups;
             this.categories = categories;
@@ -144,17 +159,27 @@ class FinSiteCategories extends HTMLElement {
 
     /**
      * Refresh aggregated views using the model (preferred) or local data.
+     * Falls back to default groups/categories if none exist yet.
      */
     _refreshAggregates() {
-        const source = this._model ? {
-            groups: this._model.getGroups?.() || this.groups,
-            categories: this._model.getCategories?.() || this.categories,
-            transactions: this._model.getTransactions?.() || this.transactions,
-        } : {
-            groups: this.groups,
-            categories: this.categories,
-            transactions: this.transactions,
-        };
+        let groups = this._model?.getGroups?.() || this.groups;
+        let categories = this._model?.getCategories?.() || this.categories;
+        const transactions = this._model?.getTransactions?.() || this.transactions;
+
+        // Fall back to default config if no groups/categories exist
+        if ((groups.length === 0 || categories.length === 0) && this._model?.getDefaultConfig) {
+            const defaults = this._model.getDefaultConfig();
+            if (defaults) {
+                if (groups.length === 0) {
+                    groups = defaults.defaultGroups || [];
+                }
+                if (categories.length === 0) {
+                    categories = defaults.defaultCategories || [];
+                }
+            }
+        }
+
+        const source = { groups, categories, transactions };
 
         const { breakdowns, categoriesWithAmounts } = buildCategoryAggregates(source);
         this.groupBreakdowns = breakdowns;

@@ -148,10 +148,9 @@ export class FinSiteController {
         // Navigate through view interface, then sync state
         this.view.navigateToPage(route);
 
-        // Only refresh dashboard data when navigating to dashboard
-        if (route === 'dashboard') {
-            this._refreshDashboard(false);
-        }
+        // Sync model data to the newly rendered page
+        // This ensures transactions page gets data when navigated to
+        this._syncModelToView({ refreshDashboard: route === 'dashboard' });
     }
 
     /**

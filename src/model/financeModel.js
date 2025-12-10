@@ -319,18 +319,33 @@ export class FinSiteModel {
                 }
             }
 
-            // If no groups/categories exist yet, seed defaults
-            if (groups.length === 0 || categories.length === 0) {
-                const { defaultGroups, defaultCategories } = this._getDefaultConfig();
+            // Always ensure default groups and categories exist
+            // This prevents the bug where custom groups replace defaults
+            const { defaultGroups, defaultCategories } = this._getDefaultConfig();
 
-                // Persist defaults
+            // Check which default groups are missing and add them
+            const existingGroupIds = new Set(groups.map((g) => g.id));
+            const missingGroups = defaultGroups.filter((g) => !existingGroupIds.has(g.id));
+
+            // Check which default categories are missing and add them
+            const existingCategoryIds = new Set(categories.map((c) => c.id));
+            const missingCategories = defaultCategories.filter((c) => !existingCategoryIds.has(c.id));
+
+            // Persist any missing defaults
+            if (missingGroups.length > 0 || missingCategories.length > 0) {
                 await Promise.all([
-                    ...defaultGroups.map((g) => addGroup(g)),
-                    ...defaultCategories.map((c) => addCategory(c)),
+                    ...missingGroups.map((g) => addGroup(g)),
+                    ...missingCategories.map((c) => addCategory(c)),
                 ]);
 
-                groups = defaultGroups;
-                categories = defaultCategories;
+                // Add missing defaults to arrays
+                groups = [...groups, ...missingGroups];
+                categories = [...categories, ...missingCategories];
+
+                log('Seeded missing default groups/categories:', {
+                    groups: missingGroups.length,
+                    categories: missingCategories.length,
+                });
             }
 
             this.data.transactions = transactions;
@@ -760,7 +775,11 @@ export class FinSiteModel {
             this.data.groups = this.data.groups.filter((g) => g.id !== groupId);
             this.data.categories = updatedCategories;
 
-            log(`Group '${groupId}' deleted, ${categoriesToUpdate.length} categories reassigned`);
+            // Rebuild aggregates to reflect the group removal
+            // This ensures _groupTotals no longer contains the deleted group
+            this._rebuildAggregates();
+
+            log(`Group '${groupId}' deleted, ${categoriesToUpdate.length} categories reassigned, aggregates rebuilt`);
         } catch (error) {
             console.error(`Error deleting group '${groupId}':`, error);
             throw error;
@@ -837,22 +856,38 @@ export class FinSiteModel {
      */
     _getGroupBreakdownFromAggregates() {
         const groupIdToName = {};
+        const existingGroupIds = new Set();
 
-        // Build group name lookup
+        // Build group name lookup from existing groups only
         this.data.groups.forEach((g) => {
             groupIdToName[g.id] = g.name;
+            existingGroupIds.add(g.id);
         });
 
-        // Convert map to sorted array
+        // Convert map to sorted array, only including groups that still exist
+        // Transactions from deleted groups are aggregated under 'Uncategorized'
         const entries = [];
+        let uncategorizedTotal = 0;
+
         for (const [groupId, total] of this._groupTotals) {
             if (total > 0) {
-                const name = groupIdToName[groupId] || groupId;
-                entries.push([name, total]);
+                if (existingGroupIds.has(groupId)) {
+                    // Group still exists - show it
+                    const name = groupIdToName[groupId];
+                    entries.push([name, total]);
+                } else {
+                    // Group was deleted - aggregate under uncategorized
+                    uncategorizedTotal += total;
+                }
             }
         }
 
-        // Sort by total descending - show ALL groups with transactions
+        // Add uncategorized total if any transactions belonged to deleted groups
+        if (uncategorizedTotal > 0) {
+            entries.push(['Uncategorized', uncategorizedTotal]);
+        }
+
+        // Sort by total descending - show ALL existing groups with transactions
         entries.sort((a, b) => b[1] - a[1]);
 
         if (entries.length === 0) {
