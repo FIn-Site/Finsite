@@ -1,3 +1,9 @@
+/**
+ * @fileoverview Dashboard Web Component for FinSite.
+ * Displays spending overview, charts, stats cards, and recent activity.
+ * @module components/dashboard
+ */
+
 // Import spending chart component
 import '../chart/spending-chart.js';
 import { getCategoryIcon } from '../utils/icons.js';
@@ -8,11 +14,25 @@ import { createPrefixedLogger } from '../utils/debugService.js';
 const log = createPrefixedLogger('[Dashboard]');
 
 /**
- * Dashboard Web Component for FinSite
- * Handles dashboard content display with spending charts and quick stats
- * Receives pre-aggregated chart data and panel summary from model via view
+ * Dashboard Web Component.
+ * 
+ * Features:
+ * - Spending overview with stat cards
+ * - 6-month spending trend chart (line chart)
+ * - Top 5 groups spending chart (bar chart)
+ * - Recent transactions list
+ * 
+ * Data Flow:
+ * Receives pre-aggregated chart data and panel summary from
+ * Model via View via Controller.
+ * 
+ * @extends HTMLElement
  */
 class FinSiteDashboard extends HTMLElement {
+    /**
+     * Initialize dashboard component.
+     * Sets up Shadow DOM and initializes panel data structure.
+     */
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
@@ -35,6 +55,10 @@ class FinSiteDashboard extends HTMLElement {
         this._chartComponent = null;
     }
 
+    /**
+     * Lifecycle: Called when component is added to DOM.
+     * Renders initial UI and gets reference to chart component.
+     */
     connectedCallback() {
         this.render();
         // Get reference to chart component after render
@@ -57,6 +81,12 @@ class FinSiteDashboard extends HTMLElement {
         }).format(amount || 0);
     }
 
+    /**
+     * Render dashboard UI.
+     * 
+     * Creates stat cards, recent activity, and chart container.
+     * Uses panelData for stat values.
+     */
     render() {
         const {
             totalSpentAllTime,

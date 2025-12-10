@@ -1,8 +1,26 @@
 /**
- * Header Web Component for FinSite
- * Handles top navigation with menu toggle, notifications, and user greeting
+ * @fileoverview Header Web Component for FinSite.
+ * Top navigation bar with menu toggle, notifications, and user greeting.
+ * @module components/header
+ */
+
+/**
+ * Header Web Component.
+ * 
+ * Features:
+ * - Menu toggle button
+ * - Notification icon
+ * - User greeting
+ * 
+ * Note: Currently not actively used in Mint-style layout.
+ * 
+ * @extends HTMLElement
  */
 class FinSiteHeader extends HTMLElement {
+    /**
+     * Initialize header component.
+     * Sets up Shadow DOM.
+     */
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });

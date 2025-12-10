@@ -1,3 +1,9 @@
+/**
+ * @fileoverview Model layer for FinSite application.
+ * Implements incremental aggregation for O(1) dashboard updates.
+ * @module financeModel
+ */
+
 import {
     getAllTransactions,
     addTransaction,
@@ -26,8 +32,18 @@ const log = createPrefixedLogger('[Model]');
  *
  * Instead of O(n) full scans on every dashboard refresh, we maintain
  * running aggregates that are updated in O(1) on add/delete operations.
+ * 
+ * Aggregation Strategy:
+ * - Time buckets: Map<"YYYY-MM", totalSpend> for monthly aggregates
+ * - Group totals: Map<groupId, totalSpend> for category breakdowns
+ * - Cached metrics: Pre-computed thisMonth, lastMonth, sixMonthTotal
+ * 
+ * @class
  */
 export class FinSiteModel {
+    /**
+     * Initialize the model with empty data structures and aggregation state.
+     */
     constructor() {
         this.data = {
             user: null,
@@ -91,7 +107,10 @@ export class FinSiteModel {
     }
 
     /**
-     * Get the bucket key for "last month" relative to current date
+     * Get the bucket key for "last month" relative to current date.
+     * 
+     * @private
+     * @returns {string} Bucket key in "YYYY-MM" format
      */
     _getLastMonthKey() {
         const now = new Date();
@@ -136,8 +155,13 @@ export class FinSiteModel {
     // ============================================================
 
     /**
-     * Apply a single transaction's delta to aggregates
-     * @param {Object} tx - Transaction object
+     * Apply a single transaction's delta to aggregates (O(1) operation).
+     * 
+     * Updates time buckets, group totals, and cached metrics based on
+     * the transaction's amount, date, and group.
+     * 
+     * @private
+     * @param {import('../storage/storageService.js').Transaction} tx - Transaction object
      * @param {number} sign - 1 for add, -1 for remove
      */
     _applyTransactionDelta(tx, sign = 1) {
@@ -259,7 +283,14 @@ export class FinSiteModel {
     }
 
     /**
-     * Initialize data from storage (transactions, groups, categories)
+     * Initialize model from storage.
+     * 
+     * Loads transactions, groups, and categories from IndexedDB.
+     * Seeds default groups/categories if none exist.
+     * Builds initial aggregates for O(1) dashboard queries.
+     * 
+     * @async
+     * @returns {Promise<Object>} Current data state
      */
     async init() {
         try {
@@ -337,8 +368,13 @@ export class FinSiteModel {
     }
 
     /**
-     * Default configuration for groups and categories.
-     * These are just startup defaults and can be changed by the user later.
+     * Get default configuration for groups and categories.
+     * 
+     * Provides seed data for first-time users. Includes household,
+     * investments, and general expense groups with common categories.
+     * 
+     * @private
+     * @returns {{defaultGroups: Array, defaultCategories: Array}} Default configuration
      */
     _getDefaultConfig() {
         const defaultGroups = [
@@ -483,9 +519,15 @@ export class FinSiteModel {
     }
 
     /**
-     * Delete one or more transactions by id (and persist).
-     * OPTIMIZATION A: O(k) aggregate update where k = number of deleted items
-     * @param {Array<string|number>} ids
+     * Delete one or more transactions by ID.
+     * 
+     * Performance: O(k) aggregate updates where k = number of deleted items.
+     * Each deleted transaction's amount is decremented from aggregates.
+     * 
+     * @async
+     * @param {Array<string|number>} ids - Array of transaction IDs to delete
+     * @returns {Promise<Object>} Updated data state
+     * @throws {Error} If deletion fails
      */
     async deleteTransactions(ids) {
         if (!Array.isArray(ids) || ids.length === 0) {
@@ -527,6 +569,12 @@ export class FinSiteModel {
 
     /**
      * Clear all transactions from storage and memory.
+     * 
+     * WARNING: Destructive operation. Also clears all aggregates.
+     * 
+     * @async
+     * @returns {Promise<Object>} Updated data state (empty transactions)
+     * @throws {Error} If clear operation fails
      */
     async clearAllTransactions() {
         try {
@@ -548,14 +596,18 @@ export class FinSiteModel {
     }
 
     /**
-     * Read-only helper just for transactions.
+     * Get a copy of all transactions.
+     * 
+     * @returns {Array<import('../storage/storageService.js').Transaction>} Copy of transactions array
      */
     getTransactions() {
         return [...this.data.transactions];
     }
 
     /**
-     * Read-only helper for groups.
+     * Get a copy of all groups.
+     * 
+     * @returns {Array<import('../storage/storageService.js').Group>} Copy of groups array
      */
     getGroups() {
         return [...this.data.groups];
@@ -722,9 +774,15 @@ export class FinSiteModel {
     // ============================================================
 
     /**
-     * Generate dashboard summary from pre-computed aggregates
-     * OPTIMIZATION A: Pure read from aggregates, no transaction iteration
-     * @returns {Object} Dashboard summary with timeSeries, groupBreakdown, metrics
+     * Generate dashboard summary from pre-computed aggregates.
+     * 
+     * Performance: O(1) read from aggregates, no transaction iteration.
+     * Returns data ready for Chart.js visualization.
+     * 
+     * @returns {Object} Dashboard summary
+     * @returns {Object} return.timeSeries - {labels: string[], values: number[]}
+     * @returns {Object} return.groupBreakdown - {labels: string[], values: number[]}
+     * @returns {Object} return.metrics - {thisMonth, lastMonth, percentChange, sixMonthAvg}
      */
     getDashboardSummary() {
     // Read from aggregates instead of iterating transactions
@@ -740,8 +798,14 @@ export class FinSiteModel {
     }
 
     /**
-     * Get time series data from pre-computed buckets
-     * @returns {Object} { labels: string[], values: number[] }
+     * Get time series data from pre-computed buckets.
+     * 
+     * Returns last 6 months of spending with month names as labels.
+     * 
+     * @private
+     * @returns {Object} Time series data for Chart.js
+     * @returns {string[]} return.labels - Month names (e.g., ['Jun', 'Jul', 'Aug'])
+     * @returns {number[]} return.values - Monthly spending totals
      */
     _getTimeSeriesFromAggregates() {
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -762,8 +826,14 @@ export class FinSiteModel {
     }
 
     /**
-     * Get group breakdown from pre-computed totals
-     * @returns {Object} { labels: string[], values: number[] }
+     * Get group breakdown from pre-computed totals.
+     * 
+     * Returns top 5 groups by spending for bar chart display.
+     * 
+     * @private
+     * @returns {Object} Group breakdown data for Chart.js
+     * @returns {string[]} return.labels - Group names sorted by spending (descending)
+     * @returns {number[]} return.values - Group spending totals
      */
     _getGroupBreakdownFromAggregates() {
         const groupIdToName = {};
@@ -796,8 +866,16 @@ export class FinSiteModel {
     }
 
     /**
-     * Get metrics from cached values
-     * @returns {Object} { thisMonth, lastMonth, percentChange, sixMonthAvg }
+     * Get dashboard metrics from cached values.
+     * 
+     * Calculates percent change and 6-month average from pre-computed data.
+     * 
+     * @private
+     * @returns {Object} Dashboard metrics
+     * @returns {number} return.thisMonth - Current month spending
+     * @returns {number} return.lastMonth - Last month spending
+     * @returns {number} return.percentChange - Month-over-month change percentage
+     * @returns {number} return.sixMonthAvg - 6-month average spending
      */
     _getMetricsFromAggregates() {
         const { thisMonth, lastMonth, sixMonthTotal } = this._cachedMetrics;
@@ -826,9 +904,19 @@ export class FinSiteModel {
     // ============================================================
 
     /**
-     * Generate dashboard panel summary with real transaction data
-     * Used for the dashboard stat cards and recent activity section
+     * Generate dashboard panel summary for stat cards.
+     * 
+     * Provides data for dashboard cards: total spent, transactions this week,
+     * monthly spending comparison, and recent activity.
+     * 
      * @returns {Object} Dashboard panel summary
+     * @returns {Array} return.recentTransactions - Last 5 transactions
+     * @returns {number} return.totalSpentAllTime - Lifetime spending total
+     * @returns {number} return.transactionsThisWeek - Count of transactions in last 7 days
+     * @returns {number} return.monthlySpendingCurrent - Current month spending
+     * @returns {number} return.monthlySpendingLast - Last month spending
+     * @returns {number} return.monthlyChangePercent - Month-over-month change %
+     * @returns {'up'|'down'|'neutral'} return.monthlyDirection - Spending trend direction
      */
     getDashboardPanelSummary() {
         const { transactions } = this.data;

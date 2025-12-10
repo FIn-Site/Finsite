@@ -1,22 +1,27 @@
 import { createPrefixedLogger } from '../utils/debugService.js';
 
-// Prefixed logger for controller layer
-const log = createPrefixedLogger('[Controller]');
+
 
 /**
- * FinSiteController - Coordinates between Model and View
- * Handles user interactions and application logic
- *
- * Follows MVC pattern where:
- * - Controller never queries DOM directly (uses view interface)
- * - All user feedback goes through view methods
- * - Debug logging is centrally toggleable
+ * @fileoverview Controller layer for FinSite application.
+ * Coordinates between Model and View following MVC pattern.
+ * @module financeController
  */
-export class FinSiteController {
-    /**
-     * @param {Object} model - Data model instance
-     * @param {Object} view - View instance for UI operations
-     */
+
+/**
+ * FinSite Controller - Coordinates between Model and View.
+ * 
+ * Responsibilities:
+ * - Handles user interactions and application events
+ * - Orchestrates data flow between Model and View
+ * - Manages navigation and routing
+ * - Coordinates dashboard updates with aggregated data
+ * 
+ * @class
+ */
+
+// Prefixed logger for controller layer
+const log = createPrefixedLogger('[Controller]');
     constructor(model, view) {
         this.model = model;
         this.view = view;
@@ -100,8 +105,11 @@ export class FinSiteController {
     }
 
     /**
-     * Handle user interactions
-     * @param {string} action - Action type
+     * Handle generic user interactions.
+     * 
+     * Routes actions to appropriate handler methods.
+     * 
+     * @param {string} action - Action type (e.g., 'navigate')
      * @param {Object} payload - Action data
      */
     handleAction(action, payload) {
@@ -115,8 +123,12 @@ export class FinSiteController {
     }
 
     /**
-     * Navigate to different views
-     * @param {string} route - Route to navigate to
+     * Navigate to different views.
+     * 
+     * Updates model state, refreshes view, and triggers dashboard
+     * data refresh when navigating to dashboard.
+     * 
+     * @param {string} route - Route to navigate to (e.g., 'dashboard', 'transactions')
      */
     navigate(route) {
         log(`🧭 Navigating to: ${route}`);
@@ -167,8 +179,20 @@ export class FinSiteController {
     }
 
     /**
-     * Handle adding a new transaction from the manual entry form
+     * Handle adding a new transaction from the manual entry form.
+     * 
+     * Persists transaction via model, notifies transactions component,
+     * updates view, and refreshes dashboard with animation.
+     * 
+     * @async
      * @param {Object} transactionData - Transaction data from the form
+     * @param {string} transactionData.group - Group ID
+     * @param {string} transactionData.category - Category ID
+     * @param {number} transactionData.amount - Transaction amount
+     * @param {string} transactionData.date - ISO date string (YYYY-MM-DD)
+     * @param {string} [transactionData.merchant] - Merchant name
+     * @param {string} [transactionData.notes] - Additional notes
+     * @returns {Promise<void>}
      */
     async handleAddTransaction(transactionData) {
         log('💰 Handling add transaction:', transactionData);
@@ -235,8 +259,14 @@ export class FinSiteController {
     }
 
     /**
-     * Handle deleting transactions
-     * @param {Array} ids - Array of transaction IDs to delete
+     * Handle deleting one or more transactions.
+     * 
+     * Deletes via model, updates view, and refreshes dashboard.
+     * Disables animations if deleting more than 5 transactions.
+     * 
+     * @async
+     * @param {Array<number|string>} ids - Array of transaction IDs to delete
+     * @returns {Promise<void>}
      */
     async handleDeleteTransactions(ids) {
         log('🗑️ Handling delete transactions:', ids);

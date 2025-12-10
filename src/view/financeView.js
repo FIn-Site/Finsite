@@ -1,3 +1,9 @@
+/**
+ * @fileoverview View layer for FinSite application.
+ * Handles UI rendering, DOM manipulation, and component orchestration.
+ * @module financeView
+ */
+
 import '../components/sidebar.js';
 import '../components/dashboard.js';
 import '../components/transactions.js';
@@ -8,8 +14,15 @@ import { createPrefixedLogger } from '../utils/debugService.js';
 const log = createPrefixedLogger('[View]');
 
 /**
- * FinSiteView - Handles all UI rendering and DOM manipulation
- * Mint-style two-pane layout with persistent sidebar and main content area
+ * FinSite View - Handles all UI rendering and DOM manipulation.
+ * 
+ * Architecture:
+ * - Mint-style two-pane layout with persistent sidebar and main content area
+ * - Uses Web Components for modular UI
+ * - Delegates data visualization to chart components
+ * - Handles component event forwarding to controller
+ * 
+ * @class
  */
 export class FinSiteView {
     constructor(model = null) {
@@ -66,7 +79,13 @@ export class FinSiteView {
     }
 
     /**
-     * Set up component event listeners
+     * Set up component event listeners.
+     * 
+     * Listens for:
+     * - Sidebar navigation events
+     * - Sidebar collapse/expand events
+     * - Add transaction events from transactions component
+     * - Manual entry modal open events
      */
     setupComponentEvents() {
         // Set up sidebar navigation listener
@@ -126,8 +145,12 @@ export class FinSiteView {
     }
 
     /**
-     * Navigate to a specific page
-     * @param {string} page - Page to navigate to
+     * Navigate to a specific page.
+     * 
+     * Updates current page state and re-renders content area
+     * with appropriate component.
+     * 
+     * @param {string} page - Page identifier ('dashboard', 'transactions')
      */
     navigateToPage(page) {
         this.currentPage = page;
@@ -146,9 +169,13 @@ export class FinSiteView {
     }
 
     /**
-     * Render component for a specific page
-     * @param {string} page - Page to render component for
-     * @returns {string} Component HTML for the page
+     * Render component for a specific page.
+     * 
+     * Returns HTML string for the appropriate Web Component.
+     * Shows 404 message for unknown pages.
+     * 
+     * @param {string} page - Page identifier ('dashboard', 'transactions')
+     * @returns {string} Component HTML string
      */
     renderPageComponent(page) {
         switch (page) {
@@ -169,8 +196,14 @@ export class FinSiteView {
     }
 
     /**
-     * Update the view with new data
-     * @param {Object} data - Data to display
+     * Update the view with new data.
+     * 
+     * Handles page navigation and passes data to active component.
+     * Called by controller after model state changes.
+     * 
+     * @param {Object} data - Data from model
+     * @param {string} [data.currentView] - Page to display
+     * @param {Array} [data.transactions] - Transaction array for transactions page
      */
     update(data) {
         if (data.currentView && data.currentView !== this.currentPage) {
@@ -219,10 +252,16 @@ export class FinSiteView {
     }
 
     /**
-     * Update dashboard charts with pre-aggregated data from model
-     * This passes the summary directly to the dashboard's chart component
-     * @param {Object} chartData - Pre-aggregated chart data { timeSeries, groupBreakdown, metrics }
-     * @param {boolean} isHeavyUpdate - True for bulk updates (disables animation)
+     * Update dashboard charts with pre-aggregated data from model.
+     * 
+     * Passes aggregated chart data directly to dashboard component's
+     * chart child component. Only updates if dashboard is currently rendered.
+     * 
+     * @param {Object} chartData - Pre-aggregated chart data from model
+     * @param {Object} chartData.timeSeries - {labels: string[], values: number[]}
+     * @param {Object} chartData.groupBreakdown - {labels: string[], values: number[]}
+     * @param {Object} chartData.metrics - {thisMonth, lastMonth, percentChange, sixMonthAvg}
+     * @param {boolean} [isHeavyUpdate=false] - True for bulk updates (disables animations)
      */
     updateDashboardCharts(chartData, isHeavyUpdate = false) {
         // Only update if dashboard is visible or exists
@@ -234,9 +273,19 @@ export class FinSiteView {
     }
 
     /**
-     * Update dashboard panel with summary data (stats cards, recent activity)
-     * This passes real transaction data to replace static demo values
+     * Update dashboard panel with summary data.
+     * 
+     * Replaces static demo values in dashboard stat cards and
+     * recent activity section with real transaction data.
+     * 
      * @param {Object} panelSummary - Panel summary from model
+     * @param {Array} panelSummary.recentTransactions - Recent transactions for activity list
+     * @param {number} panelSummary.totalSpentAllTime - Lifetime spending total
+     * @param {number} panelSummary.transactionsThisWeek - Transactions in last 7 days
+     * @param {number} panelSummary.monthlySpendingCurrent - Current month spending
+     * @param {number} panelSummary.monthlySpendingLast - Last month spending
+     * @param {number} panelSummary.monthlyChangePercent - Month-over-month change %
+     * @param {'up'|'down'|'neutral'} panelSummary.monthlyDirection - Spending trend
      */
     updateDashboardPanel(panelSummary) {
         // Only update if dashboard is visible or exists

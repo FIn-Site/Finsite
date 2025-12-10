@@ -1,10 +1,25 @@
 /**
- * Spending Chart Web Component for FinSite
- *
- * OPTIMIZATION B: Uses chart-core module instead of global Chart.js
- * OPTIMIZATION C: Categorical X-axis (no date adapter needed)
- *
- * This is the ONLY component in the app that directly interacts with Chart.js
+ * @fileoverview Spending Chart Web Component for FinSite.
+ * Chart.js integration component for dashboard visualizations.
+ * @module components/spending-chart
+ */
+
+/**
+ * Spending Chart Web Component.
+ * 
+ * Performance Optimizations:
+ * - Uses chart-core module for lazy Chart.js loading
+ * - Categorical X-axis (no date adapter needed)
+ * - Animation disabled for bulk updates
+ * 
+ * Features:
+ * - Line chart for 6-month spending trend
+ * - Bar chart for top 5 groups breakdown
+ * - KPI metrics display
+ * 
+ * This is the ONLY component that directly interacts with Chart.js.
+ * 
+ * @extends HTMLElement
  */
 import {
     initChartCore,
@@ -19,6 +34,10 @@ import { createPrefixedLogger } from '../utils/debugService.js';
 const log = createPrefixedLogger('[SpendingChart]');
 
 class FinSiteSpendingChart extends HTMLElement {
+    /**
+     * Initialize spending chart component.
+     * Sets up Shadow DOM, chart instances, and default data.
+     */
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
