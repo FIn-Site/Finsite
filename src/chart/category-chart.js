@@ -19,6 +19,7 @@ class FinSiteCategoryChart extends HTMLElement {
         // Chart data
         this.groupId = '';
         this.groupName = '';
+        this.groupIcon = null; // Custom icon for the group
         this.categories = []; // { id, name, amount }
         this.transactions = []; // Raw transactions for this group
         this.totalSpent = 0;
@@ -46,6 +47,7 @@ class FinSiteCategoryChart extends HTMLElement {
     setData(data) {
         this.groupId = data.groupId || '';
         this.groupName = data.groupName || 'Unknown';
+        this.groupIcon = data.groupIcon || null; // Custom icon from group object
         this.transactions = Array.isArray(data.transactions) ? data.transactions : [];
         this.hasTransactions = this.transactions.length > 0;
         this.categories = this.hasTransactions && Array.isArray(data.categories)
@@ -183,10 +185,11 @@ class FinSiteCategoryChart extends HTMLElement {
                 }
 
                 .chart-card {
-                    background: #1e293b;
+                    background: var(--bg-card, #1e293b);
                     border-radius: 0.75rem;
                     padding: 1.25rem;
-                    border: 1px solid #334155;
+                    border: 1px solid var(--border-color, #334155);
+                    box-shadow: var(--shadow-sm);
                     transition: all 0.2s ease;
                     cursor: pointer;
                 }
@@ -194,7 +197,7 @@ class FinSiteCategoryChart extends HTMLElement {
                 .chart-card:hover {
                     border-color: #3b82f6;
                     transform: translateY(-2px);
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+                    box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.2));
                 }
 
                 .card-header {
@@ -214,7 +217,7 @@ class FinSiteCategoryChart extends HTMLElement {
                     width: 2rem;
                     height: 2rem;
                     border-radius: 0.5rem;
-                    background: rgba(59, 130, 246, 0.15);
+                    background: var(--icon-bg, #f5f5f5);
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -224,19 +227,19 @@ class FinSiteCategoryChart extends HTMLElement {
                 .group-name {
                     font-size: 1rem;
                     font-weight: 600;
-                    color: #f1f5f9;
+                    color: var(--text-primary, #f1f5f9);
                 }
 
                 .total-amount {
                     font-size: 0.875rem;
                     font-weight: 600;
-                    color: #10b981;
+                    color: var(--positive-color, #10b981);
                 }
 
                 .chart-area {
                     height: 140px;
                     padding: 0.5rem 0;
-                    border-top: 1px solid #334155;
+                    border-top: 1px solid var(--border-color, #334155);
                     position: relative;
                 }
 
@@ -246,7 +249,7 @@ class FinSiteCategoryChart extends HTMLElement {
                 }
 
                 .no-data {
-                    color: #64748b;
+                    color: var(--text-muted, #64748b);
                     font-size: 0.875rem;
                     text-align: center;
                     padding: 2rem;
@@ -315,7 +318,7 @@ class FinSiteCategoryChart extends HTMLElement {
             <div class="chart-card" data-group-id="${this.groupId}" data-group-name="${this.groupName}" data-is-custom="${this.isCustom}">
                 <div class="card-header">
                     <div class="group-info">
-                        <div class="group-icon">${getGroupIcon(this.groupId)}</div>
+                        <div class="group-icon">${getGroupIcon(this.groupId, this.groupIcon)}</div>
                         <span class="group-name">${this.groupName}</span>
                     </div>
                     <div class="header-actions">

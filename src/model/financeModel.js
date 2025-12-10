@@ -270,7 +270,7 @@ export class FinSiteModel {
                 getAllCategories(),
             ]);
 
-            const transactions = Array.isArray(storedTransactions)
+            let transactions = Array.isArray(storedTransactions)
                 ? storedTransactions
                 : [];
 
@@ -278,6 +278,15 @@ export class FinSiteModel {
             let categories = Array.isArray(storedCategories)
                 ? storedCategories
                 : [];
+
+            // If no transactions exist, seed sample data
+            if (transactions.length === 0) {
+                const seeded = await seedDatabase();
+                if (seeded) {
+                    // Reload transactions after seeding
+                    transactions = await getAllTransactions();
+                }
+            }
 
             // If no groups/categories exist yet, seed defaults
             if (groups.length === 0 || categories.length === 0) {
@@ -604,7 +613,8 @@ export class FinSiteModel {
 
     /**
      * Delete a group and safely update dependent data.
-     * Categories tied to the group are reassigned to 'uncategorized'.
+     * For custom groups: just removes the group (categories keep their original groupId).
+     * For regular groups: categories are reassigned to 'uncategorized'.
      * Transactions remain but keep their original group for history.
      * Uses batched category updates for better performance and atomicity.
      * @param {string} groupId
@@ -638,8 +648,7 @@ export class FinSiteModel {
         const updatedCategories = [];
 
         for (const cat of this.data.categories) {
-            const belongsToCustom = idSet ? idSet.has(cat.id) : false;
-            if (cat.groupId === groupId || belongsToCustom) {
+            if (cat.groupId === groupId) {
                 const updated = { ...cat, groupId: 'uncategorized' };
                 categoriesToUpdate.push(updated);
                 updatedCategories.push(updated);

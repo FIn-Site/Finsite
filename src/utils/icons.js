@@ -28,6 +28,13 @@ export const GROUP_ICONS = {
     manual: '✏️',
 };
 
+// Icons available for custom group selection
+export const CUSTOM_GROUP_ICONS = [
+    '🏠', '🏦', '💰', '💳', '🎬', '🎮', '✈️', '🚗', '🍽️', '🛒',
+    '🎁', '💊', '📚', '💼', '🏋️', '🎵', '📱', '🏥', '🐾', '👶',
+    '🎨', '⚽', '🎯', '🌴', '☕', '🍺', '🎪', '🎭', '🔧', '📦'
+];
+
 /**
  * Get icon for a category id or name.
  */
@@ -38,8 +45,12 @@ export function getCategoryIcon(id = 'other') {
 
 /**
  * Get icon for a group id or name.
+ * @param {string} id - Group ID
+ * @param {string} [customIcon] - Custom icon override (for custom groups)
  */
-export function getGroupIcon(id = 'expenses') {
+export function getGroupIcon(id = 'expenses', customIcon = null) {
+    // If a custom icon is provided, use it
+    if (customIcon) return customIcon;
     const key = String(id || 'expenses').toLowerCase();
     return GROUP_ICONS[key] || FALLBACK_ICON;
 }

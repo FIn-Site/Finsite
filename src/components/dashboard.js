@@ -115,13 +115,13 @@ class FinSiteDashboard extends HTMLElement {
                 .dashboard-title {
                     font-size: 1.75rem;
                     font-weight: 700;
-                    color: #f1f5f9;
+                    color: var(--text-primary, #f1f5f9);
                     margin: 0;
                 }
 
                 .dashboard-subtitle {
                     font-size: 0.875rem;
-                    color: #64748b;
+                    color: var(--text-muted, #64748b);
                     margin-top: 0.25rem;
                 }
 
@@ -132,10 +132,12 @@ class FinSiteDashboard extends HTMLElement {
                 }
 
                 .stat-card {
-                    background: #1e293b;
+                    background: var(--bg-card, #1e293b);
                     border-radius: 0.75rem;
                     padding: 1.25rem;
-                    border: 1px solid #334155;
+                    border: 1px solid var(--border-color, #334155);
+                    box-shadow: var(--shadow-sm);
+                    transition: background 0.3s ease, border-color 0.3s ease;
                 }
 
                 .stat-card-header {
@@ -153,33 +155,19 @@ class FinSiteDashboard extends HTMLElement {
                     align-items: center;
                     justify-content: center;
                     font-size: 1rem;
-                }
-
-                .stat-icon.balance {
-                    background: rgba(16, 185, 129, 0.15);
-                    color: #10b981;
-                }
-
-                .stat-icon.transactions {
-                    background: rgba(59, 130, 246, 0.15);
-                    color: #3b82f6;
-                }
-
-                .stat-icon.spending {
-                    background: rgba(245, 158, 11, 0.15);
-                    color: #f59e0b;
+                    background: var(--icon-bg, #f5f5f5);
                 }
 
                 .stat-label {
                     font-size: 0.75rem;
-                    color: #64748b;
+                    color: var(--text-muted, #64748b);
                     font-weight: 500;
                 }
 
                 .stat-value {
                     font-size: 1.5rem;
                     font-weight: 700;
-                    color: #f1f5f9;
+                    color: var(--text-primary, #f1f5f9);
                 }
 
                 .stat-change {
@@ -189,11 +177,11 @@ class FinSiteDashboard extends HTMLElement {
                 }
 
                 .stat-change.positive {
-                    color: #10b981;
+                    color: var(--positive-color, #10b981);
                 }
 
                 .stat-change.negative {
-                    color: #ef4444;
+                    color: var(--negative-color, #ef4444);
                 }
 
                 .charts-section {
@@ -202,16 +190,17 @@ class FinSiteDashboard extends HTMLElement {
                 }
 
                 .recent-activity {
-                    background: #1e293b;
+                    background: var(--bg-card, #1e293b);
                     border-radius: 0.75rem;
                     padding: 1.25rem;
-                    border: 1px solid #334155;
+                    border: 1px solid var(--border-color, #334155);
+                    box-shadow: var(--shadow-sm);
                 }
 
                 .activity-header {
                     font-size: 1rem;
                     font-weight: 600;
-                    color: #f1f5f9;
+                    color: var(--text-primary, #f1f5f9);
                     margin-bottom: 1rem;
                 }
 
@@ -226,14 +215,14 @@ class FinSiteDashboard extends HTMLElement {
                     align-items: center;
                     gap: 0.75rem;
                     padding: 0.75rem;
-                    background: #0f172a;
+                    background: var(--bg-primary, #0f172a);
                     border-radius: 0.5rem;
                 }
 
                 .activity-icon {
                     width: 2.25rem;
                     height: 2.25rem;
-                    background: #1e293b;
+                    background: var(--bg-card, #1e293b);
                     border-radius: 0.5rem;
                     display: flex;
                     align-items: center;
@@ -247,19 +236,19 @@ class FinSiteDashboard extends HTMLElement {
 
                 .activity-text {
                     font-size: 0.875rem;
-                    color: #e2e8f0;
+                    color: var(--text-primary, #e2e8f0);
                     font-weight: 500;
                 }
 
                 .activity-date {
                     font-size: 0.75rem;
-                    color: #64748b;
+                    color: var(--text-muted, #64748b);
                 }
 
                 .activity-amount {
                     font-size: 0.875rem;
                     font-weight: 600;
-                    color: #ef4444;
+                    color: var(--negative-color, #ef4444);
                 }
 
                 .empty-state {
@@ -268,7 +257,7 @@ class FinSiteDashboard extends HTMLElement {
                     align-items: center;
                     justify-content: center;
                     padding: 2rem;
-                    color: #64748b;
+                    color: var(--text-muted, #64748b);
                     text-align: center;
                 }
 
