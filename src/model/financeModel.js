@@ -896,5 +896,4 @@ export class FinSiteModel {
             return txDate >= sevenDaysAgo && txDate <= now;
         }).length;
     }
-
 }

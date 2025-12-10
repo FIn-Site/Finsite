@@ -1,11 +1,11 @@
 /**
  * formatters.js - View/display formatting utilities
- * 
+ *
  * These functions convert raw model data into human-readable formats.
  * Moved out of FinSiteModel to maintain MVC separation:
  * - Model exposes raw data (ids, keys, timestamps)
  * - Formatters transform for display (emojis, relative dates)
- * 
+ *
  * This separation improves:
  * - Portability: Model can be used in non-UI contexts (CLI, API)
  * - Localization: Formatters can be swapped for i18n versions
@@ -57,7 +57,7 @@ export function getCategoryIcon(categoryOrGroup) {
  */
 export function getRelativeDate(date, referenceDate = new Date()) {
     const txDate = new Date(date);
-    
+
     if (Number.isNaN(txDate.getTime())) {
         return 'Unknown';
     }

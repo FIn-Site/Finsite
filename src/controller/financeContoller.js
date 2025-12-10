@@ -6,7 +6,7 @@ const log = createPrefixedLogger('[Controller]');
 /**
  * FinSiteController - Coordinates between Model and View
  * Handles user interactions and application logic
- * 
+ *
  * Follows MVC pattern where:
  * - Controller never queries DOM directly (uses view interface)
  * - All user feedback goes through view methods
@@ -40,7 +40,7 @@ export class FinSiteController {
      */
     _handleError(context, error, userMessage = null) {
         console.error(`${context}:`, error);
-        
+
         if (userMessage && typeof this.view.showError === 'function') {
             this.view.showError(userMessage);
         }
@@ -54,7 +54,7 @@ export class FinSiteController {
      * Synchronize model state to view - single source of truth for refresh flow.
      * Extracts the common "get data → update view → refresh dashboard" pattern
      * used across init, navigate, and all data-changing operations.
-     * 
+     *
      * @param {Object} [options={}] - Refresh options
      * @param {boolean} [options.isHeavyUpdate=false] - True for bulk operations (disables chart animations)
      * @param {boolean} [options.refreshDashboard=true] - Whether to refresh dashboard charts
@@ -90,8 +90,11 @@ export class FinSiteController {
 
             log('Controller initialization complete');
         } catch (error) {
-            this._handleError('Error during controller initialization', error, 
-                'Failed to load application data. Please refresh the page.');
+            this._handleError(
+                'Error during controller initialization',
+                error,
+                'Failed to load application data. Please refresh the page.',
+            );
         }
     }
 
@@ -117,10 +120,10 @@ export class FinSiteController {
     navigate(route) {
         log(`🧭 Navigating to: ${route}`);
         this.model.updateData({ currentView: route });
-        
+
         // Navigate through view interface, then sync state
         this.view.navigateToPage(route);
-        
+
         // Only refresh dashboard data when navigating to dashboard
         if (route === 'dashboard') {
             this._refreshDashboard(false);
@@ -212,17 +215,20 @@ export class FinSiteController {
 
             // Notify view of completion with summary
             if (typeof this.view.onBulkImportComplete === 'function') {
-                this.view.onBulkImportComplete({ 
-                    savedCount: saved.length, 
+                this.view.onBulkImportComplete({
+                    savedCount: saved.length,
                     skippedCount: skipped.length,
-                    skippedDetails: skipped 
+                    skippedDetails: skipped,
                 });
             }
 
             return { saved: saved.length, skipped: skipped.length };
         } catch (error) {
-            this._handleError('Error during bulk import', error, 
-                'Failed to import transactions. Please check your file format.');
+            this._handleError(
+                'Error during bulk import',
+                error,
+                'Failed to import transactions. Please check your file format.',
+            );
             return { saved: 0, skipped: transactions.length };
         }
     }
@@ -247,8 +253,11 @@ export class FinSiteController {
                 this.view.onTransactionsDeleted(ids);
             }
         } catch (error) {
-            this._handleError('Error deleting transactions', error,
-                'Failed to delete transactions. Please try again.');
+            this._handleError(
+                'Error deleting transactions',
+                error,
+                'Failed to delete transactions. Please try again.',
+            );
         }
     }
 }

@@ -254,7 +254,7 @@ export class FinSiteView {
     /**
      * Notify the transactions component that a transaction was successfully added.
      * Routes controller feedback through view interface to avoid direct DOM coupling.
-     * 
+     *
      * @param {Object} savedTransaction - The persisted transaction with ID
      */
     onTransactionAdded(savedTransaction) {
@@ -267,7 +267,7 @@ export class FinSiteView {
     /**
      * Notify the transactions component that a transaction save failed.
      * Routes controller error feedback through view interface.
-     * 
+     *
      * @param {string} errorMessage - User-friendly error message
      */
     onTransactionError(errorMessage) {
@@ -280,7 +280,7 @@ export class FinSiteView {
     /**
      * Notify the view that transactions were successfully deleted.
      * Can be used to update UI state or show confirmation.
-     * 
+     *
      * @param {Array} ids - IDs of deleted transactions
      */
     onTransactionsDeleted(ids) {
@@ -292,7 +292,7 @@ export class FinSiteView {
     /**
      * Notify the view that a bulk import completed.
      * Can show summary toast/notification with import results.
-     * 
+     *
      * @param {Object} result - Import results
      * @param {number} result.savedCount - Number of successfully saved transactions
      * @param {number} result.skippedCount - Number of skipped/invalid transactions
@@ -307,7 +307,7 @@ export class FinSiteView {
     /**
      * Display an error message to the user.
      * Provides user feedback for failed operations.
-     * 
+     *
      * @param {string} message - Error message to display
      */
     showError(message) {

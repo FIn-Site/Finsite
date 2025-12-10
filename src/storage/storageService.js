@@ -111,7 +111,7 @@ export async function deleteTransactions(ids) {
         // Validate and normalize IDs - reject if any are invalid
         const rawIds = ids || [];
         const normalizedIds = [];
-        
+
         for (const rawId of rawIds) {
             const numId = Number(rawId);
             if (Number.isNaN(numId)) {
