@@ -55,5 +55,51 @@ The following core behaviors are covered by unit tests:
   - Returns human-readable labels such as `"Today"`  
 
 
+## Integration Testing
+
+In addition to unit testing the finance model, this project includes **integration tests for the real storage layer**. These tests verify that our **IndexedDB persistence logic works end-to-end** using the same API that the application uses at runtime.
+
+### Tools Used
+
+- **Vitest** – JavaScript test runner
+- **fake-indexeddb** – In-memory IndexedDB implementation for Node-based testing
+
+`fake-indexeddb` allows us to run real IndexedDB logic in a test environment without relying on a browser.
+
+---
+
+### What Is Being Integration Tested
+
+The following real storage functions from  
+`src/storage/storageService.js` are tested together with a real database engine:
+
+#### Transactions
+- `addTransaction(transaction)`
+- `getAllTransactions()`
+- `deleteTransactions(ids)`
+- `clearAllTransactions()`
+
+#### Groups
+- `addGroup(group)`
+- `getAllGroups()`
+
+#### Categories
+- `addCategory(category)`
+- `getAllCategories()`
+
+These tests validate that:
+- Data is correctly persisted to IndexedDB
+- Data can be retrieved after saving
+- Deletes remove the correct records
+- Clearing resets the database properly
+- Groups and categories persist independently of transactions
+
+---
+
+
+
+
+
+
 
 

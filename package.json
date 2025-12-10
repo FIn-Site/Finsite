@@ -9,8 +9,6 @@
   },
   "scripts": {
     "test": "vitest"
-
-
   },
   "repository": {
     "type": "git",
@@ -24,6 +22,7 @@
   },
   "homepage": "https://github.com/FIn-Site/Finsite#readme",
   "devDependencies": {
+    "fake-indexeddb": "^6.2.5",
     "vitest": "^4.0.15"
   }
 }

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { FinSiteModel } from '../src/model/financeModel.js';
 
-// ✅ MOCK STORAGE LAYER
+//  MOCK STORAGE LAYER
 vi.mock('../src/storage/storageService.js', () => {
   let db = [];
 
@@ -33,7 +33,7 @@ describe('FinSiteModel — Core Logic', () => {
   });
 
   // ---------------------------
-  // ✅ BUCKET KEY LOGIC
+  //  BUCKET KEY LOGIC
   // ---------------------------
 
   it('creates correct bucket key from date', () => {
@@ -47,10 +47,10 @@ describe('FinSiteModel — Core Logic', () => {
   });
 
   // ---------------------------
-  // ✅ APPLY TRANSACTION DELTA
+  // APPLY TRANSACTION DELTA
   // ---------------------------
 
-  it('applies transaction delta correctly to month and group', () => {
+  it('applies transaction change correctly to month and group', () => {
     const tx = { amount: 50, date: new Date(), group: 'expenses' };
 
     model._applyTransactionDelta(tx, 1);
@@ -72,7 +72,7 @@ describe('FinSiteModel — Core Logic', () => {
   });
 
   // ---------------------------
-  // ✅ TOTAL SPENT CALCULATION
+  //  TOTAL SPENT CALCULATION
   // ---------------------------
 
   it('calculates total spent correctly', () => {
@@ -91,7 +91,7 @@ describe('FinSiteModel — Core Logic', () => {
   });
 
   // ---------------------------
-  // ✅ CATEGORY ICONS
+  //  CATEGORY ICONS
   // ---------------------------
 
   it('returns correct icon for groceries', () => {
@@ -103,7 +103,7 @@ describe('FinSiteModel — Core Logic', () => {
   });
 
   // ---------------------------
-  // ✅ RELATIVE DATE
+  //  RELATIVE DATE
   // ---------------------------
 
   it('returns Today for today date', () => {
@@ -112,7 +112,7 @@ describe('FinSiteModel — Core Logic', () => {
   });
 
   // ---------------------------
-  // ✅ ADD TRANSACTION (MOCKED DB)
+  //  ADD TRANSACTION (MOCKED DB)
   // ---------------------------
 
   it('adds a transaction and updates aggregates', async () => {
@@ -130,7 +130,7 @@ describe('FinSiteModel — Core Logic', () => {
   });
 
   // ---------------------------
-  // ✅ DELETE TRANSACTION
+  //  DELETE TRANSACTION
   // ---------------------------
 
   it('deletes a transaction by id', async () => {
@@ -146,7 +146,7 @@ describe('FinSiteModel — Core Logic', () => {
   });
 
   // ---------------------------
-  // ✅ CLEAR ALL TRANSACTIONS
+  //  CLEAR ALL TRANSACTIONS
   // ---------------------------
 
   it('clears all transactions and resets aggregates', async () => {
