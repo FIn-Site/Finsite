@@ -1,6 +1,7 @@
 // Import spending chart component
 import '../chart/spending-chart.js';
-import { getCategoryIcon, getRelativeDate } from '../utils/formatters.js';
+import { getCategoryIcon } from '../utils/icons.js';
+import { getRelativeDate } from '../utils/formatters.js';
 import { createPrefixedLogger } from '../utils/debugService.js';
 
 // Prefixed logger for dashboard component

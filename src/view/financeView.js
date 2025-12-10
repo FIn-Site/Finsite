@@ -128,6 +128,10 @@ export class FinSiteView {
 
         // Ensure freshly-rendered categories receive the model
         this._wireModelToCategories();
+
+        // Ensure freshly-rendered transactions receive taxonomy
+        this._wireModelToTransactions();
+
         log(`📄 Navigated to ${page} page`);
     }
 
@@ -243,6 +247,29 @@ export class FinSiteView {
                 el.model = this.model;
             } catch (err) {
                 console.warn('Failed to wire model to categories component', err);
+            }
+        });
+    }
+
+    /**
+     * Inject taxonomy (groups/categories) into transactions component.
+     * This ensures the dropdown menus are populated with available options.
+     */
+    _wireModelToTransactions() {
+        if (!this.model || !this.container) return;
+        this.container.querySelectorAll('finsite-transactions').forEach((el) => {
+            try {
+                // Set model reference for future syncing
+                el.model = this.model;
+                // Inject taxonomy data directly
+                if (typeof el.setTaxonomy === 'function') {
+                    const groups = this.model.getGroups?.() || [];
+                    const categories = this.model.getCategories?.() || [];
+                    el.setTaxonomy({ groups, categories });
+                    log('Taxonomy wired to transactions:', { groups: groups.length, categories: categories.length });
+                }
+            } catch (err) {
+                console.warn('Failed to wire model to transactions component', err);
             }
         });
     }

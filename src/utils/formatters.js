@@ -12,42 +12,7 @@
  * - Testability: Model tests don't depend on display logic
  */
 
-/**
- * Icon mapping for categories and groups
- * @type {Object<string, string>}
- */
-const CATEGORY_ICONS = {
-    // Categories
-    groceries: '🛒',
-    utilities: '💡',
-    fuel: '⛽',
-    stocks: '📈',
-    bonds: '📊',
-    'dining-out': '🍽️',
-    shopping: '🛍️',
-    // Groups
-    household: '🏠',
-    investments: '💰',
-    expenses: '💳',
-    // Default
-    uncategorized: '📝',
-};
-
-/**
- * Default icon when category/group not found in mapping
- * @type {string}
- */
-const DEFAULT_ICON = '💸';
-
-/**
- * Get emoji icon for a category or group
- * @param {string} categoryOrGroup - Category or group id
- * @returns {string} Emoji icon
- */
-export function getCategoryIcon(categoryOrGroup) {
-    const key = (categoryOrGroup || 'uncategorized').toLowerCase();
-    return CATEGORY_ICONS[key] || DEFAULT_ICON;
-}
+import { getCategoryIcon } from './icons.js';
 
 /**
  * Get relative date string (Today, Yesterday, or formatted date)
