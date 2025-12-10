@@ -2,7 +2,7 @@
 
 /* Theme Variables */
 :root {
-        --icon-bg: rgba(255,255,255,0.85); /* Light icon background for dark mode */
+        --icon-bg: #1a2230; /* Slightly lighter icon background for dark mode */
     /* Dark theme (default) */
     --bg-primary: #0f172a;
     --bg-secondary: #1e293b;
