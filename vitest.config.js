@@ -10,7 +10,7 @@ export default defineConfig({
     ],
     coverage: {
       reporter: ["text", "html"],
-      reportsDirectory: "test/unit-test-results",
+      reportsDirectory: "./unit-test-results",
     },
   },
 });
