@@ -1,4 +1,4 @@
-import { getCategoryIcon, getGroupIcon } from '../constants/icons.js';
+import { getCategoryIcon, getGroupIcon } from '../utils/icons.js';
 import { createPrefixedLogger } from '../utils/debugService.js';
 
 // Prefixed logger for transactions component

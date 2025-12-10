@@ -3,7 +3,7 @@ import '../chart/category-chart.js';
 import './category-modal-chart.js';
 
 import { buildCategoryAggregates, buildGroupBreakdown } from '../utils/categoryAggregator.js';
-import { getCategoryIcon } from '../constants/icons.js';
+import { getCategoryIcon } from '../utils/icons.js';
 import { createPrefixedLogger } from '../utils/debugService.js';
 
 // Prefixed logger for categories component

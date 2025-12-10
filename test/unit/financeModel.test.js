@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { FinSiteModel } from '../src/model/financeModel.js';
+import { FinSiteModel } from '../../src/model/financeModel.js';
 
 // ✅ MOCK STORAGE LAYER
 vi.mock('../src/storage/storageService.js', () => {
