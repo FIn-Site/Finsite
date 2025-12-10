@@ -1,8 +1,8 @@
 // Import chart components
-import './category-chart.js';
+import '../chart/category-chart.js';
 import './category-modal-chart.js';
 
-import { buildCategoryAggregates, buildGroupBreakdown } from '../model/categoryAggregator.js';
+import { buildCategoryAggregates, buildGroupBreakdown } from '../utils/categoryAggregator.js';
 import { getCategoryIcon } from '../constants/icons.js';
 
 /**

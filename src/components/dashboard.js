@@ -1,6 +1,6 @@
 // Import spending chart component
-import './spending-chart.js';
-import { getCategoryIcon, getRelativeDate } from '../model/formatters.js';
+import '../chart/spending-chart.js';
+import { getCategoryIcon, getRelativeDate } from '../utils/formatters.js';
 
 /**
  * Dashboard Web Component for FinSite

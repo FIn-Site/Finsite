@@ -13,7 +13,7 @@ import {
 import {
     buildCategoryAggregates,
     buildGroupBreakdown,
-} from './categoryAggregator.js';
+} from '../utils/categoryAggregator.js';
 
 /**
  * FinSiteModel - Manages application data and business logic

@@ -12,7 +12,7 @@ import {
     createLineChartConfig,
     createBarChartConfig,
     formatCurrency,
-} from '../chart/chart-core.js';
+} from './chart-core.js';
 
 class FinSiteSpendingChart extends HTMLElement {
     constructor() {

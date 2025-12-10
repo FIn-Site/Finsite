@@ -1,5 +1,5 @@
 // Import Chart.js core
-import { initChartCore, createBarChartConfig } from '../chart/chart-core.js';
+import { initChartCore, createBarChartConfig } from './chart-core.js';
 import { getGroupIcon } from '../constants/icons.js';
 
 // ...
