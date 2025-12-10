@@ -207,7 +207,7 @@ class FinSiteCategoryChart extends HTMLElement {
                     width: 2rem;
                     height: 2rem;
                     border-radius: 0.5rem;
-                    background: rgba(59, 130, 246, 0.15);
+                    background: var(--icon-bg, #f5f5f5);
                     display: flex;
                     align-items: center;
                     justify-content: center;
