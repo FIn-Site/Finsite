@@ -254,3 +254,52 @@ export async function addCategory(category) {
         };
     });
 }
+
+/**
+ * Update multiple categories in a single transaction (batch operation).
+ * More efficient than calling addCategory() in a loop and provides atomicity.
+ * @param {Array} categories - Array of category objects to update
+ * @returns {Promise<Array>} Array of updated categories
+ */
+export async function updateCategoriesBatch(categories) {
+    if (!Array.isArray(categories) || categories.length === 0) {
+        return [];
+    }
+
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction([CATEGORIES_STORE], 'readwrite');
+        const store = tx.objectStore(CATEGORIES_STORE);
+
+        let completed = 0;
+        const results = [];
+
+        // Handle transaction-level events for atomicity
+        tx.oncomplete = () => {
+            resolve(results);
+        };
+
+        tx.onerror = (event) => {
+            reject(createError('Batch category update failed', event.target.error));
+        };
+
+        tx.onabort = (event) => {
+            reject(createError('Batch category update aborted', event.target.error));
+        };
+
+        // Queue all put operations in the same transaction
+        for (const category of categories) {
+            const request = store.put(category);
+
+            request.onsuccess = () => {
+                results.push(category);
+                completed++;
+            };
+
+            // Individual request errors will cause transaction abort
+            request.onerror = (event) => {
+                // Transaction will abort automatically, handled by tx.onerror/onabort
+            };
+        }
+    });
+}

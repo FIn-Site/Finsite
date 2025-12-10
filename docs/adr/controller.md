@@ -292,3 +292,176 @@ View events are bound through a central `bindHandlers` method for organized even
 - Error boundary component integration
 - Optimistic updates with rollback on failure
 - Batch multiple actions before single refresh
+
+---
+
+# Cleanup Refactor
+
+## Problems Addressed
+
+### 1. Scattered Debug Logging (Production Noise)
+**Before**: Multiple raw `console.log()` and `console.error()` calls scattered throughout controller methods (`init`, `navigate`, `handleAddTransaction`, `handleBulkImport`, `handleDeleteTransactions`, `_refreshDashboard`)
+
+**Issue**: 
+- Production console cluttered with debug output
+- No way to disable logging without editing multiple locations
+- Minor performance cost from always-on string formatting
+
+**After**: Added `_debugLog(...args)` method controlled by `this.debug` boolean flag (default: `false`); all logging routed through this single gatekeeper
+
+### 2. Direct DOM Queries Breaking MVC (Tight Coupling)
+**Before**: Controller directly queried DOM for components:
+```javascript
+const transactionsPage = document.querySelector('finsite-transactions');
+if (transactionsPage && typeof transactionsPage.onTransactionAdded === 'function') {
+    transactionsPage.onTransactionAdded(savedTransaction);
+}
+```
+
+**Issue**:
+- Controller bypassed the injected view, violating dependency injection pattern
+- Tight coupling between controller and DOM structure
+- Breaks testability (can't mock view without mocking DOM)
+- MVC violation: controller should only talk to view
+
+**After**: All component notifications routed through view interface:
+```javascript
+if (typeof this.view.onTransactionAdded === 'function') {
+    this.view.onTransactionAdded(savedTransaction);
+}
+```
+View now has `onTransactionAdded()`, `onTransactionError()`, `onTransactionsDeleted()`, `onBulkImportComplete()` methods that forward to cached component references.
+
+### 3. Duplicated State Sync Pattern (DRY Violation)
+**Before**: The sequence "get data from model → view.update(data) → refresh dashboard" was duplicated across 5 methods:
+- `init()`
+- `navigate()`
+- `handleAddTransaction()`
+- `handleBulkImport()`
+- `handleDeleteTransactions()`
+
+**Issue**:
+- Violates DRY principle
+- Easy to forget steps when adding new operations
+- Inconsistent refresh behavior if one copy is modified
+- Single Source of Truth (SSOT) violation for refresh logic
+
+**After**: Extracted `_syncModelToView({ isHeavyUpdate, refreshDashboard })` helper:
+```javascript
+_syncModelToView({ isHeavyUpdate = false, refreshDashboard = true } = {}) {
+    const data = this.model.getData();
+    this.view.update(data);
+    if (refreshDashboard) {
+        this._refreshDashboard(isHeavyUpdate);
+    }
+}
+```
+All data-changing operations now call this single method.
+
+### 4. Weak Error Handling (Silent Failures)
+**Before**: Error handling only logged to console; no user feedback:
+```javascript
+} catch (error) {
+    console.error('❌ Error adding transaction:', error);
+}
+```
+
+**Issue**:
+- Users see no feedback when operations fail
+- UI can be left in inconsistent state
+- Violates defensive development principles
+- Error messages only visible in dev tools
+
+**After**: Added `_handleError(context, error, userMessage)` that:
+1. Always logs to console (errors are important)
+2. Optionally calls `view.showError(message)` for user feedback
+```javascript
+_handleError(context, error, userMessage = null) {
+    console.error(`${context}:`, error);
+    if (userMessage && typeof this.view.showError === 'function') {
+        this.view.showError(userMessage);
+    }
+}
+```
+View now has `showError(message)` method for displaying errors to users.
+
+## Implementation Summary
+
+| Change | Old Approach | New Approach |
+|--------|--------------|--------------|
+| Debug logging | Direct `console.log()` calls | `_debugLog()` with toggle flag |
+| Component notifications | `document.querySelector()` | `view.onTransactionAdded()` etc. |
+| State refresh flow | Duplicated in 5 methods | Single `_syncModelToView()` helper |
+| Error handling | Log only, no UI feedback | `_handleError()` + `view.showError()` |
+
+## New Controller Methods
+
+### _debugLog(...args)
+- Conditional logger controlled by `this.debug` flag
+- Only outputs when debug mode enabled
+- Production: `debug = false` (no output)
+- Development: `debug = true` (verbose output)
+
+### _handleError(context, error, userMessage)
+- Centralized error handler for all operations
+- Always logs to console (errors shouldn't be hidden)
+- Optionally notifies view for user feedback
+- Enables consistent error messaging across app
+
+### _syncModelToView(options)
+- Single source of truth for model→view synchronization
+- Options: `{ isHeavyUpdate, refreshDashboard }`
+- Eliminates duplication across data operations
+- Easy to extend with additional sync logic (e.g., URL updates)
+
+## New View Methods (Added to Support Controller)
+
+### onTransactionAdded(savedTransaction)
+- Routes success notification to transactions component
+- Uses cached `transactionsEl` reference
+
+### onTransactionError(errorMessage)
+- Routes error notification to transactions component
+- Enables form to show error state
+
+### onTransactionsDeleted(ids)
+- Hook for delete confirmation feedback
+- Currently logs; can be extended for toast notifications
+
+### onBulkImportComplete(result)
+- Hook for import summary display
+- Receives `{ savedCount, skippedCount, skippedDetails }`
+
+### showError(message)
+- General error display method
+- Currently logs; designed for toast/banner enhancement
+
+## Architecture Benefits
+
+### Improved Testability
+- Controller can be tested with mock view
+- No DOM mocking required for unit tests
+- Clear interface boundaries
+
+### Better MVC Separation
+- Controller only communicates with view interface
+- View routes to components internally
+- Each layer has single responsibility
+
+### Centralized Control
+- Debug logging: one flag controls all output
+- Error handling: one pattern, consistent messages
+- State sync: one helper, predictable behavior
+
+### Easier Maintenance
+- Adding new operations: just call `_syncModelToView()`
+- Changing refresh logic: modify one method
+- Adding error feedback: extend `showError()`
+
+## Future Enhancements
+
+- Replace `showError()` with toast notification component
+- Add `showSuccess()` for positive feedback
+- Implement loading states during async operations
+- Add retry logic to `_handleError()` for transient failures
+- Integrate with error tracking service (Sentry, etc.)

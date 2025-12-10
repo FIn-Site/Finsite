@@ -394,6 +394,77 @@ export class FinSiteView {
         });
     }
 
+    // ============================================================
+    // TRANSACTION FEEDBACK METHODS (Controller → View → Component)
+    // ============================================================
+
+    /**
+     * Notify the transactions component that a transaction was successfully added.
+     * Routes controller feedback through view interface to avoid direct DOM coupling.
+     * 
+     * @param {Object} savedTransaction - The persisted transaction with ID
+     */
+    onTransactionAdded(savedTransaction) {
+        if (this.transactionsEl && typeof this.transactionsEl.onTransactionAdded === 'function') {
+            this.transactionsEl.onTransactionAdded(savedTransaction);
+        }
+        this._debugLog('✅ Transaction added notification sent to component');
+    }
+
+    /**
+     * Notify the transactions component that a transaction save failed.
+     * Routes controller error feedback through view interface.
+     * 
+     * @param {string} errorMessage - User-friendly error message
+     */
+    onTransactionError(errorMessage) {
+        if (this.transactionsEl && typeof this.transactionsEl.onTransactionError === 'function') {
+            this.transactionsEl.onTransactionError(errorMessage);
+        }
+        this._debugLog('❌ Transaction error notification sent to component:', errorMessage);
+    }
+
+    /**
+     * Notify the view that transactions were successfully deleted.
+     * Can be used to update UI state or show confirmation.
+     * 
+     * @param {Array} ids - IDs of deleted transactions
+     */
+    onTransactionsDeleted(ids) {
+        this._debugLog(`🗑️ ${ids.length} transactions deleted`);
+        // Transactions component will update via the normal update() flow
+        // This hook is available for additional UI feedback if needed
+    }
+
+    /**
+     * Notify the view that a bulk import completed.
+     * Can show summary toast/notification with import results.
+     * 
+     * @param {Object} result - Import results
+     * @param {number} result.savedCount - Number of successfully saved transactions
+     * @param {number} result.skippedCount - Number of skipped/invalid transactions
+     * @param {Array} result.skippedDetails - Details of skipped transactions with error reasons
+     */
+    onBulkImportComplete(result) {
+        this._debugLog(`📦 Bulk import: ${result.savedCount} saved, ${result.skippedCount} skipped`);
+        // Could show a toast notification here
+        // For now, transactions component updates via normal update() flow
+    }
+
+    /**
+     * Display an error message to the user.
+     * Provides user feedback for failed operations.
+     * 
+     * @param {string} message - Error message to display
+     */
+    showError(message) {
+        // For now, use browser alert. Could be replaced with toast/banner component.
+        // This is better than silent failure.
+        console.error('UI Error:', message);
+        // Optionally show to user - can be enhanced with toast component later
+        // alert(message);
+    }
+
     /**
      * Get the currently visible page identifier.
      * Useful for controller to determine context when handling events.

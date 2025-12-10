@@ -8,6 +8,7 @@ import {
     deleteGroup,
     getAllCategories,
     addCategory,
+    updateCategoriesBatch,
 } from '../storage/storageService.js';
 import {
     buildCategoryAggregates,
@@ -59,13 +60,33 @@ export class FinSiteModel {
         };
 
         /**
-         * Track current month/year for bucket calculations
+         * Cached Set of last-N-month keys for O(1) lookups
+         * Rebuilt once per _rebuildAggregates() instead of per-transaction
+         * @type {Set<string>|null}
          */
-        this._currentBucketKey = this._getBucketKey(new Date());
+        this._lastNMonthKeysCache = null;
 
-        this._initialized = false;
+        /**
+         * Debug flag - set to true to enable console logging
+         * @type {boolean}
+         */
+        this.debug = false;
 
-        console.log('FinSiteModel initialized with incremental aggregation');
+        this._debugLog('FinSiteModel initialized with incremental aggregation');
+    }
+
+    // ============================================================
+    // DEBUG LOGGING
+    // ============================================================
+
+    /**
+     * Conditional debug logger - only outputs when this.debug is true
+     * @param {...any} args - Arguments to pass to console.log
+     */
+    _debugLog(...args) {
+        if (this.debug) {
+            console.log(...args);
+        }
     }
 
     // ============================================================
@@ -111,13 +132,18 @@ export class FinSiteModel {
 
     /**
      * Check if a bucket key is within the last N months
+     * Uses pre-computed cache for O(1) lookup instead of rebuilding Set each call
      * @param {string} key
-     * @param {number} months
      * @returns {boolean}
      */
-    _isWithinLastNMonths(key, months = 6) {
+    _isWithinLastNMonths(key) {
         if (!key) return false;
-        const validKeys = new Set(this._getLastNMonthKeys(months));
+        // Use cached Set if available, otherwise fall back to computation
+        if (this._lastNMonthKeysCache) {
+            return this._lastNMonthKeysCache.has(key);
+        }
+        // Fallback for edge cases before cache is built
+        const validKeys = new Set(this._getLastNMonthKeys(6));
         return validKeys.has(key);
     }
 
@@ -174,16 +200,19 @@ export class FinSiteModel {
     /**
      * Rebuild all aggregates from scratch (used on init and bulk ops)
      * O(n) but only called once per bulk operation
+     * Also caches the last-N-month key Set for O(1) lookups in _isWithinLastNMonths
      */
     _rebuildAggregates() {
-    // Clear existing aggregates
+        // Clear existing aggregates
         this._timeBuckets.clear();
         this._groupTotals.clear();
         this._cachedMetrics = { thisMonth: 0, lastMonth: 0, sixMonthTotal: 0 };
 
         const currentKey = this._getBucketKey(new Date());
         const lastMonthKey = this._getLastMonthKey();
-        const validSixMonthKeys = new Set(this._getLastNMonthKeys(6));
+
+        // Cache the last-N-month keys Set for O(1) lookups
+        this._lastNMonthKeysCache = new Set(this._getLastNMonthKeys(6));
 
         // Single pass through all transactions
         for (const tx of this.data.transactions) {
@@ -206,12 +235,12 @@ export class FinSiteModel {
             if (bucketKey === lastMonthKey) {
                 this._cachedMetrics.lastMonth += amount;
             }
-            if (validSixMonthKeys.has(bucketKey)) {
+            if (this._lastNMonthKeysCache.has(bucketKey)) {
                 this._cachedMetrics.sixMonthTotal += amount;
             }
         }
 
-        console.log('📊 Aggregates rebuilt:', {
+        this._debugLog('📊 Aggregates rebuilt:', {
             timeBuckets: this._timeBuckets.size,
             groupTotals: this._groupTotals.size,
             metrics: this._cachedMetrics,
@@ -242,7 +271,7 @@ export class FinSiteModel {
      */
     updateData(newData) {
         this.data = { ...this.data, ...newData };
-        console.log('Model data updated:', this.data);
+        this._debugLog('Model data updated:', this.data);
     }
 
     /**
@@ -294,8 +323,7 @@ export class FinSiteModel {
             // OPTIMIZATION A: Build aggregates once on init
             this._rebuildAggregates();
 
-            this._initialized = true;
-            console.log(
+            this._debugLog(
                 'Model initialized from storage.',
                 'Transactions:',
                 transactions.length,
@@ -311,7 +339,6 @@ export class FinSiteModel {
             this.data.groups = [];
             this.data.categories = [];
             this._rebuildAggregates();
-            this._initialized = true;
             return this.getData();
         }
     }
@@ -357,21 +384,11 @@ export class FinSiteModel {
      * Add a new transaction (and persist it).
      * OPTIMIZATION A: O(1) aggregate update instead of O(n) rescan
      * Expected shape: { group, category, amount, date, ... }
+     * @throws {Error} If amount or date are invalid
      */
     async addTransaction(input) {
-        const {
-            group = 'expenses', category, amount, date, merchant = '', notes = '', ...rest
-        } = input || {};
-
-        const newTx = {
-            group,
-            category,
-            amount: Number(amount),
-            date,
-            merchant,
-            notes,
-            ...rest,
-        };
+        // Validate and normalize input (same pipeline as bulk)
+        const newTx = this._validateTransaction(input);
 
         try {
             // Persist to IndexedDB
@@ -383,7 +400,7 @@ export class FinSiteModel {
             // OPTIMIZATION A: Incremental aggregate update (O(1))
             this._applyTransactionDelta(saved, 1);
 
-            console.log('Transaction added:', saved);
+            this._debugLog('Transaction added:', saved);
             return saved;
         } catch (error) {
             console.error('Error adding transaction in FinSiteModel:', error);
@@ -395,42 +412,39 @@ export class FinSiteModel {
      * Add multiple transactions in bulk (e.g., CSV import)
      * OPTIMIZATION A: Single pass through new items, one rebuild at end
      * @param {Array} transactions - Array of transaction objects
-     * @returns {Array} Array of saved transactions
+     * @returns {{ saved: Array, skipped: Array }} Saved and skipped transactions
      */
     async addTransactionsBulk(transactions) {
         if (!Array.isArray(transactions) || transactions.length === 0) {
-            return [];
+            return { saved: [], skipped: [] };
         }
 
         const saved = [];
+        const skipped = [];
 
         try {
-            // Persist each transaction
+            // Validate and persist each transaction
             for (const input of transactions) {
-                const {
-                    group = 'expenses', category, amount, date, merchant = '', notes = '', ...rest
-                } = input || {};
-                const newTx = {
-                    group,
-                    category,
-                    amount: Number(amount),
-                    date,
-                    merchant,
-                    notes,
-                    ...rest,
-                };
-                const savedTx = await addTransaction(newTx);
-                saved.push(savedTx);
+                try {
+                    const validatedTx = this._validateTransaction(input);
+                    const savedTx = await addTransaction(validatedTx);
+                    saved.push(savedTx);
+                } catch (validationError) {
+                    // Skip invalid transactions but continue with valid ones
+                    skipped.push({ input, error: validationError.message });
+                    this._debugLog('Skipping invalid transaction:', input, validationError.message);
+                }
             }
 
-            // Add all to in-memory list
-            this.data.transactions = [...saved, ...this.data.transactions];
+            // Add all valid transactions to in-memory list
+            if (saved.length > 0) {
+                this.data.transactions = [...saved, ...this.data.transactions];
+                // OPTIMIZATION A: Rebuild aggregates once (not per transaction)
+                this._rebuildAggregates();
+            }
 
-            // OPTIMIZATION A: Rebuild aggregates once (not per transaction)
-            this._rebuildAggregates();
-
-            console.log(`Bulk import complete: ${saved.length} transactions`);
-            return saved;
+            this._debugLog(`Bulk import complete: ${saved.length} saved, ${skipped.length} skipped`);
+            return { saved, skipped };
         } catch (error) {
             console.error('Error in bulk import:', error);
             throw error;
@@ -466,7 +480,7 @@ export class FinSiteModel {
                 (tx) => !idSet.has(Number(tx.id)),
             );
 
-            console.log(
+            this._debugLog(
                 'Transactions deleted. New count:',
                 this.data.transactions.length,
             );
@@ -492,8 +506,9 @@ export class FinSiteModel {
             this._timeBuckets.clear();
             this._groupTotals.clear();
             this._cachedMetrics = { thisMonth: 0, lastMonth: 0, sixMonthTotal: 0 };
+            this._lastNMonthKeysCache = null;
 
-            console.log('All transactions cleared in FinSiteModel');
+            this._debugLog('All transactions cleared in FinSiteModel');
             return this.getData();
         } catch (error) {
             console.error('Error clearing transactions in FinSiteModel:', error);
@@ -607,6 +622,7 @@ export class FinSiteModel {
      * Delete a group and safely update dependent data.
      * Categories tied to the group are reassigned to 'uncategorized'.
      * Transactions remain but keep their original group for history.
+     * Uses batched category updates for better performance and atomicity.
      * @param {string} groupId
      */
     async deleteGroup(groupId) {
@@ -614,39 +630,51 @@ export class FinSiteModel {
 
         const group = this.data.groups.find((g) => g.id === groupId);
 
-        await deleteGroup(groupId);
-
-        // Remove group from memory
-        this.data.groups = this.data.groups.filter((g) => g.id !== groupId);
-
         // Ensure an 'uncategorized' group exists for orphaned categories
-        const uncategorizedGroup = this.data.groups.find((g) => g.id === 'uncategorized')
-            || { id: 'uncategorized', name: 'Uncategorized' };
-
-        if (!this.data.groups.find((g) => g.id === 'uncategorized')) {
-            this.data.groups = [...this.data.groups, uncategorizedGroup];
+        let uncategorizedGroup = this.data.groups.find((g) => g.id === 'uncategorized');
+        if (!uncategorizedGroup) {
+            uncategorizedGroup = { id: 'uncategorized', name: 'Uncategorized' };
             await addGroup(uncategorizedGroup);
+            this.data.groups = [...this.data.groups, uncategorizedGroup];
         }
 
-        // Reassign categories previously tied to the deleted group
+        // Identify categories that need reassignment
         const idSet = group?.isCustom && Array.isArray(group.categoryIds)
             ? new Set(group.categoryIds)
             : null;
 
+        const categoriesToUpdate = [];
         const updatedCategories = [];
+
         for (const cat of this.data.categories) {
             const belongsToCustom = idSet ? idSet.has(cat.id) : false;
             if (cat.groupId === groupId || belongsToCustom) {
                 const updated = { ...cat, groupId: 'uncategorized' };
-                // Persist reassignment
-                await addCategory(updated);
+                categoriesToUpdate.push(updated);
                 updatedCategories.push(updated);
             } else {
                 updatedCategories.push(cat);
             }
         }
 
-        this.data.categories = updatedCategories;
+        try {
+            // Batch update categories in storage (single operation)
+            if (categoriesToUpdate.length > 0) {
+                await updateCategoriesBatch(categoriesToUpdate);
+            }
+
+            // Delete the group from storage
+            await deleteGroup(groupId);
+
+            // Update in-memory state only after successful persistence
+            this.data.groups = this.data.groups.filter((g) => g.id !== groupId);
+            this.data.categories = updatedCategories;
+
+            this._debugLog(`Group '${groupId}' deleted, ${categoriesToUpdate.length} categories reassigned`);
+        } catch (error) {
+            console.error(`Error deleting group '${groupId}':`, error);
+            throw error;
+        }
 
         return this.getData();
     }
@@ -815,8 +843,9 @@ export class FinSiteModel {
 
     /**
      * Get recent transactions sorted by date descending
+     * Returns raw transaction data - view layer handles formatting (icons, relative dates)
      * @param {number} limit - Maximum number of transactions to return
-     * @returns {Array} Recent transactions with formatted data
+     * @returns {Array} Recent transactions with raw data
      */
     _getRecentTransactions(limit = 5) {
         const { transactions } = this.data;
@@ -832,22 +861,15 @@ export class FinSiteModel {
             return dateB - dateA;
         });
 
-        // Take top N and format for display
-        return sorted.slice(0, limit).map((tx) => {
-            const categoryIcon = this._getCategoryIcon(tx.category || tx.group);
-            const relativeDate = this._getRelativeDate(tx.date);
-
-            return {
-                id: tx.id,
-                icon: categoryIcon,
-                merchant: tx.merchant || tx.category || 'Transaction',
-                amount: Math.abs(Number(tx.amount) || 0),
-                date: relativeDate,
-                rawDate: tx.date,
-                category: tx.category,
-                group: tx.group,
-            };
-        });
+        // Return raw transaction data - view layer formats for display
+        return sorted.slice(0, limit).map((tx) => ({
+            id: tx.id,
+            merchant: tx.merchant || '',
+            amount: Math.abs(Number(tx.amount) || 0),
+            date: tx.date,
+            category: tx.category,
+            group: tx.group,
+        }));
     }
 
     /**
@@ -891,58 +913,4 @@ export class FinSiteModel {
         }).length;
     }
 
-    /**
-     * Get icon for category/group
-     * @param {string} categoryOrGroup
-     * @returns {string} Emoji icon
-     */
-    _getCategoryIcon(categoryOrGroup) {
-        const iconMap = {
-            // Categories
-            groceries: '🛒',
-            utilities: '💡',
-            fuel: '⛽',
-            stocks: '📈',
-            bonds: '📊',
-            'dining-out': '🍽️',
-            shopping: '🛍️',
-            // Groups
-            household: '🏠',
-            investments: '💰',
-            expenses: '💳',
-            // Default
-            uncategorized: '📝',
-        };
-
-        const key = (categoryOrGroup || 'uncategorized').toLowerCase();
-        return iconMap[key] || '💸';
-    }
-
-    /**
-     * Get relative date string (Today, Yesterday, or formatted date)
-     * @param {string|Date} date
-     * @returns {string} Relative date string
-     */
-    _getRelativeDate(date) {
-        const txDate = new Date(date);
-        const now = new Date();
-
-        // Reset time for comparison
-        const txDay = new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate());
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const yesterday = new Date(today);
-        yesterday.setDate(today.getDate() - 1);
-
-        if (txDay.getTime() === today.getTime()) {
-            return 'Today';
-        } if (txDay.getTime() === yesterday.getTime()) {
-            return 'Yesterday';
-        }
-        // Format as "Mon DD" or "Mon DD, YYYY" if different year
-        const options = { month: 'short', day: 'numeric' };
-        if (txDate.getFullYear() !== now.getFullYear()) {
-            options.year = 'numeric';
-        }
-        return txDate.toLocaleDateString('en-US', options);
-    }
 }

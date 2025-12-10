@@ -1,11 +1,23 @@
 /**
  * FinSiteController - Coordinates between Model and View
  * Handles user interactions and application logic
+ * 
+ * Follows MVC pattern where:
+ * - Controller never queries DOM directly (uses view interface)
+ * - All user feedback goes through view methods
+ * - Debug logging is centrally toggleable
  */
 export class FinSiteController {
+    /**
+     * @param {Object} model - Data model instance
+     * @param {Object} view - View instance for UI operations
+     */
     constructor(model, view) {
         this.model = model;
         this.view = view;
+
+        /** @type {boolean} When false, suppresses debug logs in production */
+        this.debug = false;
 
         if (typeof this.view.bindHandlers === 'function') {
             this.view.bindHandlers({
@@ -14,7 +26,60 @@ export class FinSiteController {
             });
         }
 
-        console.log('FinSiteController initialized with model and view');
+        this._debugLog('FinSiteController initialized with model and view');
+    }
+
+    // ============================================================
+    // DEBUG LOGGING
+    // ============================================================
+
+    /**
+     * Conditional debug logger - only outputs when this.debug is true
+     * @param {...any} args - Arguments to pass to console.log
+     * @private
+     */
+    _debugLog(...args) {
+        if (this.debug) {
+            console.log(...args);
+        }
+    }
+
+    /**
+     * Log errors (always output, not toggleable) and optionally notify view
+     * @param {string} context - Where the error occurred
+     * @param {Error} error - The error object
+     * @param {string} [userMessage] - Optional message to show user via view
+     * @private
+     */
+    _handleError(context, error, userMessage = null) {
+        console.error(`${context}:`, error);
+        
+        if (userMessage && typeof this.view.showError === 'function') {
+            this.view.showError(userMessage);
+        }
+    }
+
+    // ============================================================
+    // STATE SYNCHRONIZATION (DRY helper)
+    // ============================================================
+
+    /**
+     * Synchronize model state to view - single source of truth for refresh flow.
+     * Extracts the common "get data → update view → refresh dashboard" pattern
+     * used across init, navigate, and all data-changing operations.
+     * 
+     * @param {Object} [options={}] - Refresh options
+     * @param {boolean} [options.isHeavyUpdate=false] - True for bulk operations (disables chart animations)
+     * @param {boolean} [options.refreshDashboard=true] - Whether to refresh dashboard charts
+     * @private
+     */
+    _syncModelToView({ isHeavyUpdate = false, refreshDashboard = true } = {}) {
+        const data = this.model.getData();
+        this.view.update(data);
+
+        if (refreshDashboard) {
+            this._refreshDashboard(isHeavyUpdate);
+        }
     }
 
     /**
@@ -22,7 +87,7 @@ export class FinSiteController {
      * Sets up event listeners and initial data
      */
     async init() {
-        console.log('Controller initialization started');
+        this._debugLog('Controller initialization started');
 
         try {
             // 1) Load from storage via the model (async)
@@ -33,18 +98,13 @@ export class FinSiteController {
                 this.model.updateData({ currentView: 'dashboard' });
             }
 
-            // 3) Get a fresh snapshot of state
-            const data = this.model.getData();
+            // 3) Sync model state to view (includes dashboard refresh)
+            this._syncModelToView();
 
-            // 4) Tell the view to render based on model state
-            this.view.update(data);
-
-            // 5) Refresh dashboard charts with aggregated data
-            this._refreshDashboardCharts();
-
-            console.log('Controller initialization complete');
+            this._debugLog('Controller initialization complete');
         } catch (error) {
-            console.error('Error during controller initialization:', error);
+            this._handleError('Error during controller initialization', error, 
+                'Failed to load application data. Please refresh the page.');
         }
     }
 
@@ -59,7 +119,7 @@ export class FinSiteController {
                 this.navigate(payload.route);
                 break;
             default:
-                console.log('Unknown action:', action);
+                this._debugLog('Unknown action:', action);
         }
     }
 
@@ -68,14 +128,15 @@ export class FinSiteController {
      * @param {string} route - Route to navigate to
      */
     navigate(route) {
-        console.log(`🧭 Navigating to: ${route}`);
+        this._debugLog(`🧭 Navigating to: ${route}`);
         this.model.updateData({ currentView: route });
-        const data = this.model.getData();
-        this.view.update(data);
-
-        // Refresh dashboard charts when navigating to dashboard
+        
+        // Navigate through view interface, then sync state
+        this.view.navigateToPage(route);
+        
+        // Only refresh dashboard data when navigating to dashboard
         if (route === 'dashboard') {
-            this._refreshDashboardCharts();
+            this._refreshDashboard(false);
         }
     }
 
@@ -83,9 +144,10 @@ export class FinSiteController {
      * Refresh dashboard with aggregated data from model
      * Called after initialization, navigation to dashboard, and data changes
      * @param {boolean} isHeavyUpdate - True for bulk updates (CSV import)
+     * @private
      */
     _refreshDashboard(isHeavyUpdate = false) {
-    // Get pre-aggregated chart data from model
+        // Get pre-aggregated chart data from model
         const chartData = this.model.getDashboardSummary();
 
         // Get panel summary (stats, recent activity) from model
@@ -101,8 +163,8 @@ export class FinSiteController {
             this.view.updateDashboardPanel(panelSummary);
         }
 
-        console.log('📊 Dashboard refreshed with chart data:', chartData);
-        console.log('📋 Dashboard panel updated with summary:', panelSummary);
+        this._debugLog('📊 Dashboard refreshed with chart data:', chartData);
+        this._debugLog('📋 Dashboard panel updated with summary:', panelSummary);
     }
 
     /**
@@ -118,33 +180,27 @@ export class FinSiteController {
      * @param {Object} transactionData - Transaction data from the form
      */
     async handleAddTransaction(transactionData) {
-        console.log('💰 Handling add transaction:', transactionData);
+        this._debugLog('💰 Handling add transaction:', transactionData);
 
         try {
             // Use the model to persist the transaction to IndexedDB
             const savedTransaction = await this.model.addTransaction(transactionData);
 
-            console.log('✅ Transaction saved successfully:', savedTransaction);
+            this._debugLog('✅ Transaction saved successfully:', savedTransaction);
 
-            // Get the transactions component and notify it of success
-            const transactionsPage = document.querySelector('finsite-transactions');
-            if (transactionsPage && typeof transactionsPage.onTransactionAdded === 'function') {
-                transactionsPage.onTransactionAdded(savedTransaction);
+            // Notify view of success (view routes to appropriate component)
+            if (typeof this.view.onTransactionAdded === 'function') {
+                this.view.onTransactionAdded(savedTransaction);
             }
 
-            // Update the view with the new data
-            const data = this.model.getData();
-            this.view.update(data);
-
-            // Refresh dashboard charts (single transaction = light update with animation)
-            this._refreshDashboardCharts(false);
+            // Sync model state to view (single transaction = light update with animation)
+            this._syncModelToView({ isHeavyUpdate: false });
         } catch (error) {
-            console.error('❌ Error adding transaction:', error);
+            this._handleError('Error adding transaction', error);
 
-            // Notify the transactions component of the error
-            const transactionsPage = document.querySelector('finsite-transactions');
-            if (transactionsPage && typeof transactionsPage.onTransactionError === 'function') {
-                transactionsPage.onTransactionError('Failed to save transaction. Please try again.');
+            // Notify view of error (view routes to appropriate component)
+            if (typeof this.view.onTransactionError === 'function') {
+                this.view.onTransactionError('Failed to save transaction. Please try again.');
             }
         }
     }
@@ -153,24 +209,34 @@ export class FinSiteController {
      * Handle bulk transaction import (CSV)
      * OPTIMIZATION A: Uses model.addTransactionsBulk for single-pass aggregate rebuild
      * @param {Array} transactions - Array of transaction objects
+     * @returns {Promise<{saved: number, skipped: number}>} Import result summary
      */
     async handleBulkImport(transactions) {
-        console.log('📦 Handling bulk import:', transactions.length, 'transactions');
+        this._debugLog('📦 Handling bulk import:', transactions.length, 'transactions');
 
         try {
             // Use bulk import method (single aggregate rebuild at the end)
-            await this.model.addTransactionsBulk(transactions);
+            const { saved, skipped } = await this.model.addTransactionsBulk(transactions);
 
-            // Update the view
-            const data = this.model.getData();
-            this.view.update(data);
+            // Sync model state to view (bulk = heavy update, no animation)
+            this._syncModelToView({ isHeavyUpdate: true });
 
-            // Refresh dashboard charts (bulk = heavy update, no animation)
-            this._refreshDashboardCharts(true);
+            this._debugLog(`✅ Bulk import complete: ${saved.length} saved, ${skipped.length} skipped`);
 
-            console.log('✅ Bulk import complete');
+            // Notify view of completion with summary
+            if (typeof this.view.onBulkImportComplete === 'function') {
+                this.view.onBulkImportComplete({ 
+                    savedCount: saved.length, 
+                    skippedCount: skipped.length,
+                    skippedDetails: skipped 
+                });
+            }
+
+            return { saved: saved.length, skipped: skipped.length };
         } catch (error) {
-            console.error('❌ Error during bulk import:', error);
+            this._handleError('Error during bulk import', error, 
+                'Failed to import transactions. Please check your file format.');
+            return { saved: 0, skipped: transactions.length };
         }
     }
 
@@ -179,21 +245,23 @@ export class FinSiteController {
      * @param {Array} ids - Array of transaction IDs to delete
      */
     async handleDeleteTransactions(ids) {
-        console.log('🗑️ Handling delete transactions:', ids);
+        this._debugLog('🗑️ Handling delete transactions:', ids);
 
         try {
             await this.model.deleteTransactions(ids);
 
-            // Update the view
-            const data = this.model.getData();
-            this.view.update(data);
+            // Sync model state to view (many deletions = heavy update)
+            this._syncModelToView({ isHeavyUpdate: ids.length > 5 });
 
-            // Refresh dashboard charts
-            this._refreshDashboardCharts(ids.length > 5);
+            this._debugLog('✅ Transactions deleted');
 
-            console.log('✅ Transactions deleted');
+            // Notify view of success
+            if (typeof this.view.onTransactionsDeleted === 'function') {
+                this.view.onTransactionsDeleted(ids);
+            }
         } catch (error) {
-            console.error('❌ Error deleting transactions:', error);
+            this._handleError('Error deleting transactions', error,
+                'Failed to delete transactions. Please try again.');
         }
     }
 }

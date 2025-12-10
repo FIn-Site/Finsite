@@ -1,5 +1,6 @@
 // Import spending chart component
 import './spending-chart.js';
+import { getCategoryIcon, getRelativeDate } from '../model/formatters.js';
 
 /**
  * Dashboard Web Component for FinSite
@@ -335,8 +336,9 @@ class FinSiteDashboard extends HTMLElement {
     }
 
     /**
-     * Render activity items or empty state
-     * @returns {string} HTML for activity list
+     * Render recent activity list from raw transaction data
+     * Formats each transaction with icons and relative dates using formatters
+     * @returns {string} Activity list HTML
      */
     _renderActivities() {
         const { recentTransactions } = this.panelData;
@@ -350,16 +352,23 @@ class FinSiteDashboard extends HTMLElement {
             `;
         }
 
-        return recentTransactions.map((tx) => `
-            <div class="activity-item">
-                <span class="activity-icon">${tx.icon}</span>
-                <div class="activity-info">
-                    <div class="activity-text">${tx.merchant}</div>
-                    <div class="activity-date">${tx.date}</div>
+        // Format raw transaction data for display
+        return recentTransactions.map((tx) => {
+            const icon = getCategoryIcon(tx.category || tx.group);
+            const displayDate = getRelativeDate(tx.date);
+            const displayMerchant = tx.merchant || tx.category || 'Transaction';
+
+            return `
+                <div class="activity-item">
+                    <span class="activity-icon">${icon}</span>
+                    <div class="activity-info">
+                        <div class="activity-text">${displayMerchant}</div>
+                        <div class="activity-date">${displayDate}</div>
+                    </div>
+                    <div class="activity-amount">-${this._formatCurrency(tx.amount)}</div>
                 </div>
-                <div class="activity-amount">-${this._formatCurrency(tx.amount)}</div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     /**
