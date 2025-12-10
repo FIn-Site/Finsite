@@ -316,15 +316,19 @@ export function createBarChartConfig(labels, values, overrides = {}) {
         ...datasetOptions,
     };
 
+    // Use colors that work in both light and dark modes
+    const axisLabelColor = '#64748b'; // Muted gray - visible in both themes
+    const categoryLabelColor = '#475569'; // Darker gray for better visibility
+
     const baseScales = isHorizontal
         ? {
             x: {
                 grid: {
-                    color: 'rgba(148, 163, 184, 0.1)',
+                    color: 'rgba(148, 163, 184, 0.15)',
                     drawBorder: false,
                 },
                 ticks: {
-                    color: '#64748b',
+                    color: axisLabelColor,
                     font: { size: 11 },
                     callback: (value) => `$${formatCurrency(value)}`,
                 },
@@ -334,8 +338,8 @@ export function createBarChartConfig(labels, values, overrides = {}) {
                 type: 'category',
                 grid: { display: false },
                 ticks: {
-                    color: '#e2e8f0',
-                    font: { size: 11, weight: '500' },
+                    color: categoryLabelColor,
+                    font: { size: 11, weight: '600' },
                 },
             },
         }
@@ -344,17 +348,17 @@ export function createBarChartConfig(labels, values, overrides = {}) {
                 type: 'category',
                 grid: { display: false },
                 ticks: {
-                    color: '#e2e8f0',
-                    font: { size: 11, weight: '500' },
+                    color: categoryLabelColor,
+                    font: { size: 11, weight: '600' },
                 },
             },
             y: {
                 grid: {
-                    color: 'rgba(148, 163, 184, 0.1)',
+                    color: 'rgba(148, 163, 184, 0.15)',
                     drawBorder: false,
                 },
                 ticks: {
-                    color: '#64748b',
+                    color: axisLabelColor,
                     font: { size: 11 },
                     callback: (value) => `$${formatCurrency(value)}`,
                 },
@@ -381,7 +385,7 @@ export function createBarChartConfig(labels, values, overrides = {}) {
                 ? {
                     display: true,
                     text: title,
-                    color: '#e2e8f0',
+                    color: '#475569',
                     font: { size: 14, weight: '600' },
                     padding: { bottom: 12 },
                 }

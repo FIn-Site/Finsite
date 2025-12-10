@@ -34,10 +34,10 @@ class SidebarComponent extends HTMLElement {
                     top: 0;
                     width: 240px;
                     height: 100vh;
-                    background: #0f172a;
+                    background: var(--sidebar-bg, #0f172a);
                     z-index: 1000;
-                    transition: width 0.25s ease;
-                    border-right: 1px solid #1e293b;
+                    transition: width 0.25s ease, background 0.3s ease;
+                    border-right: 1px solid var(--border-color, #1e293b);
                 }
 
                 :host(.collapsed) {
@@ -50,7 +50,7 @@ class SidebarComponent extends HTMLElement {
                     align-items: center;
                     justify-content: space-between;
                     padding: 1rem 1rem;
-                    border-bottom: 1px solid #1e293b;
+                    border-bottom: 1px solid var(--border-color, #1e293b);
                     min-height: 60px;
                 }
 
@@ -76,10 +76,10 @@ class SidebarComponent extends HTMLElement {
                 .logo-text {
                     font-size: 1.125rem;
                     font-weight: 700;
-                    color: #ffffff;
+                    color: var(--text-primary, #ffffff);
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                     white-space: nowrap;
-                    transition: opacity 0.2s ease;
+                    transition: opacity 0.2s ease, color 0.3s ease;
                 }
 
                 :host(.collapsed) .logo-text {
@@ -100,39 +100,54 @@ class SidebarComponent extends HTMLElement {
                     overflow: hidden;
                 }
 
-                .icon-btn {
-                    width: 32px;
-                    height: 32px;
-                    background: transparent;
-                    border: none;
-                    border-radius: 6px;
+                /* Theme Toggle Switch */
+                .theme-toggle {
                     display: flex;
                     align-items: center;
-                    justify-content: center;
-                    cursor: pointer;
-                    color: #64748b;
-                    font-size: 1rem;
-                    transition: all 0.15s ease;
+                    gap: 6px;
                 }
 
-                .icon-btn:hover {
-                    background: #1e293b;
-                    color: #e2e8f0;
+                .theme-icon {
+                    font-size: 14px;
+                    transition: opacity 0.2s ease;
                 }
 
-                .icon-btn.has-notification {
+                .theme-icon.inactive {
+                    opacity: 0.3;
+                }
+
+                .toggle-switch {
                     position: relative;
+                    width: 44px;
+                    height: 24px;
+                    background: var(--bg-tertiary, #374151);
+                    border-radius: 12px;
+                    cursor: pointer;
+                    transition: background 0.3s ease;
+                    border: none;
+                    padding: 0;
                 }
 
-                .icon-btn.has-notification::after {
+                .toggle-switch::after {
                     content: '';
                     position: absolute;
-                    top: 6px;
-                    right: 6px;
-                    width: 6px;
-                    height: 6px;
-                    background: #ef4444;
+                    top: 3px;
+                    left: 3px;
+                    width: 18px;
+                    height: 18px;
+                    background: #f59e0b;
                     border-radius: 50%;
+                    transition: transform 0.3s ease, background 0.3s ease;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+                }
+
+                .toggle-switch.dark::after {
+                    transform: translateX(20px);
+                    background: #6366f1;
+                }
+
+                .toggle-switch:hover {
+                    background: var(--bg-card-hover, #4b5563);
                 }
 
                 /* Navigation Section */
@@ -146,13 +161,13 @@ class SidebarComponent extends HTMLElement {
                 .nav-label {
                     font-size: 0.65rem;
                     font-weight: 600;
-                    color: #64748b;
+                    color: var(--text-muted, #64748b);
                     text-transform: uppercase;
                     letter-spacing: 0.08em;
                     padding: 0 0.5rem;
                     margin-bottom: 0.5rem;
                     white-space: nowrap;
-                    transition: opacity 0.2s ease;
+                    transition: opacity 0.2s ease, color 0.3s ease;
                 }
 
                 :host(.collapsed) .nav-label {
@@ -172,7 +187,7 @@ class SidebarComponent extends HTMLElement {
                     cursor: pointer;
                     transition: all 0.15s ease;
                     text-decoration: none;
-                    color: #94a3b8;
+                    color: var(--text-secondary, #94a3b8);
                     font-size: 0.875rem;
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                     font-weight: 500;
@@ -181,8 +196,8 @@ class SidebarComponent extends HTMLElement {
                 }
 
                 .nav-item:hover {
-                    background: #1e293b;
-                    color: #e2e8f0;
+                    background: var(--bg-tertiary, #1e293b);
+                    color: var(--text-primary, #e2e8f0);
                 }
 
                 .nav-item.active {
@@ -258,29 +273,29 @@ class SidebarComponent extends HTMLElement {
                 /* Collapse Toggle at Bottom */
                 .sidebar-footer {
                     padding: 0.75rem;
-                    border-top: 1px solid #1e293b;
+                    border-top: 1px solid var(--border-color, #1e293b);
                 }
 
                 .collapse-btn {
                     width: 100%;
                     height: 40px;
                     background: transparent;
-                    border: 1px solid #1e293b;
+                    border: 1px solid var(--border-color, #1e293b);
                     border-radius: 0.5rem;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     gap: 0.5rem;
                     cursor: pointer;
-                    color: #64748b;
+                    color: var(--text-muted, #64748b);
                     font-size: 0.8rem;
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                     transition: all 0.15s ease;
                 }
 
                 .collapse-btn:hover {
-                    background: #1e293b;
-                    color: #e2e8f0;
+                    background: var(--bg-tertiary, #1e293b);
+                    color: var(--text-primary, #e2e8f0);
                 }
 
                 .collapse-icon {
@@ -339,8 +354,11 @@ class SidebarComponent extends HTMLElement {
                     <span class="logo-text">FinSite</span>
                 </div>
                 <div class="header-icons">
-                    <button class="icon-btn has-notification" title="Notifications" id="notifications-btn">🔔</button>
-                    <button class="icon-btn" title="Settings" id="settings-btn">⚙️</button>
+                    <div class="theme-toggle">
+                        <span class="theme-icon" id="light-icon">☀️</span>
+                        <button class="toggle-switch dark" id="theme-toggle" aria-label="Toggle dark/light mode"></button>
+                        <span class="theme-icon inactive" id="dark-icon">🌙</span>
+                    </div>
                 </div>
             </div>
 
@@ -388,26 +406,46 @@ class SidebarComponent extends HTMLElement {
             });
         }
 
-        // Settings and Notifications buttons
-        const settingsBtn = this.shadowRoot.querySelector('#settings-btn');
-        const notificationsBtn = this.shadowRoot.querySelector('#notifications-btn');
+        // Theme toggle
+        const themeToggle = this.shadowRoot.querySelector('#theme-toggle');
+        const lightIcon = this.shadowRoot.querySelector('#light-icon');
+        const darkIcon = this.shadowRoot.querySelector('#dark-icon');
 
-        if (settingsBtn) {
-            settingsBtn.addEventListener('click', () => {
-                this.dispatchEvent(new CustomEvent('open-settings', {
+        if (themeToggle) {
+            // Check for saved theme preference or default to dark
+            const savedTheme = localStorage.getItem('finsite-theme') || 'dark';
+            this.setTheme(savedTheme, themeToggle, lightIcon, darkIcon);
+
+            themeToggle.addEventListener('click', () => {
+                const isDark = themeToggle.classList.contains('dark');
+                const newTheme = isDark ? 'light' : 'dark';
+                this.setTheme(newTheme, themeToggle, lightIcon, darkIcon);
+                localStorage.setItem('finsite-theme', newTheme);
+
+                // Dispatch custom event for theme change
+                this.dispatchEvent(new CustomEvent('theme-change', {
                     bubbles: true,
                     composed: true,
+                    detail: { theme: newTheme },
                 }));
             });
         }
+    }
 
-        if (notificationsBtn) {
-            notificationsBtn.addEventListener('click', () => {
-                this.dispatchEvent(new CustomEvent('open-notifications', {
-                    bubbles: true,
-                    composed: true,
-                }));
-            });
+    /**
+     * Set the theme and update toggle UI
+     */
+    setTheme(theme, toggleBtn, lightIcon, darkIcon) {
+        if (theme === 'dark') {
+            toggleBtn.classList.add('dark');
+            lightIcon.classList.add('inactive');
+            darkIcon.classList.remove('inactive');
+            document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+            toggleBtn.classList.remove('dark');
+            lightIcon.classList.remove('inactive');
+            darkIcon.classList.add('inactive');
+            document.documentElement.setAttribute('data-theme', 'light');
         }
     }
 
