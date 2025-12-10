@@ -97,13 +97,25 @@ class FinSiteTransactions extends HTMLElement {
     /**
      * Get categories filtered by the currently selected group in the modal.
      * Returns all categories if no group is selected.
+     * Handles both default groups (categories have groupId) and custom groups (group has categoryIds array).
      * @returns {Array} Filtered categories for the current group
      */
     getCategoriesForCurrentGroup() {
         if (!this.currentGroupId) {
             return [];
         }
-        // Filter categories that belong to the currently selected group
+
+        // Find the selected group to check if it's a custom group with categoryIds
+        const selectedGroup = this.availableGroups.find((g) => g.id === this.currentGroupId);
+
+        // If it's a custom group with categoryIds array, filter by those IDs
+        if (selectedGroup?.categoryIds && Array.isArray(selectedGroup.categoryIds)) {
+            return this.availableCategories.filter(
+                (c) => selectedGroup.categoryIds.includes(c.id)
+            );
+        }
+
+        // Default behavior: filter categories that belong to the group by groupId
         return this.availableCategories.filter(
             (c) => c.groupId === this.currentGroupId || c.group === this.currentGroupId
         );

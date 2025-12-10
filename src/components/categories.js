@@ -3,7 +3,7 @@ import '../chart/category-chart.js';
 import './category-modal-chart.js';
 
 import { buildCategoryAggregates, buildGroupBreakdown } from '../utils/categoryAggregator.js';
-import { getCategoryIcon } from '../utils/icons.js';
+import { getCategoryIcon, CUSTOM_GROUP_ICONS } from '../utils/icons.js';
 import { createPrefixedLogger } from '../utils/debugService.js';
 
 // Prefixed logger for categories component
@@ -67,6 +67,7 @@ class FinSiteCategories extends HTMLElement {
             console.error('❌ Error hydrating categories from model:', error);
             this._isLoading = false;
             this.render();
+            this.setupEventListeners();
         }
     }
 
@@ -112,6 +113,7 @@ class FinSiteCategories extends HTMLElement {
         } finally {
             this._isLoading = false;
             this.render();
+            this.setupEventListeners();
             // Delay chart update to ensure DOM is ready
             requestAnimationFrame(() => {
                 this.updateChartComponents();
@@ -136,6 +138,7 @@ class FinSiteCategories extends HTMLElement {
         }
         this._refreshAggregates();
         this.render();
+        this.setupEventListeners();
         requestAnimationFrame(() => this.updateChartComponents());
     }
 

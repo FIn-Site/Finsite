@@ -18,7 +18,7 @@
  * Global debug flag - controls all logging across MVC stack
  * @type {boolean}
  */
-let _debugEnabled = false;
+let _debugEnabled = true;
 
 /**
  * Enable or disable debug logging for the entire application

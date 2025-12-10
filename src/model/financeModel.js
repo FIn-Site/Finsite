@@ -374,6 +374,44 @@ export class FinSiteModel {
     }
 
     /**
+     * Validate and normalize a transaction input object.
+     * Ensures required fields are present and correctly typed.
+     * @param {Object} input - Raw transaction input
+     * @returns {Object} Normalized transaction object ready for persistence
+     * @throws {Error} If validation fails
+     * @private
+     */
+    _validateTransaction(input) {
+        if (!input || typeof input !== 'object') {
+            throw new Error('Transaction input must be an object');
+        }
+
+        const amount = parseFloat(input.amount);
+        if (!Number.isFinite(amount) || amount <= 0) {
+            throw new Error('Transaction amount must be a positive number');
+        }
+
+        const date = input.date;
+        if (!date) {
+            throw new Error('Transaction date is required');
+        }
+
+        // Normalize and return the validated transaction
+        return {
+            amount,
+            date,
+            group: input.group || 'uncategorized',
+            category: input.category || 'other',
+            merchant: input.merchant || '',
+            name: input.name || input.merchant || input.category || 'Transaction',
+            notes: input.notes || '',
+            account: input.account || 'Manual Entry',
+            type: input.type || input.category || 'expense',
+            status: input.status || 'complete',
+        };
+    }
+
+    /**
      * Add a new transaction (and persist it).
      * OPTIMIZATION A: O(1) aggregate update instead of O(n) rescan
      * Expected shape: { group, category, amount, date, ... }
