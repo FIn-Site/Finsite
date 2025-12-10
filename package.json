@@ -2,10 +2,15 @@
   "devDependencies": {
     "eslint": "^8.2.0",
     "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-plugin-import": "^2.25.2"
+    "eslint-plugin-import": "^2.25.2",
+    "prettier": "^3.0.0",
+    "@playwright/test": "^1.44.0"
   },
   "scripts": {
-    "lint": "eslint src",        
-    "lint:fix": "eslint src --fix"
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "format": "prettier .",
+    "test": "node --test ./tests/**/*.test.js",
+    "test:e2e": "playwright test"
   }
 }
