@@ -7,3 +7,10 @@ test.html/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+test.html/
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+coverage/
+.vitest/
