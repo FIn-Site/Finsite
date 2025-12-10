@@ -135,8 +135,9 @@ class FinSiteSpendingChart extends HTMLElement {
     render() {
         const { metrics } = this.chartData;
         const percentChange = metrics.percentChange || 0;
-        const changeClass = percentChange >= 0 ? 'positive' : 'negative';
-        const changeSymbol = percentChange >= 0 ? '+' : '';
+        // For spending: negative change (spent less) = good (green), positive change (spent more) = bad (red)
+        const changeClass = percentChange < 0 ? 'positive' : 'negative';
+        const changeSymbol = percentChange > 0 ? '+' : '';
 
         this.shadowRoot.innerHTML = `
             <style>
@@ -434,8 +435,9 @@ class FinSiteSpendingChart extends HTMLElement {
         }
 
         if (changeEl) {
-            const changeClass = metrics.percentChange >= 0 ? 'positive' : 'negative';
-            const changeSymbol = metrics.percentChange >= 0 ? '+' : '';
+            // For spending: negative change (spent less) = good (green), positive change (spent more) = bad (red)
+            const changeClass = metrics.percentChange < 0 ? 'positive' : 'negative';
+            const changeSymbol = metrics.percentChange > 0 ? '+' : '';
             changeEl.textContent = `${changeSymbol}${metrics.percentChange.toFixed(1)}%`;
             changeEl.className = `metric-value ${changeClass}`;
         }
