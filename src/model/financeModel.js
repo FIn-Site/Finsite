@@ -615,7 +615,8 @@ export class FinSiteModel {
 
     /**
      * Delete a group and safely update dependent data.
-     * Categories tied to the group are reassigned to 'uncategorized'.
+     * For custom groups: just removes the group (categories keep their original groupId).
+     * For regular groups: categories are reassigned to 'uncategorized'.
      * Transactions remain but keep their original group for history.
      * @param {string} groupId
      */
@@ -623,13 +624,22 @@ export class FinSiteModel {
         if (!groupId) return this.getData();
 
         const group = this.data.groups.find((g) => g.id === groupId);
+        if (!group) return this.getData();
 
+        // Delete from IndexedDB
         await deleteGroup(groupId);
 
         // Remove group from memory
         this.data.groups = this.data.groups.filter((g) => g.id !== groupId);
 
-        // Ensure an 'uncategorized' group exists for orphaned categories
+        // For custom groups, categories keep their original groupId - no reassignment needed
+        if (group.isCustom) {
+            console.log(`🗑️ Custom group "${group.name}" deleted. Categories retain their original groups.`);
+            return this.getData();
+        }
+
+        // For regular groups, reassign orphaned categories to 'uncategorized'
+        // Ensure an 'uncategorized' group exists
         const uncategorizedGroup = this.data.groups.find((g) => g.id === 'uncategorized')
             || { id: 'uncategorized', name: 'Uncategorized' };
 
@@ -638,15 +648,10 @@ export class FinSiteModel {
             await addGroup(uncategorizedGroup);
         }
 
-        // Reassign categories previously tied to the deleted group
-        const idSet = group?.isCustom && Array.isArray(group.categoryIds)
-            ? new Set(group.categoryIds)
-            : null;
-
+        // Reassign categories that belonged to the deleted regular group
         const updatedCategories = [];
         for (const cat of this.data.categories) {
-            const belongsToCustom = idSet ? idSet.has(cat.id) : false;
-            if (cat.groupId === groupId || belongsToCustom) {
+            if (cat.groupId === groupId) {
                 const updated = { ...cat, groupId: 'uncategorized' };
                 // Persist reassignment
                 await addCategory(updated);

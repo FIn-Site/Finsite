@@ -240,7 +240,12 @@ class FinSiteCategories extends HTMLElement {
                 throw new Error('Model does not support group deletion');
             }
 
+            console.log('🗑️ Deleting group:', groupId);
+            console.log('Groups before delete:', this._model.getGroups?.().map(g => g.id));
+
             await this._model.deleteGroup(groupId);
+
+            console.log('Groups after delete:', this._model.getGroups?.().map(g => g.id));
 
             // Dispatch event for controller awareness
             this.dispatchEvent(new CustomEvent('group-deleted', {
@@ -249,8 +254,21 @@ class FinSiteCategories extends HTMLElement {
                 composed: true,
             }));
 
-            // Close modal and re-sync from model
+            // Clear selected group state
+            this.selectedGroup = null;
+            this.selectedTransactions = [];
+            this.selectedCategories = [];
+
+            // Close modal
             this.closeModal();
+
+            // Clear local group cache and force fresh load from model
+            this.groups = [];
+            this.categories = [];
+            this.groupBreakdowns = [];
+            this.categoriesWithAmounts = [];
+
+            // Re-sync from model with fresh data
             await this.loadFromModel();
 
             console.log(`✅ Successfully deleted group: ${groupName}`);
