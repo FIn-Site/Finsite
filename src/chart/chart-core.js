@@ -302,7 +302,7 @@ export function createBarChartConfig(labels, values, overrides = {}) {
     const {
         animate = true,
         title,
-        indexAxis = 'y',
+        indexAxis = 'x',
         legend = { display: false },
         datasetOptions = {},
         options: userOptions = {},

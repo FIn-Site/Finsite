@@ -104,7 +104,7 @@ class FinSiteCategoryModalChart extends HTMLElement {
 
         const config = createBarChartConfig(labels, values, {
             title: this.title,
-            indexAxis: 'y',
+            indexAxis: 'x',
             datasetOptions: {
                 barThickness: 32,
                 maxBarThickness: 44,
@@ -113,20 +113,28 @@ class FinSiteCategoryModalChart extends HTMLElement {
             options: {
                 scales: {
                     x: {
-                        ticks: {
-                            color: '#64748b',
-                            font: { size: 11 },
-                        },
-                    },
-                    y: {
+                        type: 'category',
+                        grid: { display: false },
                         ticks: {
                             color: '#e2e8f0',
                             font: { size: 11, weight: '500' },
+                            maxRotation: 45,
                             callback: (value) => {
                                 const label = typeof value === 'string' ? value : labels[value] ?? '';
                                 return String(label).substring(0, 14);
                             },
                         },
+                    },
+                    y: {
+                        grid: {
+                            color: 'rgba(148, 163, 184, 0.1)',
+                            drawBorder: false,
+                        },
+                        ticks: {
+                            color: '#64748b',
+                            font: { size: 11 },
+                        },
+                        beginAtZero: true,
                     },
                 },
                 plugins: {

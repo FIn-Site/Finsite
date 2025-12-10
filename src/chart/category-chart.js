@@ -97,21 +97,29 @@ class FinSiteCategoryChart extends HTMLElement {
                 options: {
                     scales: {
                         x: {
+                            type: 'category',
                             grid: { display: false },
                             ticks: {
-                                color: '#94a3b8',
-                                font: { size: 10 },
-                                maxRotation: 0,
-                            },
-                        },
-                        y: {
-                            ticks: {
+                                color: '#e2e8f0',
                                 font: { size: 10, weight: '500' },
+                                maxRotation: 45,
                                 callback: (value) => {
                                     const label = typeof value === 'string' ? value : labels[value] ?? '';
                                     return String(label).substring(0, 10);
                                 },
                             },
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)',
+                                drawBorder: false,
+                            },
+                            ticks: {
+                                color: '#64748b',
+                                font: { size: 10 },
+                                callback: (value) => `$${this._formatCurrency(value)}`,
+                            },
+                            beginAtZero: true,
                         },
                     },
                     plugins: {
