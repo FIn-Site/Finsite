@@ -310,5 +310,128 @@ Called during `init()` if storage is empty. These defaults are persisted to Inde
 
 This architecture ensures dashboard performance scales independently of transaction volume.
 
+---
+
+# Cleanup Refactor
+
+## Problems Addressed
+
+### 1. View Concerns in Data Layer (MVC Violation)
+**Before**: Model contained `_getCategoryIcon()` and `_getRelativeDate()` helper methods that mapped data to display formats (emoji icons, human-readable date strings)
+
+**Issue**: This mixed presentation logic into the data layer, violating MVC separation and making the model harder to:
+- Port to non-UI contexts (CLI tools, APIs)
+- Localize for internationalization
+- Test without display dependencies
+
+**After**: Created `formatters.js` module with exported `getCategoryIcon()` and `getRelativeDate()` functions; model now only exposes raw data (category IDs, ISO timestamps)
+
+### 2. Production Debug Logging (Noise)
+**Before**: Multiple direct `console.log()` calls throughout the model (`init`, `_rebuildAggregates`, `addTransaction`, `deleteTransactions`, etc.)
+
+**Issue**: Debug logs run in production, adding noise to console and minor performance cost from string formatting
+
+**After**: Added `_debugLog(...args)` method controlled by `this.debug` boolean flag (default: `false`); all logging routed through this method for centralized control
+
+### 3. Unused State (_initialized, _currentBucketKey)
+**Before**: Constructor initialized `_initialized` and `_currentBucketKey` properties that were never read anywhere in the codebase
+
+**Issue**: Dead code clutters the model, confuses maintainers about their purpose, and wastes memory
+
+**After**: Removed both unused properties; state is now minimal and intentional
+
+### 4. Repeated Set Construction in _isWithinLastNMonths
+**Before**: `_isWithinLastNMonths()` called `new Set(this._getLastNMonthKeys(6))` on every invocation, which happened for every transaction delta in `_updateCachedMetrics()`
+
+**Issue**: Each transaction add/delete triggered O(6) Set construction, making aggregate updates heavier than necessary
+
+**After**: Added `_lastNMonthKeysCache` Set built once during `_rebuildAggregates()`; `_isWithinLastNMonths()` now does O(1) Set lookups instead of O(6) construction
+
+### 5. Slow Category Updates in deleteGroup (No Batching)
+**Before**: `deleteGroup()` updated categories one-by-one with `await addCategory(updated)` inside a loop
+
+**Issue**: 
+- Each category update was a separate IndexedDB transaction (slow)
+- No rollback strategy if a middle update failed (partial state)
+- Risk of inconsistent state between in-memory and storage
+
+**After**: Added `updateCategoriesBatch()` to storage service using single transaction; `deleteGroup()` collects all category updates, calls batch function once, and only updates in-memory state after successful persistence
+
+### 6. Loose Input Validation (Transaction Data Integrity)
+**Before**: `addTransaction()` accepted loosely validated inputs with shallow destructuring; `addTransactionsBulk()` also lacked validation
+
+**Issue**: Invalid dates (non-parseable strings, `null`, `undefined`) could create transactions that exist in history but never appear in time-based aggregates, causing dashboard-vs-history inconsistencies
+
+**After**: 
+- Added `_validateTransaction(input)` that throws on invalid amounts/dates
+- Normalizes dates to ISO strings for consistent storage format
+- `addTransaction()` now uses validation pipeline
+- `addTransactionsBulk()` validates each transaction, returns `{ saved, skipped }` with error details for invalid entries
+
+### 7. Console.log Remained in addTransaction (Missed Fix)
+**Before**: After initial cleanup, `addTransaction()` still had `console.log('Transaction added:', saved)` instead of using `_debugLog()`
+
+**Issue**: Production noise, inconsistent with rest of codebase
+
+**After**: Replaced with `this._debugLog('Transaction added:', saved)` for consistency
+
+### 8. addTransaction Bypassed Validation (Single-Add vs Bulk Inconsistency)
+**Before**: While `addTransactionsBulk()` used `_validateTransaction()`, single `addTransaction()` still did shallow destructuring without validation
+
+**Issue**: Different validation paths for single vs bulk operations, allowing invalid data through single-add path
+
+**After**: `addTransaction()` now calls `_validateTransaction(input)` before persistence, ensuring identical validation rules for both paths
+
+### 9. Model Formatted View-Ready Data (_getRecentTransactions)
+**Before**: `_getRecentTransactions()` returned display-formatted objects with `icon`, `date` (human-readable), and `merchant` fallback logic
+
+**Issue**: Model mixed data and presentation concerns; formatting should happen in view layer per MVC principles
+
+**After**: 
+- `_getRecentTransactions()` now returns raw transaction data (IDs, timestamps, amounts, category/group keys)
+- Created `formatTransactionForDisplay()` in `formatters.js` for view-layer formatting
+- Dashboard component imports `getCategoryIcon()` and `getRelativeDate()` to format raw data during rendering
+
+## Implementation Summary
+
+| Change | Old Approach | New Approach |
+|--------|--------------|--------------|
+| View formatting | `_getCategoryIcon()` / `_getRelativeDate()` in model | `formatters.js` module, model returns raw data |
+| Debug logging | Direct `console.log()` calls | `_debugLog()` controlled by `this.debug` flag |
+| Unused state | `_initialized`, `_currentBucketKey` tracked | Removed both properties |
+| Last-N-months check | Rebuild Set on every call | Cache Set in `_lastNMonthKeysCache` |
+| Category updates | Per-category `await addCategory()` loop | `updateCategoriesBatch()` single transaction |
+| Input validation | Shallow destructuring, no date checks | `_validateTransaction()` with date normalization |
+| Data format | Model returns view-ready objects | Model returns raw data, view formats for display |
+
+## Performance Impact
+
+- **Last-N-months lookup**: O(6) Set construction per transaction → O(1) cached Set lookup
+- **Category batch update**: O(n) separate transactions → O(1) single transaction where n = categories affected
+- **Debug logging**: Always-on string formatting → Zero overhead when `debug = false`
+- **Date validation**: Silent invalid dates → Throws immediately, prevents aggregate corruption
+
+## Data Integrity Improvements
+
+- **Consistent date format**: All transactions normalized to ISO strings before storage
+- **Aggregate consistency**: Invalid dates rejected before hitting storage, preventing dashboard-history mismatches
+- **Atomic category updates**: Single transaction ensures all-or-nothing updates on group deletion
+- **Clear error messages**: Validation throws descriptive errors (`Invalid date: undefined`) instead of silent failures
+
+## MVC Separation Benefits
+
+- **Portability**: Model can be used in Node.js CLI tools, Electron apps, or APIs without DOM dependencies
+- **Localization**: Formatters can be swapped for locale-specific versions without touching model
+- **Testability**: Model tests focus on business logic; formatter tests focus on display logic
+- **Maintainability**: Clear separation of concerns makes changes easier to reason about
+
+## Future Work
+
+- Add `model.debug = true` toggle in dev environment for debugging
+- Consider exporting `formatTransactionForDisplay()` as primary formatter API
+- Add locale parameter to formatters for internationalization
+- Implement validation schema library (e.g., Zod) for more robust input validation
+- Add bulk delete optimization with single transaction like batch category updates
+
 
 

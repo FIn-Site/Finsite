@@ -1,7 +1,22 @@
 /**
- * Transaction Item Web Component for FinSite
+ * @fileoverview Transaction Item Web Component for FinSite.
+ * Individual transaction row display component.
+ * @module components/transaction-item
+ */
+
+/**
+ * Transaction Item Web Component.
+ * 
+ * Displays a single transaction with icon, description, and amount.
+ * Can be used standalone or within transaction list.
+ * 
+ * @extends HTMLElement
  */
 class FinSiteTransactionItem extends HTMLElement {
+    /**
+     * Initialize transaction item component.
+     * Sets up Shadow DOM and transaction data property.
+     */
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
@@ -26,12 +41,25 @@ class FinSiteTransactionItem extends HTMLElement {
         }
     }
 
-    // Method to set transaction data programmatically
+    /**
+     * Set transaction data programmatically.
+     * 
+     * @param {Object} data - Transaction data
+     * @param {number} data.amount - Transaction amount
+     * @param {string} data.description - Transaction description
+     * @param {string} data.date - Transaction date
+     * @param {string} [data.status] - Transaction status (e.g., 'Pending')
+     */
     setTransactionData(data) {
         this.transactionData = data;
         this.render();
     }
 
+    /**
+     * Render transaction item UI.
+     * 
+     * Returns early if no transaction data available.
+     */
     render() {
         let iconClass;
         if (!this.transactionData) return;

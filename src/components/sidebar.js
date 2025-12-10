@@ -1,9 +1,32 @@
+import { createPrefixedLogger } from '../utils/debugService.js';
+
+// Prefixed logger for sidebar component
+const log = createPrefixedLogger('[Sidebar]');
+
 /**
- * Sidebar Web Component for FinSite
- * Mint-style persistent sidebar with collapsible feature
- * Contains header with logo/icons, navigation items, and collapse toggle
+ * @fileoverview Sidebar Web Component for FinSite.
+ * Persistent navigation sidebar with collapsible feature.
+ * @module components/sidebar
+ */
+
+/**
+ * Sidebar Web Component.
+ * 
+ * Features:
+ * - Mint-style persistent sidebar
+ * - Collapsible to icon-only mode
+ * - Logo and navigation items
+ * - Emits 'navigate' and 'sidebar-toggle' events
+ * 
+ * @extends HTMLElement
+ * @fires navigate - When navigation item clicked {page: string}
+ * @fires sidebar-toggle - When collapse state changes {collapsed: boolean}
  */
 class SidebarComponent extends HTMLElement {
+    /**
+     * Initialize sidebar component.
+     * Sets up Shadow DOM and default state.
+     */
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
@@ -11,11 +34,19 @@ class SidebarComponent extends HTMLElement {
         this.isCollapsed = false;
     }
 
+    /**
+     * Lifecycle: Called when component is added to DOM.
+     * Renders UI and sets up event listeners.
+     */
     connectedCallback() {
         this.render();
         this.setupEventListeners();
     }
 
+    /**
+     * Render sidebar UI.
+     * Creates header, navigation items, and collapse toggle.
+     */
     render() {
         this.shadowRoot.innerHTML = `
             <style>
@@ -362,17 +393,17 @@ class SidebarComponent extends HTMLElement {
                 </div>
             </div>
 
-            <nav class="nav-section">
+            <nav class="nav-section" data-testid= "navbar">
                 <div class="nav-label">Menu</div>
-                <a class="nav-item active" data-page="dashboard" data-tooltip="Dashboard">
+                <a class="nav-item active" data-page="dashboard" data-tooltip="Dashboard" data-testid="nav-dashboard">
                     <span class="nav-item-icon">📊</span>
                     <span class="nav-item-text">Dashboard</span>
                 </a>
-                <a class="nav-item" data-page="transactions" data-tooltip="Transactions">
+                <a class="nav-item" data-page="transactions" data-tooltip="Transactions" data-testid="nav-transactions">
                     <span class="nav-item-icon">💳</span>
                     <span class="nav-item-text">Transactions</span>
                 </a>
-                <a class="nav-item" data-page="categories" data-tooltip="Categories">
+                <a class="nav-item" data-page="categories" data-tooltip="Categories" data-testid="nav-categories">
                     <span class="nav-item-icon">🏷️</span>
                     <span class="nav-item-text">Categories</span>
                 </a>
@@ -465,7 +496,7 @@ class SidebarComponent extends HTMLElement {
             composed: true,
         }));
 
-        console.log(`🔄 Sidebar ${this.isCollapsed ? 'collapsed' : 'expanded'}`);
+        log(`🔄 Sidebar ${this.isCollapsed ? 'collapsed' : 'expanded'}`);
     }
 
     navigate(page, clickedItem) {
@@ -484,7 +515,7 @@ class SidebarComponent extends HTMLElement {
             composed: true,
         }));
 
-        console.log(`🧭 Sidebar navigated to: ${page}`);
+        log(`🧭 Sidebar navigated to: ${page}`);
     }
 
     /**

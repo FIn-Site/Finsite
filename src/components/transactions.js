@@ -1,10 +1,34 @@
-import { getCategoryIcon, getGroupIcon } from '../constants/icons.js';
+import { getCategoryIcon, getGroupIcon } from '../utils/icons.js';
+import { createPrefixedLogger } from '../utils/debugService.js';
+
+// Prefixed logger for transactions component
+const log = createPrefixedLogger('[Transactions]');
 
 /**
- * Transactions Web Component for FinSite
- * Refactored UI/UX with sticky header, date grouping, and advanced filters
+ * @fileoverview Transactions Web Component for FinSite.
+ * Full-featured transaction list with filtering, sorting, and manual entry.
+ * @module components/transactions
+ */
+
+/**
+ * Transactions Web Component.
+ * 
+ * Features:
+ * - Date-grouped transaction list with sticky headers
+ * - Advanced filtering (scope, search, date range, groups, categories)
+ * - Sorting (newest, oldest, amount high/low)
+ * - Multi-select for bulk operations
+ * - Manual transaction entry modal
+ * 
+ * @extends HTMLElement
+ * @fires add-transaction - When new transaction submitted {group, category, amount, date, merchant, notes}
+ * @fires open-manual-entry - When manual entry modal opened {source: string}
  */
 class FinSiteTransactions extends HTMLElement {
+    /**
+     * Initialize transactions component.
+     * Sets up Shadow DOM, filter state, and UI state.
+     */
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
@@ -34,6 +58,9 @@ class FinSiteTransactions extends HTMLElement {
         // Available groups and categories for filters
         this.availableGroups = [];
         this.availableCategories = [];
+
+        // Modal form state - track currently selected group for category filtering
+        this.currentGroupId = null;
     }
 
     set model(model) {
@@ -84,6 +111,34 @@ class FinSiteTransactions extends HTMLElement {
         const categories = this._model.getCategories?.() || [];
         this.availableGroups = groups;
         this.availableCategories = categories;
+        log('Taxonomy synced from model:', { groups: groups.length, categories: categories.length });
+    }
+
+    /**
+     * Get categories filtered by the currently selected group in the modal.
+     * Returns all categories if no group is selected.
+     * Handles both default groups (categories have groupId) and custom groups (group has categoryIds array).
+     * @returns {Array} Filtered categories for the current group
+     */
+    getCategoriesForCurrentGroup() {
+        if (!this.currentGroupId) {
+            return [];
+        }
+
+        // Find the selected group to check if it's a custom group with categoryIds
+        const selectedGroup = this.availableGroups.find((g) => g.id === this.currentGroupId);
+
+        // If it's a custom group with categoryIds array, filter by those IDs
+        if (selectedGroup?.categoryIds && Array.isArray(selectedGroup.categoryIds)) {
+            return this.availableCategories.filter(
+                (c) => selectedGroup.categoryIds.includes(c.id)
+            );
+        }
+
+        // Default behavior: filter categories that belong to the group by groupId
+        return this.availableCategories.filter(
+            (c) => c.groupId === this.currentGroupId || c.group === this.currentGroupId
+        );
     }
 
     // ============================================================
@@ -302,7 +357,7 @@ class FinSiteTransactions extends HTMLElement {
                             <button class="action-btn ${this.filters.groups.length || this.filters.categories.length ? 'active' : ''}" id="filter-btn">
                                 <span class="btn-icon">⚙️</span><span class="btn-label">Filters</span>
                             </button>
-                            <button class="add-btn" id="add-transaction-btn">
+                            <button class="add-btn" id="add-transaction-btn" data-testid="btn-add-transaction">
                                 <span class="add-icon">+</span><span>Add Transaction</span>
                             </button>
                         </div>
@@ -327,7 +382,7 @@ class FinSiteTransactions extends HTMLElement {
                     </div>
                 </div>
 
-                <div class="transaction-list-container">
+                <div class="transaction-list-container" data-testid="transaction-list">
                     ${filtered.length === 0 ? this.renderEmptyState(hasFilters) : this.renderTransactionList(grouped)}
                 </div>
 
@@ -443,6 +498,10 @@ class FinSiteTransactions extends HTMLElement {
     }
 
     renderModal() {
+        // Get categories filtered by currently selected group
+        const filteredCategories = this.getCategoriesForCurrentGroup();
+        const showCategoryPlaceholder = !this.currentGroupId || filteredCategories.length === 0;
+
         return `
             <div class="modal-overlay ${this.isModalOpen ? '' : 'hidden'}" id="modal-overlay">
                 <div class="modal-container">
@@ -453,30 +512,30 @@ class FinSiteTransactions extends HTMLElement {
                     <form class="modal-form" id="transaction-form" novalidate>
                         <div class="form-row">
                             <div class="form-group"><label class="form-label" for="tx-amount">Amount (USD)</label>
-                                <input class="form-input" type="number" id="tx-amount" name="amount" step="0.01" min="0.01" placeholder="e.g., 12.34" required /></div>
+                                <input class="form-input" type="number" id="tx-amount" data-testid="input-amount" name="amount" step="0.01" min="0.01" placeholder="e.g., 12.34" required /></div>
                             <div class="form-group"><label class="form-label" for="tx-date">Date</label>
-                                <input class="form-input" type="date" id="tx-date" name="date" required /></div>
+                                <input class="form-input" type="date" id="tx-date" data-testid="input-date" name="date" required /></div>
                         </div>
                         <div class="form-row">
                             <div class="form-group"><label class="form-label" for="tx-group">Group</label>
-                                <select class="form-select" id="tx-group" name="group" required>
-                                    <option value="" disabled selected>Select a group</option>
-                                    ${this.availableGroups.map((g) => `<option value="${g.id}">${g.name}</option>`).join('')}
-                                    <option value="manual">Manual Entry</option>
+                                <select class="form-select" id="tx-group" data-testid="select-group" name="group" required>
+                                    <option value="" disabled ${!this.currentGroupId ? 'selected' : ''}>Select a group</option>
+                                    ${this.availableGroups.map((g) => `<option value="${g.id}" ${this.currentGroupId === g.id ? 'selected' : ''}>${g.name}</option>`).join('')}
+                                    <option value="manual" ${this.currentGroupId === 'manual' ? 'selected' : ''}>Manual Entry</option>
                                 </select></div>
                             <div class="form-group"><label class="form-label" for="tx-category">Category</label>
-                                <select class="form-select" id="tx-category" name="category" required>
-                                    <option value="" disabled selected>Select a category</option>
-                                    ${this.availableCategories.map((c) => `<option value="${c.id}">${c.name}</option>`).join('')}
+                                <select class="form-select" id="tx-category" data-testid="select-category" name="category" required ${showCategoryPlaceholder ? 'disabled' : ''}>
+                                    <option value="" disabled selected>${showCategoryPlaceholder ? 'Select a group first' : 'Select a category'}</option>
+                                    ${filteredCategories.map((c) => `<option value="${c.id}">${c.name}</option>`).join('')}
                                 </select></div>
                         </div>
                         <div class="form-group"><label class="form-label" for="tx-merchant">Merchant</label>
-                            <input class="form-input" type="text" id="tx-merchant" name="merchant" placeholder="e.g., Amazon, Walmart" /></div>
+                            <input class="form-input" type="text" id="tx-merchant" data-testid="input-merchant" name="merchant" placeholder="e.g., Amazon, Walmart" /></div>
                         <div class="form-group"><label class="form-label" for="tx-notes">Notes</label>
                             <textarea class="form-textarea" id="tx-notes" name="notes" placeholder="Add any additional notes..."></textarea></div>
                         <div class="modal-actions">
                             <button type="button" class="btn-secondary" id="modal-cancel-btn">Cancel</button>
-                            <button type="submit" class="btn-primary">Add Transaction</button>
+                            <button type="submit" class="btn-primary" data-testid="btn-add-transaction">Add Transaction</button>
                         </div>
                     </form>
                 </div>
@@ -804,7 +863,7 @@ class FinSiteTransactions extends HTMLElement {
         root.querySelectorAll('.transaction-row').forEach((row) => {
             row.addEventListener('click', (e) => {
                 if (e.target.classList.contains('tx-checkbox')) return;
-                console.log('Transaction clicked:', row.dataset.id);
+                log('Transaction clicked:', row.dataset.id);
             });
         });
 
@@ -826,6 +885,14 @@ class FinSiteTransactions extends HTMLElement {
             if (e.target.id === 'modal-overlay') this.closeModal();
         });
 
+        // Group dropdown change - update category options based on selected group
+        root.querySelector('#tx-group')?.addEventListener('change', (e) => {
+            this.currentGroupId = e.target.value;
+            log('Group selected:', this.currentGroupId);
+            // Re-render to update category dropdown with filtered options
+            this._updateCategoryDropdown();
+        });
+
         // Form submission
         root.querySelector('#transaction-form')?.addEventListener('submit', (e) => this.handleFormSubmit(e));
     }
@@ -836,6 +903,7 @@ class FinSiteTransactions extends HTMLElement {
 
     openModal() {
         this.isModalOpen = true;
+        this.currentGroupId = null; // Reset group selection when opening modal
         this.render();
         this.setupEventListeners();
         const dateInput = this.shadowRoot.querySelector('#tx-date');
@@ -845,10 +913,35 @@ class FinSiteTransactions extends HTMLElement {
 
     closeModal() {
         this.isModalOpen = false;
+        this.currentGroupId = null; // Reset group selection when closing modal
         const form = this.shadowRoot.querySelector('#transaction-form');
         if (form) form.reset();
         this.render();
         this.setupEventListeners();
+    }
+
+    /**
+     * Update the category dropdown based on currently selected group.
+     * Called when the group dropdown changes to filter categories.
+     * This method updates only the category dropdown without full re-render.
+     */
+    _updateCategoryDropdown() {
+        const categorySelect = this.shadowRoot.querySelector('#tx-category');
+        if (!categorySelect) return;
+
+        const filteredCategories = this.getCategoriesForCurrentGroup();
+        const showPlaceholder = !this.currentGroupId || filteredCategories.length === 0;
+
+        // Clear and rebuild options
+        categorySelect.innerHTML = `
+            <option value="" disabled selected>${showPlaceholder ? 'Select a group first' : 'Select a category'}</option>
+            ${filteredCategories.map((c) => `<option value="${c.id}">${c.name}</option>`).join('')}
+        `;
+
+        // Enable/disable based on whether we have categories
+        categorySelect.disabled = showPlaceholder;
+
+        log('Category dropdown updated:', { groupId: this.currentGroupId, categoryCount: filteredCategories.length });
     }
 
     showNotification(message, isSuccess = true, duration = 2500) {

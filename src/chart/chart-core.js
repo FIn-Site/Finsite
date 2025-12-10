@@ -13,6 +13,10 @@
  * We use string labels for the X-axis, not a time scale,
  * so the date adapter is intentionally not loaded.
  */
+import { createPrefixedLogger } from '../utils/debugService.js';
+
+// Prefixed logger for chart-core module
+const log = createPrefixedLogger('[ChartCore]');
 
 // Module state
 let _chartInstance = null;
@@ -63,9 +67,14 @@ export const CHART_COLORS = [
 ];
 
 /**
- * Dynamically load a script and return a promise
+ * Dynamically load a script and return a promise.
+ * 
+ * Checks if script is already loaded before injecting.
+ * 
+ * @private
  * @param {string} src - Script source URL
  * @returns {Promise<void>}
+ * @throws {Error} If script fails to load
  */
 function loadScript(src) {
     return new Promise((resolve, reject) => {
@@ -85,9 +94,17 @@ function loadScript(src) {
 }
 
 /**
- * Initialize Chart.js with required components
- * Uses dynamic script loading for lazy loading
+ * Initialize Chart.js with required components.
+ * 
+ * Uses dynamic script loading for lazy initialization. Returns cached
+ * instance if already loaded. Call this before creating any charts.
+ * 
+ * Performance: Only loads Chart.js when first chart is rendered,
+ * not on initial page load.
+ * 
+ * @async
  * @returns {Promise<typeof Chart>} The configured Chart constructor
+ * @throws {Error} If Chart.js fails to load
  */
 export async function initChartCore() {
     // Return cached instance if already initialized
@@ -100,7 +117,7 @@ export async function initChartCore() {
         _applyDefaults(Chart);
         _chartInstance = Chart;
         _isInitialized = true;
-        console.log('📊 Chart.js already loaded, using existing instance');
+        log('📊 Chart.js already loaded, using existing instance');
         return _chartInstance;
     }
 
@@ -148,7 +165,7 @@ async function _doInit() {
         _chartInstance = Chart;
         _isInitialized = true;
 
-        console.log('📊 Chart core initialized (lazy loaded, no date adapter)');
+        log('📊 Chart core initialized (lazy loaded, no date adapter)');
         return Chart;
     } catch (error) {
         console.error('Failed to initialize Chart.js:', error);
@@ -180,8 +197,12 @@ function _applyDefaults(Chart) {
 }
 
 /**
- * Check if Chart.js is available (either via module or global)
- * @returns {typeof Chart | null}
+ * Get Chart.js constructor if available.
+ * 
+ * Checks for cached instance first, then global Chart variable.
+ * Returns null if Chart.js not yet loaded.
+ * 
+ * @returns {typeof Chart | null} Chart.js constructor or null
  */
 export function getChart() {
     if (_chartInstance) return _chartInstance;
@@ -190,8 +211,9 @@ export function getChart() {
 }
 
 /**
- * Check if chart core is initialized
- * @returns {boolean}
+ * Check if Chart.js has been initialized.
+ * 
+ * @returns {boolean} True if Chart.js is loaded and ready
  */
 export function isInitialized() {
     return _isInitialized || typeof Chart !== 'undefined';
@@ -202,12 +224,16 @@ export function isInitialized() {
 // ============================================================
 
 /**
- * Create a line chart configuration for spending over time
- * @param {Object} options
- * @param {string[]} options.labels - Month labels
- * @param {number[]} options.values - Spending values
+ * Create a line chart configuration for spending over time.
+ * 
+ * Generates a gradient-filled line chart with hover effects.
+ * Used for 6-month spending trend visualization.
+ * 
+ * @param {Object} options - Configuration options
+ * @param {string[]} options.labels - Month labels (e.g., ['Jun', 'Jul', 'Aug'])
+ * @param {number[]} options.values - Spending values for each month
  * @param {CanvasRenderingContext2D} options.ctx - Canvas context (for gradient)
- * @param {boolean} options.animate - Whether to animate
+ * @param {boolean} [options.animate=true] - Whether to animate chart
  * @returns {Object} Chart.js configuration object
  */
 export function createLineChartConfig({
@@ -287,18 +313,22 @@ export function createLineChartConfig({
 }
 
 /**
- * Create a bar chart configuration for spending by category
- * @param {Object} options
- * @param {string[]} options.labels - Category labels
- * @param {number[]} options.values - Spending values
- * @param {boolean} options.animate - Whether to animate
+ * Create a bar chart configuration for spending by category.
+ * 
+ * Generates a horizontal bar chart with color-coded categories.
+ * Used for top 5 spending groups visualization.
+ * 
+ * @param {Object} options - Configuration options
+ * @param {string[]} options.labels - Category/group labels
+ * @param {number[]} options.values - Spending values for each category
+ * @param {boolean} [options.animate=true] - Whether to animate chart
  * @returns {Object} Chart.js configuration object
  */
 export function createBarChartConfig(labels, values, overrides = {}) {
     const {
         animate = true,
         title,
-        indexAxis = 'y',
+        indexAxis = 'x',
         legend = { display: false },
         datasetOptions = {},
         options: userOptions = {},

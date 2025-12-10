@@ -1,11 +1,28 @@
+/**
+ * @fileoverview View layer for FinSite application.
+ * Handles UI rendering, DOM manipulation, and component orchestration.
+ * @module financeView
+ */
+
 import '../components/sidebar.js';
 import '../components/dashboard.js';
 import '../components/transactions.js';
 import '../components/categories.js';
+import { createPrefixedLogger } from '../utils/debugService.js';
+
+// Prefixed logger for view layer
+const log = createPrefixedLogger('[View]');
 
 /**
- * FinSiteView - Handles all UI rendering and DOM manipulation
- * Mint-style two-pane layout with persistent sidebar and main content area
+ * FinSite View - Handles all UI rendering and DOM manipulation.
+ * 
+ * Architecture:
+ * - Mint-style two-pane layout with persistent sidebar and main content area
+ * - Uses Web Components for modular UI
+ * - Delegates data visualization to chart components
+ * - Handles component event forwarding to controller
+ * 
+ * @class
  */
 export class FinSiteView {
     constructor(model = null) {
@@ -29,16 +46,16 @@ export class FinSiteView {
      * @param {string} selector - CSS selector for the container element
      */
     render(selector) {
-        console.log('🔍 Looking for container:', selector);
+        log('🔍 Looking for container:', selector);
         this.container = document.querySelector(selector);
 
         if (!this.container) {
             console.error(`❌ Container element ${selector} not found`);
             this.container = document.body;
-            console.log('📍 Using body as fallback container');
+            log('📍 Using body as fallback container');
         }
 
-        console.log('📦 Container found, rendering layout...');
+        log('📦 Container found, rendering layout...');
 
         // Create the two-pane layout: sidebar + main content
         this.container.innerHTML = `
@@ -58,11 +75,17 @@ export class FinSiteView {
         // Pass model reference to categories component if available
         this._wireModelToCategories();
 
-        console.log('✅ FinSite layout rendered successfully');
+        log('✅ FinSite layout rendered successfully');
     }
 
     /**
-     * Set up component event listeners
+     * Set up component event listeners.
+     * 
+     * Listens for:
+     * - Sidebar navigation events
+     * - Sidebar collapse/expand events
+     * - Add transaction events from transactions component
+     * - Manual entry modal open events
      */
     setupComponentEvents() {
         // Set up sidebar navigation listener
@@ -98,7 +121,7 @@ export class FinSiteView {
         // Set up add-transaction listener (bubbles from finsite-transactions component)
         this.container.addEventListener('add-transaction', (event) => {
             const transactionData = event.detail;
-            console.log('📝 Add transaction event received:', transactionData);
+            log('📝 Add transaction event received:', transactionData);
 
             if (this.handlers && typeof this.handlers.onAddTransaction === 'function') {
                 this.handlers.onAddTransaction(transactionData);
@@ -107,13 +130,27 @@ export class FinSiteView {
 
         // Set up open-manual-entry listener for analytics/logging
         this.container.addEventListener('open-manual-entry', (event) => {
-            console.log('📊 Manual entry modal opened from:', event.detail.source);
+            log('📊 Manual entry modal opened from:', event.detail.source);
+        });
+
+        // Set up delete-group listener (bubbles from finsite-categories component)
+        this.container.addEventListener('request-delete-group', (event) => {
+            const { groupId, groupName } = event.detail || {};
+            log('🗑️ Delete group request received:', groupId, groupName);
+
+            if (this.handlers && typeof this.handlers.onDeleteGroup === 'function') {
+                this.handlers.onDeleteGroup(groupId, groupName);
+            }
         });
     }
 
     /**
-     * Navigate to a specific page
-     * @param {string} page - Page to navigate to
+     * Navigate to a specific page.
+     * 
+     * Updates current page state and re-renders content area
+     * with appropriate component.
+     * 
+     * @param {string} page - Page identifier ('dashboard', 'transactions')
      */
     navigateToPage(page) {
         this.currentPage = page;
@@ -124,13 +161,21 @@ export class FinSiteView {
 
         // Ensure freshly-rendered categories receive the model
         this._wireModelToCategories();
-        console.log(`📄 Navigated to ${page} page`);
+
+        // Ensure freshly-rendered transactions receive taxonomy
+        this._wireModelToTransactions();
+
+        log(`📄 Navigated to ${page} page`);
     }
 
     /**
-     * Render component for a specific page
-     * @param {string} page - Page to render component for
-     * @returns {string} Component HTML for the page
+     * Render component for a specific page.
+     * 
+     * Returns HTML string for the appropriate Web Component.
+     * Shows 404 message for unknown pages.
+     * 
+     * @param {string} page - Page identifier ('dashboard', 'transactions')
+     * @returns {string} Component HTML string
      */
     renderPageComponent(page) {
         switch (page) {
@@ -151,8 +196,14 @@ export class FinSiteView {
     }
 
     /**
-     * Update the view with new data
-     * @param {Object} data - Data to display
+     * Update the view with new data.
+     * 
+     * Handles page navigation and passes data to active component.
+     * Called by controller after model state changes.
+     * 
+     * @param {Object} data - Data from model
+     * @param {string} [data.currentView] - Page to display
+     * @param {Array} [data.transactions] - Transaction array for transactions page
      */
     update(data) {
         if (data.currentView && data.currentView !== this.currentPage) {
@@ -197,35 +248,51 @@ export class FinSiteView {
             }
         }
 
-        console.log('View updated with data:', data);
+        log('View updated with data:', data);
     }
 
     /**
-     * Update dashboard charts with pre-aggregated data from model
-     * This passes the summary directly to the dashboard's chart component
-     * @param {Object} chartData - Pre-aggregated chart data { timeSeries, groupBreakdown, metrics }
-     * @param {boolean} isHeavyUpdate - True for bulk updates (disables animation)
+     * Update dashboard charts with pre-aggregated data from model.
+     * 
+     * Passes aggregated chart data directly to dashboard component's
+     * chart child component. Only updates if dashboard is currently rendered.
+     * 
+     * @param {Object} chartData - Pre-aggregated chart data from model
+     * @param {Object} chartData.timeSeries - {labels: string[], values: number[]}
+     * @param {Object} chartData.groupBreakdown - {labels: string[], values: number[]}
+     * @param {Object} chartData.metrics - {thisMonth, lastMonth, percentChange, sixMonthAvg}
+     * @param {boolean} [isHeavyUpdate=false] - True for bulk updates (disables animations)
      */
     updateDashboardCharts(chartData, isHeavyUpdate = false) {
         // Only update if dashboard is visible or exists
         const dashboard = this.container?.querySelector('finsite-dashboard');
         if (dashboard && typeof dashboard.updateChartData === 'function') {
             dashboard.updateChartData(chartData, isHeavyUpdate);
-            console.log('📊 Dashboard charts updated with:', chartData);
+            log('📊 Dashboard charts updated with:', chartData);
         }
     }
 
     /**
-     * Update dashboard panel with summary data (stats cards, recent activity)
-     * This passes real transaction data to replace static demo values
+     * Update dashboard panel with summary data.
+     * 
+     * Replaces static demo values in dashboard stat cards and
+     * recent activity section with real transaction data.
+     * 
      * @param {Object} panelSummary - Panel summary from model
+     * @param {Array} panelSummary.recentTransactions - Recent transactions for activity list
+     * @param {number} panelSummary.totalSpentAllTime - Lifetime spending total
+     * @param {number} panelSummary.transactionsThisWeek - Transactions in last 7 days
+     * @param {number} panelSummary.monthlySpendingCurrent - Current month spending
+     * @param {number} panelSummary.monthlySpendingLast - Last month spending
+     * @param {number} panelSummary.monthlyChangePercent - Month-over-month change %
+     * @param {'up'|'down'|'neutral'} panelSummary.monthlyDirection - Spending trend
      */
     updateDashboardPanel(panelSummary) {
         // Only update if dashboard is visible or exists
         const dashboard = this.container?.querySelector('finsite-dashboard');
         if (dashboard && typeof dashboard.updateFromSummary === 'function') {
             dashboard.updateFromSummary(panelSummary);
-            console.log('📋 Dashboard panel updated with:', panelSummary);
+            log('📋 Dashboard panel updated with:', panelSummary);
         }
     }
 
@@ -241,6 +308,114 @@ export class FinSiteView {
                 console.warn('Failed to wire model to categories component', err);
             }
         });
+    }
+
+    /**
+     * Inject taxonomy (groups/categories) into transactions component.
+     * This ensures the dropdown menus are populated with available options.
+     */
+    _wireModelToTransactions() {
+        if (!this.model || !this.container) return;
+        this.container.querySelectorAll('finsite-transactions').forEach((el) => {
+            try {
+                // Set model reference for future syncing
+                el.model = this.model;
+                // Inject taxonomy data directly
+                if (typeof el.setTaxonomy === 'function') {
+                    const groups = this.model.getGroups?.() || [];
+                    const categories = this.model.getCategories?.() || [];
+                    el.setTaxonomy({ groups, categories });
+                    log('Taxonomy wired to transactions:', { groups: groups.length, categories: categories.length });
+                }
+            } catch (err) {
+                console.warn('Failed to wire model to transactions component', err);
+            }
+        });
+    }
+
+    // ============================================================
+    // TRANSACTION FEEDBACK METHODS (Controller → View → Component)
+    // ============================================================
+
+    /**
+     * Notify the transactions component that a transaction was successfully added.
+     * Routes controller feedback through view interface to avoid direct DOM coupling.
+     *
+     * @param {Object} savedTransaction - The persisted transaction with ID
+     */
+    onTransactionAdded(savedTransaction) {
+        if (this.transactionsEl && typeof this.transactionsEl.onTransactionAdded === 'function') {
+            this.transactionsEl.onTransactionAdded(savedTransaction);
+        }
+        log('✅ Transaction added notification sent to component');
+    }
+
+    /**
+     * Notify the transactions component that a transaction save failed.
+     * Routes controller error feedback through view interface.
+     *
+     * @param {string} errorMessage - User-friendly error message
+     */
+    onTransactionError(errorMessage) {
+        if (this.transactionsEl && typeof this.transactionsEl.onTransactionError === 'function') {
+            this.transactionsEl.onTransactionError(errorMessage);
+        }
+        log('❌ Transaction error notification sent to component:', errorMessage);
+    }
+
+    /**
+     * Notify the view that transactions were successfully deleted.
+     * Can be used to update UI state or show confirmation.
+     *
+     * @param {Array} ids - IDs of deleted transactions
+     */
+    onTransactionsDeleted(ids) {
+        log(`🗑️ ${ids.length} transactions deleted`);
+        // Transactions component will update via the normal update() flow
+        // This hook is available for additional UI feedback if needed
+    }
+
+    /**
+     * Notify the categories component that a group was successfully deleted.
+     * Routes controller feedback through view interface.
+     *
+     * @param {string} groupId - ID of deleted group
+     */
+    onGroupDeleted(groupId) {
+        const categoriesPage = this.container?.querySelector('finsite-categories');
+        if (categoriesPage && typeof categoriesPage.onGroupDeleted === 'function') {
+            categoriesPage.onGroupDeleted(groupId);
+        }
+        log(`🗑️ Group deleted notification sent to component: ${groupId}`);
+    }
+
+    /**
+     * Notify the view that a bulk import completed.
+     * Can show summary toast/notification with import results.
+     *
+     * @param {Object} result - Import results
+     * @param {number} result.savedCount - Number of successfully saved transactions
+     * @param {number} result.skippedCount - Number of skipped/invalid transactions
+     * @param {Array} result.skippedDetails - Details of skipped transactions with error reasons
+     */
+    onBulkImportComplete(result) {
+        log(`📦 Bulk import: ${result.savedCount} saved, ${result.skippedCount} skipped`);
+        // Could show a toast notification here
+        // For now, transactions component updates via normal update() flow
+    }
+
+    /**
+     * Display an error message to the user.
+     * Provides user feedback for failed operations.
+     *
+     * @param {string} message - Error message to display
+     */
+    showError(message) {
+        // For now, use browser alert. Could be replaced with toast/banner component.
+        // This is better than silent failure.
+        console.error('UI Error:', message);
+        // Optionally show to user - can be enhanced with toast component later
+        // alert(message);
     }
 
     /**

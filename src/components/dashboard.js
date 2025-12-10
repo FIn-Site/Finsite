@@ -1,12 +1,38 @@
+/**
+ * @fileoverview Dashboard Web Component for FinSite.
+ * Displays spending overview, charts, stats cards, and recent activity.
+ * @module components/dashboard
+ */
+
 // Import spending chart component
-import './spending-chart.js';
+import '../chart/spending-chart.js';
+import { getCategoryIcon } from '../utils/icons.js';
+import { getRelativeDate } from '../utils/formatters.js';
+import { createPrefixedLogger } from '../utils/debugService.js';
+
+// Prefixed logger for dashboard component
+const log = createPrefixedLogger('[Dashboard]');
 
 /**
- * Dashboard Web Component for FinSite
- * Handles dashboard content display with spending charts and quick stats
- * Receives pre-aggregated chart data and panel summary from model via view
+ * Dashboard Web Component.
+ * 
+ * Features:
+ * - Spending overview with stat cards
+ * - 6-month spending trend chart (line chart)
+ * - Top 5 groups spending chart (bar chart)
+ * - Recent transactions list
+ * 
+ * Data Flow:
+ * Receives pre-aggregated chart data and panel summary from
+ * Model via View via Controller.
+ * 
+ * @extends HTMLElement
  */
 class FinSiteDashboard extends HTMLElement {
+    /**
+     * Initialize dashboard component.
+     * Sets up Shadow DOM and initializes panel data structure.
+     */
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
@@ -29,6 +55,10 @@ class FinSiteDashboard extends HTMLElement {
         this._chartComponent = null;
     }
 
+    /**
+     * Lifecycle: Called when component is added to DOM.
+     * Renders initial UI and gets reference to chart component.
+     */
     connectedCallback() {
         this.render();
         // Get reference to chart component after render
@@ -51,6 +81,12 @@ class FinSiteDashboard extends HTMLElement {
         }).format(amount || 0);
     }
 
+    /**
+     * Render dashboard UI.
+     * 
+     * Creates stat cards, recent activity, and chart container.
+     * Uses panelData for stat values.
+     */
     render() {
         const {
             totalSpentAllTime,
@@ -309,7 +345,7 @@ class FinSiteDashboard extends HTMLElement {
 
                 <!-- Charts Section - spending-chart handles its own metrics and charts -->
                 <div class="charts-section">
-                    <finsite-spending-chart></finsite-spending-chart>
+                    <finsite-spending-chart data-testid="summary-chart"></finsite-spending-chart>
                 </div>
 
                 <!-- Recent Activity -->
@@ -324,8 +360,9 @@ class FinSiteDashboard extends HTMLElement {
     }
 
     /**
-     * Render activity items or empty state
-     * @returns {string} HTML for activity list
+     * Render recent activity list from raw transaction data
+     * Formats each transaction with icons and relative dates using formatters
+     * @returns {string} Activity list HTML
      */
     _renderActivities() {
         const { recentTransactions } = this.panelData;
@@ -339,16 +376,23 @@ class FinSiteDashboard extends HTMLElement {
             `;
         }
 
-        return recentTransactions.map((tx) => `
-            <div class="activity-item">
-                <span class="activity-icon">${tx.icon}</span>
-                <div class="activity-info">
-                    <div class="activity-text">${tx.merchant}</div>
-                    <div class="activity-date">${tx.date}</div>
+        // Format raw transaction data for display
+        return recentTransactions.map((tx) => {
+            const icon = getCategoryIcon(tx.category || tx.group);
+            const displayDate = getRelativeDate(tx.date);
+            const displayMerchant = tx.merchant || tx.category || 'Transaction';
+
+            return `
+                <div class="activity-item">
+                    <span class="activity-icon">${icon}</span>
+                    <div class="activity-info">
+                        <div class="activity-text">${displayMerchant}</div>
+                        <div class="activity-date">${displayDate}</div>
+                    </div>
+                    <div class="activity-amount">-${this._formatCurrency(tx.amount)}</div>
                 </div>
-                <div class="activity-amount">-${this._formatCurrency(tx.amount)}</div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     /**
@@ -377,7 +421,7 @@ class FinSiteDashboard extends HTMLElement {
             }
         });
 
-        console.log('📋 Dashboard panel updated from summary:', summary);
+        log('📋 Dashboard panel updated from summary:', summary);
     }
 
     /**
