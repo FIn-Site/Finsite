@@ -247,18 +247,22 @@ class FinSiteSpendingChart extends HTMLElement {
                 }
 
                 .charts-grid {
-                    display: grid;
-                    grid-template-columns: 1.5fr 1fr;
+                    display: flex;
+                    flex-direction: column;
                     gap: 1.5rem;
                     flex: 1;
                 }
 
+                .chart-card.line-chart {
+                    min-height: 320px;
+                }
+
+                .chart-card.bar-chart {
+                    min-height: 280px;
+                }
+
                 /* Responsive adjustments */
                 @media (max-width: 1024px) {
-                    .charts-grid {
-                        grid-template-columns: 1fr;
-                    }
-                    
                     .metrics-row {
                         grid-template-columns: repeat(2, 1fr);
                     }
@@ -307,7 +311,7 @@ class FinSiteSpendingChart extends HTMLElement {
                 <!-- Charts Grid -->
                 <div class="charts-grid">
                     <!-- Line Chart: Money x Time -->
-                    <div class="chart-card">
+                    <div class="chart-card line-chart">
                         <div class="chart-header">
                             <div>
                                 <h3 class="chart-title">Spending Over Time</h3>
@@ -320,11 +324,11 @@ class FinSiteSpendingChart extends HTMLElement {
                     </div>
 
                     <!-- Bar Chart: Money x Group -->
-                    <div class="chart-card">
+                    <div class="chart-card bar-chart">
                         <div class="chart-header">
                             <div>
-                                <h3 class="chart-title">Spending by Category</h3>
-                                <p class="chart-subtitle">Top spending categories</p>
+                                <h3 class="chart-title">Spending by Group</h3>
+                                <p class="chart-subtitle">All groups with transactions</p>
                             </div>
                         </div>
                         <div class="chart-area">

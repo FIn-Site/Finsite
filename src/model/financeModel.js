@@ -782,16 +782,15 @@ export class FinSiteModel {
             }
         }
 
-        // Sort by total descending and take top 5
+        // Sort by total descending - show ALL groups with transactions
         entries.sort((a, b) => b[1] - a[1]);
-        const top5 = entries.slice(0, 5);
 
-        if (top5.length === 0) {
+        if (entries.length === 0) {
             return { labels: ['No Data'], values: [0] };
         }
 
-        const labels = top5.map(([name]) => name);
-        const values = top5.map(([, total]) => Math.round(total * 100) / 100);
+        const labels = entries.map(([name]) => name);
+        const values = entries.map(([, total]) => Math.round(total * 100) / 100);
 
         return { labels, values };
     }
