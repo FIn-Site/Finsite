@@ -10,7 +10,7 @@ class FinSiteDashboard extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
-        
+
         // Dashboard panel data - starts empty, populated from model
         this.panelData = {
             totalSpentAllTime: 0,
@@ -19,12 +19,12 @@ class FinSiteDashboard extends HTMLElement {
             monthlySpendingLast: 0,
             monthlyChangePercent: 0,
             monthlyDirection: 'neutral',
-            recentTransactions: []
+            recentTransactions: [],
         };
-        
+
         // Chart data structure (pre-aggregated from model)
         this.chartData = null;
-        
+
         // Reference to chart component
         this._chartComponent = null;
     }
@@ -39,7 +39,7 @@ class FinSiteDashboard extends HTMLElement {
 
     /**
      * Format currency for display
-     * @param {number} amount 
+     * @param {number} amount
      * @returns {string} Formatted currency string
      */
     _formatCurrency(amount) {
@@ -47,26 +47,31 @@ class FinSiteDashboard extends HTMLElement {
             style: 'currency',
             currency: 'USD',
             minimumFractionDigits: 2,
-            maximumFractionDigits: 2
+            maximumFractionDigits: 2,
         }).format(amount || 0);
     }
 
     render() {
-        const { 
-            totalSpentAllTime, 
-            transactionsThisWeek, 
+        const {
+            totalSpentAllTime,
+            transactionsThisWeek,
             monthlySpendingCurrent,
             monthlyChangePercent,
             monthlyDirection,
-            recentTransactions 
         } = this.panelData;
 
         // Determine change indicator styling
-        const changeClass = monthlyDirection === 'up' ? 'negative' : 
-                           monthlyDirection === 'down' ? 'positive' : '';
-        const changePrefix = monthlyDirection === 'up' ? '+' : 
-                            monthlyDirection === 'down' ? '' : '';
-        const changeText = monthlyChangePercent !== 0 
+        let changeClass = '';
+        let changePrefix = '';
+
+        if (monthlyDirection === 'up') {
+            changeClass = 'negative';
+            changePrefix = '+';
+        } else if (monthlyDirection === 'down') {
+            changeClass = 'positive';
+            changePrefix = '';
+        }
+        const changeText = monthlyChangePercent !== 0
             ? `${changePrefix}${monthlyChangePercent.toFixed(1)}% vs last month`
             : 'No change vs last month';
 
@@ -345,7 +350,7 @@ class FinSiteDashboard extends HTMLElement {
             `;
         }
 
-        return recentTransactions.map(tx => `
+        return recentTransactions.map((tx) => `
             <div class="activity-item">
                 <span class="activity-icon">${tx.icon}</span>
                 <div class="activity-info">
@@ -367,16 +372,16 @@ class FinSiteDashboard extends HTMLElement {
 
         this.panelData = {
             ...this.panelData,
-            ...summary
+            ...summary,
         };
 
         // Re-render the component
         this.render();
-        
+
         // Re-acquire chart reference after render
         requestAnimationFrame(() => {
             this._chartComponent = this.shadowRoot.querySelector('finsite-spending-chart');
-            
+
             // Re-apply chart data if we have it
             if (this.chartData && this._chartComponent && this._chartComponent.updateChartData) {
                 this._chartComponent.updateChartData(this.chartData);
@@ -394,12 +399,12 @@ class FinSiteDashboard extends HTMLElement {
      */
     updateChartData(chartData, isHeavyUpdate = false) {
         this.chartData = chartData;
-        
+
         // Get or find chart component reference
         if (!this._chartComponent) {
             this._chartComponent = this.shadowRoot.querySelector('finsite-spending-chart');
         }
-        
+
         // Pass data to chart component
         if (this._chartComponent && this._chartComponent.updateChartData) {
             this._chartComponent.updateChartData(chartData, isHeavyUpdate);
@@ -412,16 +417,16 @@ class FinSiteDashboard extends HTMLElement {
      * @param {Object} newData - New data to display
      */
     updateData(newData) {
-        // Map old format to new if needed
+    // Map old format to new if needed
         if (newData.stats) {
             this.panelData.transactionsThisWeek = newData.stats.transactions || 0;
         }
         this.render();
-        
+
         // Re-acquire chart reference after render
         requestAnimationFrame(() => {
             this._chartComponent = this.shadowRoot.querySelector('finsite-spending-chart');
-            
+
             // Re-apply chart data if we have it
             if (this.chartData && this._chartComponent) {
                 this._chartComponent.updateChartData(this.chartData);

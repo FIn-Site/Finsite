@@ -1,15 +1,15 @@
 /**
  * Chart Core Module for FinSite
- * 
- * 
- * 
+ *
+ *
+ *
  * This module:
  * 1. Lazy-loads Chart.js only when needed (on dashboard render)
  * 2. Registers only the components we actually use
  * 3. Applies global defaults in one place
  * 4. Exports factory functions for creating dashboard charts
- * 
- * 
+ *
+ *
  * We use string labels for the X-axis, not a time scale,
  * so the date adapter is intentionally not loaded.
  */
@@ -25,17 +25,17 @@ let _initPromise = null;
 const CHART_DEFAULTS = {
     font: {
         family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-        size: 12
+        size: 12,
     },
     color: '#94a3b8',
     animation: {
-        duration: 400
+        duration: 400,
     },
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
         legend: {
-            display: false
+            display: false,
         },
         tooltip: {
             backgroundColor: 'rgba(15, 23, 42, 0.95)',
@@ -44,9 +44,9 @@ const CHART_DEFAULTS = {
             borderColor: '#334155',
             borderWidth: 1,
             cornerRadius: 8,
-            padding: 12
-        }
-    }
+            padding: 12,
+        },
+    },
 };
 
 /**
@@ -59,7 +59,7 @@ export const CHART_COLORS = [
     '#8b5cf6', // Purple
     '#ef4444', // Red
     '#06b6d4', // Cyan
-    '#ec4899'  // Pink
+    '#ec4899', // Pink
 ];
 
 /**
@@ -115,17 +115,17 @@ export async function initChartCore() {
 
 /**
  * Internal initialization logic
- * Loads Chart.js via script injection (no date adapter - OPTIMIZATION C)
+ * Loads Chart.js via script injection
  */
 async function _doInit() {
     try {
         // Determine the base path for Chart.js files
         // This works whether we're in /src/ or /src/chart/
         const basePath = new URL('../../ChartJS/', import.meta.url).href;
-        
-        // Load only Chart.js core (no date adapter needed - OPTIMIZATION C)
+
+        // Load only Chart.js core
         await loadScript(`${basePath}chart.umd.min.js`);
-        
+
         // Wait for Chart to be available on window
         await new Promise((resolve, reject) => {
             let attempts = 0;
@@ -147,10 +147,9 @@ async function _doInit() {
 
         _chartInstance = Chart;
         _isInitialized = true;
-        
+
         console.log('📊 Chart core initialized (lazy loaded, no date adapter)');
         return Chart;
-        
     } catch (error) {
         console.error('Failed to initialize Chart.js:', error);
         _initPromise = null;
@@ -160,21 +159,21 @@ async function _doInit() {
 
 /**
  * Apply global defaults to Chart.js
- * @param {typeof Chart} Chart 
+ * @param {typeof Chart} Chart
  */
 function _applyDefaults(Chart) {
     // Font defaults
     Chart.defaults.font.family = CHART_DEFAULTS.font.family;
     Chart.defaults.font.size = CHART_DEFAULTS.font.size;
     Chart.defaults.color = CHART_DEFAULTS.color;
-    
+
     // Animation defaults
     Chart.defaults.animation.duration = CHART_DEFAULTS.animation.duration;
-    
+
     // Layout defaults
     Chart.defaults.responsive = CHART_DEFAULTS.responsive;
     Chart.defaults.maintainAspectRatio = CHART_DEFAULTS.maintainAspectRatio;
-    
+
     // Plugin defaults
     Chart.defaults.plugins.legend.display = CHART_DEFAULTS.plugins.legend.display;
     Object.assign(Chart.defaults.plugins.tooltip, CHART_DEFAULTS.plugins.tooltip);
@@ -211,7 +210,9 @@ export function isInitialized() {
  * @param {boolean} options.animate - Whether to animate
  * @returns {Object} Chart.js configuration object
  */
-export function createLineChartConfig({ labels, values, ctx, animate = true }) {
+export function createLineChartConfig({
+    labels, values, ctx, animate = true,
+}) {
     // Create gradient for line fill
     const gradient = ctx.createLinearGradient(0, 0, 0, 200);
     gradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
@@ -235,54 +236,53 @@ export function createLineChartConfig({ labels, values, ctx, animate = true }) {
                 pointHoverRadius: 6,
                 pointHoverBackgroundColor: '#3b82f6',
                 pointHoverBorderColor: '#ffffff',
-                pointHoverBorderWidth: 2
-            }]
+                pointHoverBorderWidth: 2,
+            }],
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             animation: {
-                duration: animate ? 400 : 0
+                duration: animate ? 400 : 0,
             },
             interaction: {
                 mode: 'index',
-                intersect: false
+                intersect: false,
             },
             scales: {
-                // OPTIMIZATION C: Categorical X axis (no time scale)
                 x: {
                     type: 'category',
                     grid: {
                         color: 'rgba(148, 163, 184, 0.1)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: '#64748b',
-                        font: { size: 11 }
-                    }
-                },
-                y: {
-                    grid: {
-                        color: 'rgba(148, 163, 184, 0.1)',
-                        drawBorder: false
+                        drawBorder: false,
                     },
                     ticks: {
                         color: '#64748b',
                         font: { size: 11 },
-                        callback: (value) => '$' + formatCurrency(value)
                     },
-                    beginAtZero: false
-                }
+                },
+                y: {
+                    grid: {
+                        color: 'rgba(148, 163, 184, 0.1)',
+                        drawBorder: false,
+                    },
+                    ticks: {
+                        color: '#64748b',
+                        font: { size: 11 },
+                        callback: (value) => `$${formatCurrency(value)}`,
+                    },
+                    beginAtZero: false,
+                },
             },
             plugins: {
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        label: (context) => `Spent: $${formatCurrency(context.raw)}`
-                    }
-                }
-            }
-        }
+                        label: (context) => `Spent: $${formatCurrency(context.raw)}`,
+                    },
+                },
+            },
+        },
     };
 }
 
@@ -294,77 +294,152 @@ export function createLineChartConfig({ labels, values, ctx, animate = true }) {
  * @param {boolean} options.animate - Whether to animate
  * @returns {Object} Chart.js configuration object
  */
-export function createBarChartConfig({ labels, values, animate = true }) {
+export function createBarChartConfig(labels, values, overrides = {}) {
+    const {
+        animate = true,
+        title,
+        indexAxis = 'y',
+        legend = { display: false },
+        datasetOptions = {},
+        options: userOptions = {},
+    } = overrides;
+
+    const isHorizontal = indexAxis === 'y';
+
+    const dataset = {
+        data: values,
+        backgroundColor: labels.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+        borderRadius: 6,
+        borderSkipped: false,
+        barThickness: isHorizontal ? 32 : 24,
+        maxBarThickness: 40,
+        ...datasetOptions,
+    };
+
+    const baseScales = isHorizontal
+        ? {
+            x: {
+                grid: {
+                    color: 'rgba(148, 163, 184, 0.1)',
+                    drawBorder: false,
+                },
+                ticks: {
+                    color: '#64748b',
+                    font: { size: 11 },
+                    callback: (value) => `$${formatCurrency(value)}`,
+                },
+                beginAtZero: true,
+            },
+            y: {
+                type: 'category',
+                grid: { display: false },
+                ticks: {
+                    color: '#e2e8f0',
+                    font: { size: 11, weight: '500' },
+                },
+            },
+        }
+        : {
+            x: {
+                type: 'category',
+                grid: { display: false },
+                ticks: {
+                    color: '#e2e8f0',
+                    font: { size: 11, weight: '500' },
+                },
+            },
+            y: {
+                grid: {
+                    color: 'rgba(148, 163, 184, 0.1)',
+                    drawBorder: false,
+                },
+                ticks: {
+                    color: '#64748b',
+                    font: { size: 11 },
+                    callback: (value) => `$${formatCurrency(value)}`,
+                },
+                beginAtZero: true,
+            },
+        };
+
+    const baseOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis,
+        animation: {
+            duration: animate ? 400 : 0,
+        },
+        scales: baseScales,
+        plugins: {
+            legend: typeof legend === 'boolean' ? { display: legend } : { display: true, ...legend },
+            tooltip: {
+                callbacks: {
+                    label: (context) => `$${formatCurrency(context.raw)}`,
+                },
+            },
+            title: title
+                ? {
+                    display: true,
+                    text: title,
+                    color: '#e2e8f0',
+                    font: { size: 14, weight: '600' },
+                    padding: { bottom: 12 },
+                }
+                : { display: false },
+        },
+    };
+
+    const mergedOptions = {
+        ...baseOptions,
+        ...userOptions,
+        scales: {
+            ...baseOptions.scales,
+            ...userOptions.scales,
+            ...(userOptions.scales?.x ? { x: { ...baseOptions.scales.x, ...userOptions.scales.x } } : {}),
+            ...(userOptions.scales?.y ? { y: { ...baseOptions.scales.y, ...userOptions.scales.y } } : {}),
+        },
+        plugins: {
+            ...baseOptions.plugins,
+            ...userOptions.plugins,
+            legend: {
+                ...baseOptions.plugins.legend,
+                ...(userOptions.plugins?.legend || {}),
+            },
+            tooltip: {
+                ...baseOptions.plugins.tooltip,
+                ...(userOptions.plugins?.tooltip || {}),
+            },
+            title: {
+                ...baseOptions.plugins.title,
+                ...(userOptions.plugins?.title || {}),
+            },
+        },
+    };
+
     return {
         type: 'bar',
         data: {
             labels,
-            datasets: [{
-                data: values,
-                backgroundColor: labels.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
-                borderRadius: 6,
-                borderSkipped: false,
-                barThickness: 32,
-                maxBarThickness: 40
-            }]
+            datasets: [dataset],
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            indexAxis: 'y',
-            animation: {
-                duration: animate ? 400 : 0
-            },
-            scales: {
-                x: {
-                    grid: {
-                        color: 'rgba(148, 163, 184, 0.1)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: '#64748b',
-                        font: { size: 11 },
-                        callback: (value) => '$' + formatCurrency(value)
-                    },
-                    beginAtZero: true
-                },
-                y: {
-                    type: 'category',
-                    grid: {
-                        display: false
-                    },
-                    ticks: {
-                        color: '#e2e8f0',
-                        font: { size: 11, weight: '500' }
-                    }
-                }
-            },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: (context) => `$${formatCurrency(context.raw)}`
-                    }
-                }
-            }
-        }
+        options: mergedOptions,
     };
 }
 
 /**
  * Format currency value for display
- * @param {number} value 
+ * @param {number} value
  * @returns {string}
  */
 export function formatCurrency(value) {
     if (value >= 1000) {
         return value.toLocaleString(undefined, {
             minimumFractionDigits: 0,
-            maximumFractionDigits: 0
+            maximumFractionDigits: 0,
         });
     }
     return value.toLocaleString(undefined, {
         minimumFractionDigits: 2,
-        maximumFractionDigits: 2
+        maximumFractionDigits: 2,
     });
 }

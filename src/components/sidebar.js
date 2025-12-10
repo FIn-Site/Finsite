@@ -354,6 +354,10 @@ class SidebarComponent extends HTMLElement {
                     <span class="nav-item-icon">💳</span>
                     <span class="nav-item-text">Transactions</span>
                 </a>
+                <a class="nav-item" data-page="categories" data-tooltip="Categories">
+                    <span class="nav-item-icon">🏷️</span>
+                    <span class="nav-item-text">Categories</span>
+                </a>
             </nav>
 
             <div class="sidebar-footer">
@@ -367,8 +371,8 @@ class SidebarComponent extends HTMLElement {
 
     setupEventListeners() {
         const navItems = this.shadowRoot.querySelectorAll('.nav-item');
-        
-        navItems.forEach(item => {
+
+        navItems.forEach((item) => {
             item.addEventListener('click', (e) => {
                 e.preventDefault();
                 const page = item.getAttribute('data-page');
@@ -392,7 +396,7 @@ class SidebarComponent extends HTMLElement {
             settingsBtn.addEventListener('click', () => {
                 this.dispatchEvent(new CustomEvent('open-settings', {
                     bubbles: true,
-                    composed: true
+                    composed: true,
                 }));
             });
         }
@@ -401,7 +405,7 @@ class SidebarComponent extends HTMLElement {
             notificationsBtn.addEventListener('click', () => {
                 this.dispatchEvent(new CustomEvent('open-notifications', {
                     bubbles: true,
-                    composed: true
+                    composed: true,
                 }));
             });
         }
@@ -409,7 +413,7 @@ class SidebarComponent extends HTMLElement {
 
     toggleCollapse() {
         this.isCollapsed = !this.isCollapsed;
-        
+
         if (this.isCollapsed) {
             this.classList.add('collapsed');
         } else {
@@ -420,28 +424,28 @@ class SidebarComponent extends HTMLElement {
         this.dispatchEvent(new CustomEvent('sidebar-toggle', {
             detail: { collapsed: this.isCollapsed },
             bubbles: true,
-            composed: true
+            composed: true,
         }));
 
         console.log(`🔄 Sidebar ${this.isCollapsed ? 'collapsed' : 'expanded'}`);
     }
 
     navigate(page, clickedItem) {
-        // Update active state
+    // Update active state
         const allItems = this.shadowRoot.querySelectorAll('.nav-item');
-        allItems.forEach(item => item.classList.remove('active'));
+        allItems.forEach((item) => item.classList.remove('active'));
         clickedItem.classList.add('active');
-        
+
         // Update current page
         this.currentPage = page;
-        
+
         // Dispatch custom event for navigation
         this.dispatchEvent(new CustomEvent('navigate', {
             detail: { page },
             bubbles: true,
-            composed: true
+            composed: true,
         }));
-        
+
         console.log(`🧭 Sidebar navigated to: ${page}`);
     }
 
@@ -453,7 +457,7 @@ class SidebarComponent extends HTMLElement {
         const targetItem = this.shadowRoot.querySelector(`[data-page="${page}"]`);
         if (targetItem) {
             const allItems = this.shadowRoot.querySelectorAll('.nav-item');
-            allItems.forEach(item => item.classList.remove('active'));
+            allItems.forEach((item) => item.classList.remove('active'));
             targetItem.classList.add('active');
             this.currentPage = page;
         }

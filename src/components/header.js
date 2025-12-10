@@ -116,13 +116,13 @@ class FinSiteHeader extends HTMLElement {
 
     setupEventListeners() {
         const menuToggle = this.shadowRoot.querySelector('#menu-toggle');
-        
+
         if (menuToggle) {
             menuToggle.addEventListener('click', () => {
                 // Dispatch custom event for sidebar toggle
                 this.dispatchEvent(new CustomEvent('toggle-sidebar', {
                     bubbles: true,
-                    composed: true
+                    composed: true,
                 }));
             });
         }

@@ -1,17 +1,19 @@
 import '../components/sidebar.js';
 import '../components/dashboard.js';
 import '../components/transactions.js';
+import '../components/categories.js';
 
 /**
  * FinSiteView - Handles all UI rendering and DOM manipulation
  * Mint-style two-pane layout with persistent sidebar and main content area
  */
 export class FinSiteView {
-    constructor() {
+    constructor(model = null) {
         this.container = null;
         this.currentPage = 'dashboard';
         this.handlers = {};
         this.sidebarCollapsed = false;
+        this.model = model;
     }
 
     /**
@@ -29,7 +31,7 @@ export class FinSiteView {
     render(selector) {
         console.log('🔍 Looking for container:', selector);
         this.container = document.querySelector(selector);
-        
+
         if (!this.container) {
             console.error(`❌ Container element ${selector} not found`);
             this.container = document.body;
@@ -49,10 +51,13 @@ export class FinSiteView {
                 </main>
             </div>
         `;
-        
+
         // Set up component event listeners
         this.setupComponentEvents();
-        
+
+        // Pass model reference to categories component if available
+        this._wireModelToCategories();
+
         console.log('✅ FinSite layout rendered successfully');
     }
 
@@ -65,7 +70,7 @@ export class FinSiteView {
         if (sidebar) {
             sidebar.addEventListener('navigate', (event) => {
                 const { page } = event.detail;
-                
+
                 if (this.handlers && typeof this.handlers.onNavigate === 'function') {
                     // Forward to controller
                     this.handlers.onNavigate(page);
@@ -94,7 +99,7 @@ export class FinSiteView {
         this.container.addEventListener('add-transaction', (event) => {
             const transactionData = event.detail;
             console.log('📝 Add transaction event received:', transactionData);
-            
+
             if (this.handlers && typeof this.handlers.onAddTransaction === 'function') {
                 this.handlers.onAddTransaction(transactionData);
             }
@@ -116,6 +121,9 @@ export class FinSiteView {
         if (contentArea) {
             contentArea.innerHTML = this.renderPageComponent(page);
         }
+
+        // Ensure freshly-rendered categories receive the model
+        this._wireModelToCategories();
         console.log(`📄 Navigated to ${page} page`);
     }
 
@@ -125,11 +133,13 @@ export class FinSiteView {
      * @returns {string} Component HTML for the page
      */
     renderPageComponent(page) {
-        switch(page) {
+        switch (page) {
             case 'dashboard':
                 return '<finsite-dashboard></finsite-dashboard>';
             case 'transactions':
                 return '<finsite-transactions></finsite-transactions>';
+            case 'categories':
+                return '<finsite-categories></finsite-categories>';
             default:
                 return `
                     <div class="page-header">
@@ -148,7 +158,7 @@ export class FinSiteView {
         if (data.currentView && data.currentView !== this.currentPage) {
             this.navigateToPage(data.currentView);
         }
-        
+
         // Update dashboard component with new data if it's active
         if (this.currentPage === 'dashboard') {
             const dashboard = this.container.querySelector('finsite-dashboard');
@@ -162,9 +172,31 @@ export class FinSiteView {
             const transactionsPage = this.container.querySelector('finsite-transactions');
             if (transactionsPage && typeof transactionsPage.setTransactions === 'function') {
                 transactionsPage.setTransactions(data.transactions || []);
+                if (this.model) {
+                    transactionsPage.model = this.model;
+                    if (typeof transactionsPage.setTaxonomy === 'function') {
+                        transactionsPage.setTaxonomy({
+                            groups: data.groups || [],
+                            categories: data.categories || [],
+                        });
+                    }
+                }
             }
         }
-        
+
+        // Keep categories component in sync with latest model data
+        if (this.currentPage === 'categories') {
+            const categoriesPage = this.container.querySelector('finsite-categories');
+            if (categoriesPage) {
+                if (this.model && 'model' in categoriesPage) {
+                    categoriesPage.model = this.model;
+                }
+                if (typeof categoriesPage.setData === 'function') {
+                    categoriesPage.setData(data);
+                }
+            }
+        }
+
         console.log('View updated with data:', data);
     }
 
@@ -195,6 +227,20 @@ export class FinSiteView {
             dashboard.updateFromSummary(panelSummary);
             console.log('📋 Dashboard panel updated with:', panelSummary);
         }
+    }
+
+    /**
+     * Inject the shared model into any categories components currently rendered.
+     */
+    _wireModelToCategories() {
+        if (!this.model || !this.container) return;
+        this.container.querySelectorAll('finsite-categories').forEach((el) => {
+            try {
+                el.model = this.model;
+            } catch (err) {
+                console.warn('Failed to wire model to categories component', err);
+            }
+        });
     }
 
     /**

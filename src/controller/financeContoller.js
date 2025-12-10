@@ -6,11 +6,11 @@ export class FinSiteController {
     constructor(model, view) {
         this.model = model;
         this.view = view;
-        
-        if(typeof this.view.bindHandlers === 'function') {
+
+        if (typeof this.view.bindHandlers === 'function') {
             this.view.bindHandlers({
                 onNavigate: (route) => this.navigate(route),
-                onAddTransaction: (transactionData) => this.handleAddTransaction(transactionData)
+                onAddTransaction: (transactionData) => this.handleAddTransaction(transactionData),
             });
         }
 
@@ -45,12 +45,8 @@ export class FinSiteController {
             console.log('Controller initialization complete');
         } catch (error) {
             console.error('Error during controller initialization:', error);
-          
         }
-
     }
-    
-  
 
     /**
      * Handle user interactions
@@ -76,7 +72,7 @@ export class FinSiteController {
         this.model.updateData({ currentView: route });
         const data = this.model.getData();
         this.view.update(data);
-        
+
         // Refresh dashboard charts when navigating to dashboard
         if (route === 'dashboard') {
             this._refreshDashboardCharts();
@@ -89,22 +85,22 @@ export class FinSiteController {
      * @param {boolean} isHeavyUpdate - True for bulk updates (CSV import)
      */
     _refreshDashboard(isHeavyUpdate = false) {
-        // Get pre-aggregated chart data from model
+    // Get pre-aggregated chart data from model
         const chartData = this.model.getDashboardSummary();
-        
+
         // Get panel summary (stats, recent activity) from model
         const panelSummary = this.model.getDashboardPanelSummary();
-        
+
         // Pass chart data to view for chart component
         if (typeof this.view.updateDashboardCharts === 'function') {
             this.view.updateDashboardCharts(chartData, isHeavyUpdate);
         }
-        
+
         // Pass panel summary to view for dashboard stat cards and recent activity
         if (typeof this.view.updateDashboardPanel === 'function') {
             this.view.updateDashboardPanel(panelSummary);
         }
-        
+
         console.log('📊 Dashboard refreshed with chart data:', chartData);
         console.log('📋 Dashboard panel updated with summary:', panelSummary);
     }
@@ -142,7 +138,6 @@ export class FinSiteController {
 
             // Refresh dashboard charts (single transaction = light update with animation)
             this._refreshDashboardCharts(false);
-
         } catch (error) {
             console.error('❌ Error adding transaction:', error);
 

@@ -1,52 +1,50 @@
 /**
  * Spending Chart Web Component for FinSite
- * 
+ *
  * OPTIMIZATION B: Uses chart-core module instead of global Chart.js
  * OPTIMIZATION C: Categorical X-axis (no date adapter needed)
- * 
+ *
  * This is the ONLY component in the app that directly interacts with Chart.js
  */
-import { 
-    initChartCore, 
-    getChart, 
-    isInitialized,
-    createLineChartConfig, 
+import {
+    initChartCore,
+    getChart,
+    createLineChartConfig,
     createBarChartConfig,
     formatCurrency,
-    CHART_COLORS 
 } from '../chart/chart-core.js';
 
 class FinSiteSpendingChart extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
-        
+
         // Chart.js instances - one per chart type
         this._lineChart = null;
         this._barChart = null;
         this._Chart = null; // Chart.js constructor reference
-        
+
         // Default chart data structure (pre-aggregated from model)
         this.chartData = {
             // Time series for line chart (money x time)
             timeSeries: {
-                labels: ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb'],
-                values: [1650, 1720, 1580, 1820, 1780, 1890]
+                labels: [],
+                values: [],
             },
             // Group breakdown for bar chart (money x group)
             groupBreakdown: {
-                labels: ['Household', 'Dining', 'Transport', 'Entertainment', 'Utilities'],
-                values: [850, 420, 380, 240, 180]
+                labels: [],
+                values: [],
             },
             // KPI metrics
             metrics: {
-                thisMonth: 1890,
-                lastMonth: 1780,
-                percentChange: 6.18,
-                sixMonthAvg: 1740
-            }
+                thisMonth: 0,
+                lastMonth: 0,
+                percentChange: 0,
+                sixMonthAvg: 0,
+            },
         };
-        
+
         // Animation settings
         this._isHeavyUpdate = false;
         this._isInitializing = false;
@@ -73,7 +71,7 @@ class FinSiteSpendingChart extends HTMLElement {
     }
 
     disconnectedCallback() {
-        // Properly destroy Chart.js instances to prevent memory leaks
+    // Properly destroy Chart.js instances to prevent memory leaks
         this._destroyCharts();
     }
 
@@ -87,14 +85,14 @@ class FinSiteSpendingChart extends HTMLElement {
         try {
             // Lazy load Chart.js through chart-core module
             this._Chart = await initChartCore();
-            
+
             // Create charts now that Chart.js is loaded
             requestAnimationFrame(() => {
                 this._initCharts();
             });
         } catch (error) {
             console.error('Failed to initialize charts:', error);
-            
+
             // Fallback: try global Chart if available
             const globalChart = getChart();
             if (globalChart) {
@@ -115,7 +113,7 @@ class FinSiteSpendingChart extends HTMLElement {
      */
     updateChartData(newData, isHeavyUpdate = false) {
         this._isHeavyUpdate = isHeavyUpdate;
-        
+
         // Merge new data with existing
         if (newData.timeSeries) {
             this.chartData.timeSeries = { ...this.chartData.timeSeries, ...newData.timeSeries };
@@ -126,10 +124,10 @@ class FinSiteSpendingChart extends HTMLElement {
         if (newData.metrics) {
             this.chartData.metrics = { ...this.chartData.metrics, ...newData.metrics };
         }
-        
+
         // Update existing chart instances without recreating
         this._updateCharts();
-        
+
         // Update metric displays
         this._updateMetricsDisplay();
     }
@@ -335,9 +333,9 @@ class FinSiteSpendingChart extends HTMLElement {
      * Uses chart-core module instead of global Chart
      */
     _initCharts() {
-        // Use module-provided Chart or fallback to global
+    // Use module-provided Chart or fallback to global
         const Chart = this._Chart || getChart();
-        
+
         if (!Chart) {
             console.error('Chart.js not available. Initialization failed.');
             return;
@@ -345,7 +343,7 @@ class FinSiteSpendingChart extends HTMLElement {
 
         this._createLineChart(Chart);
         this._createBarChart(Chart);
-        
+
         console.log('📊 Chart.js instances created via chart-core module');
     }
 
@@ -365,7 +363,7 @@ class FinSiteSpendingChart extends HTMLElement {
             labels,
             values,
             ctx,
-            animate: !this._isHeavyUpdate
+            animate: !this._isHeavyUpdate,
         });
 
         this._lineChart = new Chart(ctx, config);
@@ -383,10 +381,9 @@ class FinSiteSpendingChart extends HTMLElement {
         const { labels, values } = this.chartData.groupBreakdown;
 
         // Use chart-core factory for configuration
-        const config = createBarChartConfig({
-            labels,
-            values,
-            animate: !this._isHeavyUpdate
+        const config = createBarChartConfig(labels, values, {
+            animate: !this._isHeavyUpdate,
+            title: 'Spending by Group',
         });
 
         this._barChart = new Chart(ctx, config);
@@ -426,7 +423,7 @@ class FinSiteSpendingChart extends HTMLElement {
      */
     _updateMetricsDisplay() {
         const { metrics } = this.chartData;
-        
+
         const thisMonthEl = this.shadowRoot.querySelector('#metric-this-month');
         const changeEl = this.shadowRoot.querySelector('#metric-change');
         const lastMonthEl = this.shadowRoot.querySelector('#metric-last-month');
@@ -435,18 +432,18 @@ class FinSiteSpendingChart extends HTMLElement {
         if (thisMonthEl) {
             thisMonthEl.textContent = `$${formatCurrency(metrics.thisMonth)}`;
         }
-        
+
         if (changeEl) {
             const changeClass = metrics.percentChange >= 0 ? 'positive' : 'negative';
             const changeSymbol = metrics.percentChange >= 0 ? '+' : '';
             changeEl.textContent = `${changeSymbol}${metrics.percentChange.toFixed(1)}%`;
             changeEl.className = `metric-value ${changeClass}`;
         }
-        
+
         if (lastMonthEl) {
             lastMonthEl.textContent = `$${formatCurrency(metrics.lastMonth)}`;
         }
-        
+
         if (avgEl) {
             avgEl.textContent = `$${formatCurrency(metrics.sixMonthAvg)}`;
         }
