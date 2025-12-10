@@ -22,6 +22,17 @@ import { createPrefixedLogger } from '../utils/debugService.js';
 
 // Prefixed logger for controller layer
 const log = createPrefixedLogger('[Controller]');
+
+/**
+ * FinSiteController - Coordinates between Model and View
+ * Handles user interactions and application logic
+ *
+ * Follows MVC pattern where:
+ * - Controller never queries DOM directly (uses view interface)
+ * - All user feedback goes through view methods
+ * - Debug logging is centrally toggleable
+ */
+export class FinSiteController {
     constructor(model, view) {
         this.model = model;
         this.view = view;
