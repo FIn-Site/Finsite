@@ -354,7 +354,7 @@ class SidebarComponent extends HTMLElement {
                     <span class="nav-item-icon">💳</span>
                     <span class="nav-item-text">Transactions</span>
                 </a>
-                <a class="nav-item" data-page="categories" data-tooltip="Categories">
+                <a class="nav-item" data-page="categories" data-tooltip="Categories" data-testid="nav-categories">
                     <span class="nav-item-icon">🏷️</span>
                     <span class="nav-item-text">Categories</span>
                 </a>

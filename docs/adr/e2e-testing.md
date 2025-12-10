@@ -17,7 +17,7 @@ We needed automated, user-level verification that core flows work in a real brow
 ## Decision
 
 **How?**
-Implement Playwright-based E2E tests covering 16 core user flows, running across 3 browsers (Chromium, Firefox, WebKit) for a total of 48 test runs.
+Implement Playwright-based E2E tests covering 21 core user flows, running across 3 browsers (Chromium, Firefox, WebKit) for a total of 63 test runs.
 
 ### Why Playwright?
 
@@ -41,7 +41,7 @@ Run with UI: npm run e2e:ui
 View report: npm run e2e:report
 Debug mode: npm run e2e:debug
 
-## Test Files (16 Total)
+## Test Files (21 Total)
 
 ### Core Functionality Tests
 | Test File | Purpose |
@@ -75,12 +75,21 @@ Debug mode: npm run e2e:debug
 | sidebar-collapse.spec.ts | Tests sidebar collapse/expand toggle functionality |
 | header-menu.spec.ts | Tests header menu toggle button exists and is clickable |
 
+### Categories Page Tests
+| Test File | Purpose |
+|-----------|---------|
+| categories-navigation.spec.ts | Tests navigation to the categories page |
+| add-group-modal.spec.ts | Tests opening and closing the add group modal via Cancel and X buttons |
+| create-group.spec.ts | Tests filling out the create group form with a group name |
+| add-subcategory.spec.ts | Tests adding a new subcategory input field in the create group form |
+| group-details-modal.spec.ts | Tests opening group details when clicking a group card |
+
 ## Test Coverage Summary
 
-- **Total Test Files**: 16
+- **Total Test Files**: 21
 - **Browsers Tested**: 3 (Chromium, Firefox, WebKit)
-- **Total Test Runs**: 48
-- **Features Covered**: App loading, navigation, transactions, charts, filtering, sorting, modals, forms, sidebar, header
+- **Total Test Runs**: 63
+- **Features Covered**: App loading, navigation, transactions, charts, filtering, sorting, modals, forms, sidebar, header, categories, groups, subcategories
 
 ## Consequences
 
@@ -93,6 +102,6 @@ Positive:
 
 Negative:
 - Must maintain data-testid attributes when UI changes
-- CI runs take additional time (~15-20 seconds)
+- CI runs take additional time (~1 minute)
 - Shadow DOM requires special handling with evaluateHandle()
 EOF
