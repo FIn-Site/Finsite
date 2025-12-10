@@ -25,6 +25,7 @@ export class FinSiteController {
             this.view.bindHandlers({
                 onNavigate: (route) => this.navigate(route),
                 onAddTransaction: (transactionData) => this.handleAddTransaction(transactionData),
+                onDeleteGroup: (groupId, groupName) => this.handleDeleteGroup(groupId, groupName),
             });
         }
 
@@ -257,6 +258,42 @@ export class FinSiteController {
                 'Error deleting transactions',
                 error,
                 'Failed to delete transactions. Please try again.',
+            );
+        }
+    }
+
+    /**
+     * Handle deleting a custom group
+     * Called when user confirms deletion from the categories page
+     * @param {string} groupId - ID of the group to delete
+     * @param {string} groupName - Name of the group (for logging)
+     */
+    async handleDeleteGroup(groupId, groupName) {
+        log(`🗑️ Handling delete group: ${groupName} (${groupId})`);
+
+        if (!groupId) {
+            log('⚠️ No group ID provided for deletion');
+            return;
+        }
+
+        try {
+            // Delete the group via model (reassigns categories to 'uncategorized')
+            await this.model.deleteGroup(groupId);
+
+            log(`✅ Group deleted successfully: ${groupName}`);
+
+            // Notify view to update categories component
+            if (typeof this.view.onGroupDeleted === 'function') {
+                this.view.onGroupDeleted(groupId);
+            }
+
+            // Sync model state to view (group deletion affects categories and totals)
+            this._syncModelToView({ isHeavyUpdate: false });
+        } catch (error) {
+            this._handleError(
+                `Error deleting group '${groupName}'`,
+                error,
+                'Failed to delete group. Please try again.',
             );
         }
     }

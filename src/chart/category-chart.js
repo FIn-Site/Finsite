@@ -23,6 +23,7 @@ class FinSiteCategoryChart extends HTMLElement {
         this.transactions = []; // Raw transactions for this group
         this.totalSpent = 0;
         this.hasTransactions = false;
+        this.isCustom = false; // Flag to indicate if this is a custom (deletable) group
 
         // Chart.js instance
         this._chart = null;
@@ -40,7 +41,7 @@ class FinSiteCategoryChart extends HTMLElement {
 
     /**
      * Set chart data from parent component
-     * @param {Object} data - { groupId, groupName, categories: [{ id, name, amount }], transactions: [] }
+     * @param {Object} data - { groupId, groupName, categories: [{ id, name, amount }], transactions: [], isCustom: boolean }
      */
     setData(data) {
         this.groupId = data.groupId || '';
@@ -51,6 +52,7 @@ class FinSiteCategoryChart extends HTMLElement {
             ? data.categories
             : [];
         this.totalSpent = this.categories.reduce((sum, cat) => sum + (cat.amount || 0), 0);
+        this.isCustom = data.isCustom === true; // Only true for custom groups
         this.render();
         // Initialize chart after render
         this._initChart();
@@ -277,15 +279,49 @@ class FinSiteCategoryChart extends HTMLElement {
                 .chart-card:hover .view-details {
                     opacity: 1;
                 }
+
+                .header-actions {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                }
+
+                .delete-btn {
+                    width: 1.5rem;
+                    height: 1.5rem;
+                    border-radius: 0.375rem;
+                    background: rgba(239, 68, 68, 0.1);
+                    border: none;
+                    color: #ef4444;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 0.75rem;
+                    opacity: 0;
+                    transition: all 0.2s ease;
+                }
+
+                .chart-card:hover .delete-btn {
+                    opacity: 1;
+                }
+
+                .delete-btn:hover {
+                    background: rgba(239, 68, 68, 0.2);
+                    transform: scale(1.1);
+                }
             </style>
 
-            <div class="chart-card" data-group-id="${this.groupId}">
+            <div class="chart-card" data-group-id="${this.groupId}" data-group-name="${this.groupName}" data-is-custom="${this.isCustom}">
                 <div class="card-header">
                     <div class="group-info">
                         <div class="group-icon">${getGroupIcon(this.groupId)}</div>
                         <span class="group-name">${this.groupName}</span>
                     </div>
-                    <span class="total-amount">${this._formatCurrency(this.totalSpent)}</span>
+                    <div class="header-actions">
+                        <span class="total-amount">${this._formatCurrency(this.totalSpent)}</span>
+                        ${this.isCustom ? `<button class="delete-btn" data-action="delete-group" title="Delete custom group">🗑️</button>` : ''}
+                    </div>
                 </div>
                 <div class="chart-area">
                     ${chartAreaHtml}
@@ -301,6 +337,23 @@ class FinSiteCategoryChart extends HTMLElement {
     setupEventListeners() {
         const card = this.shadowRoot.querySelector('.chart-card');
         if (card) {
+            // Handle delete button click (prevent propagation to avoid opening modal)
+            const deleteBtn = this.shadowRoot.querySelector('.delete-btn');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent card click (modal open)
+                    this.dispatchEvent(new CustomEvent('request-delete-group', {
+                        detail: {
+                            groupId: this.groupId,
+                            groupName: this.groupName,
+                        },
+                        bubbles: true,
+                        composed: true,
+                    }));
+                });
+            }
+
+            // Handle card click (opens modal)
             card.addEventListener('click', () => {
                 this.dispatchEvent(new CustomEvent('group-selected', {
                     detail: {

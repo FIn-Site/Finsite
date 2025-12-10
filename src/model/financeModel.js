@@ -612,12 +612,19 @@ export class FinSiteModel {
     async deleteGroup(groupId) {
         if (!groupId) return this.getData();
 
+        // Block deletion of system groups (uncategorized is internal)
+        if (groupId === 'uncategorized') {
+            log('Cannot delete system group: uncategorized');
+            return this.getData();
+        }
+
         const group = this.data.groups.find((g) => g.id === groupId);
 
         // Ensure an 'uncategorized' group exists for orphaned categories
+        // Mark as system group so it won't appear in the UI
         let uncategorizedGroup = this.data.groups.find((g) => g.id === 'uncategorized');
         if (!uncategorizedGroup) {
-            uncategorizedGroup = { id: 'uncategorized', name: 'Uncategorized' };
+            uncategorizedGroup = { id: 'uncategorized', name: 'Uncategorized', isSystem: true, isCustom: false };
             await addGroup(uncategorizedGroup);
             this.data.groups = [...this.data.groups, uncategorizedGroup];
         }

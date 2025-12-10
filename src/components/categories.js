@@ -45,6 +45,9 @@ class FinSiteCategories extends HTMLElement {
         this.newGroupName = '';
         this.selectedCategoryIds = new Set();
         this.newSubcategories = []; // User-created subcategories for the new group
+
+        // Event binding flag to prevent multiple listeners
+        this._eventsBound = false;
     }
 
     connectedCallback() {
@@ -63,7 +66,6 @@ class FinSiteCategories extends HTMLElement {
             console.error('❌ Error hydrating categories from model:', error);
             this._isLoading = false;
             this.render();
-            this.setupEventListeners();
         }
     }
 
@@ -109,7 +111,6 @@ class FinSiteCategories extends HTMLElement {
         } finally {
             this._isLoading = false;
             this.render();
-            this.setupEventListeners();
             // Delay chart update to ensure DOM is ready
             requestAnimationFrame(() => {
                 this.updateChartComponents();
@@ -134,7 +135,6 @@ class FinSiteCategories extends HTMLElement {
         }
         this._refreshAggregates();
         this.render();
-        this.setupEventListeners();
         requestAnimationFrame(() => this.updateChartComponents());
     }
 
@@ -183,14 +183,20 @@ class FinSiteCategories extends HTMLElement {
 
     /**
      * Update child chart components with data
+     * Passes isCustom flag to each chart for delete button visibility
      */
     updateChartComponents() {
         const charts = this.shadowRoot.querySelectorAll('finsite-category-chart');
         charts.forEach((chart) => {
             const groupId = chart.getAttribute('data-group-id');
             const breakdown = this.groupBreakdowns.find((b) => b.groupId === groupId);
+            const group = this.groups.find((g) => g.id === groupId);
             if (breakdown) {
-                chart.setData(breakdown);
+                // Include isCustom flag for delete button visibility
+                chart.setData({
+                    ...breakdown,
+                    isCustom: group?.isCustom === true,
+                });
             }
         });
     }
@@ -221,9 +227,72 @@ class FinSiteCategories extends HTMLElement {
     }
 
     /**
-     * Handle deleting a custom group
+     * Handle deleting a custom group (from modal)
+     * Shows confirmation and emits request-delete-group event for controller to handle
      */
-    async handleDeleteGroup() {
+    handleDeleteGroup() {
+        const groupId = this.selectedGroup?.groupId;
+        const groupName = this.selectedGroup?.groupName;
+
+        if (!groupId) {
+            console.error('No group selected for deletion');
+            return;
+        }
+
+        this._requestDeleteGroup(groupId, groupName);
+    }
+
+    /**
+     * Request deletion of a custom group
+     * Shows confirmation dialog and emits event for controller to handle
+     * @param {string} groupId - The group ID to delete
+     * @param {string} groupName - The group name (for display)
+     */
+    _requestDeleteGroup(groupId, groupName) {
+        if (!groupId) return;
+
+        // Confirm deletion
+        const confirmed = confirm(
+            `Are you sure you want to delete the group "${groupName}"?\n\n` +
+            'This will:\n' +
+            '• Remove the custom group from the Categories page\n' +
+            '• Move its categories back to "Uncategorized"\n' +
+            '• Your transactions will NOT be deleted',
+        );
+
+        if (!confirmed) return;
+
+        // Emit event for controller to handle deletion
+        this.dispatchEvent(new CustomEvent('request-delete-group', {
+            detail: { groupId, groupName },
+            bubbles: true,
+            composed: true,
+        }));
+
+        log(`📤 Requested deletion of group: ${groupName} (${groupId})`);
+    }
+
+    /**
+     * Called by controller after successful group deletion
+     * Refreshes the view and closes any open modal
+     */
+    onGroupDeleted(groupId) {
+        log(`✅ Group deleted successfully: ${groupId}`);
+
+        // Close modal if it was open for this group
+        if (this.isModalOpen && this.selectedGroup?.groupId === groupId) {
+            this.closeModal();
+        }
+
+        // Refresh from model (controller should have already updated the model)
+        this.loadFromModel();
+    }
+
+    /**
+     * Handle deleting a custom group (legacy method for direct model access)
+     * @deprecated Use _requestDeleteGroup for event-based flow
+     */
+    async handleDeleteGroupDirect() {
         const groupId = this.selectedGroup?.groupId;
         const groupName = this.selectedGroup?.groupName;
 
@@ -704,10 +773,13 @@ class FinSiteCategories extends HTMLElement {
     }
 
     render() {
+        // Filter out system/uncategorized groups - they are internal only
+        const isUserVisibleGroup = (g) => g.id !== 'uncategorized' && !g.isSystem;
+
         // Sort groups: default groups first (in original order), then custom groups alphabetically
-        const defaultGroups = this.groups.filter((g) => !g.isCustom);
+        const defaultGroups = this.groups.filter((g) => !g.isCustom && isUserVisibleGroup(g));
         const customGroups = this.groups
-            .filter((g) => g.isCustom)
+            .filter((g) => g.isCustom && isUserVisibleGroup(g))
             .sort((a, b) => a.name.localeCompare(b.name));
         const sortedGroups = [...defaultGroups, ...customGroups];
 
@@ -1447,15 +1519,28 @@ class FinSiteCategories extends HTMLElement {
     }
 
     setupEventListeners() {
-        // Listen for group selection from child charts
-        this.shadowRoot.addEventListener('group-selected', (event) => {
-            const { groupId, groupName } = event.detail || {};
-            if (!groupId) return;
-            log(`📂 Group selected: ${groupName || 'Group'} (${groupId})`);
-            this.openModal(groupId);
-        });
+        // Only bind shadowRoot-level listeners once per component instance
+        if (!this._eventsBound) {
+            // Listen for group selection from child charts
+            this.shadowRoot.addEventListener('group-selected', (event) => {
+                const { groupId, groupName } = event.detail || {};
+                if (!groupId) return;
+                log(`📂 Group selected: ${groupName || 'Group'} (${groupId})`);
+                this.openModal(groupId);
+            });
 
-        // Add group button - opens the Add Group modal
+            // Listen for delete requests from child chart cards (custom groups only)
+            this.shadowRoot.addEventListener('request-delete-group', (event) => {
+                const { groupId, groupName } = event.detail || {};
+                if (!groupId) return;
+                log(`🗑️ Delete requested for group: ${groupName || 'Group'} (${groupId})`);
+                this._requestDeleteGroup(groupId, groupName);
+            });
+
+            this._eventsBound = true;
+        }
+
+        // Add group button - rebind after each render (element is recreated)
         const addGroupBtn = this.shadowRoot.querySelector('#add-group-btn');
         if (addGroupBtn) {
             addGroupBtn.addEventListener('click', () => {

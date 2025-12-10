@@ -113,6 +113,16 @@ export class FinSiteView {
         this.container.addEventListener('open-manual-entry', (event) => {
             log('📊 Manual entry modal opened from:', event.detail.source);
         });
+
+        // Set up delete-group listener (bubbles from finsite-categories component)
+        this.container.addEventListener('request-delete-group', (event) => {
+            const { groupId, groupName } = event.detail || {};
+            log('🗑️ Delete group request received:', groupId, groupName);
+
+            if (this.handlers && typeof this.handlers.onDeleteGroup === 'function') {
+                this.handlers.onDeleteGroup(groupId, groupName);
+            }
+        });
     }
 
     /**
@@ -314,6 +324,20 @@ export class FinSiteView {
         log(`🗑️ ${ids.length} transactions deleted`);
         // Transactions component will update via the normal update() flow
         // This hook is available for additional UI feedback if needed
+    }
+
+    /**
+     * Notify the categories component that a group was successfully deleted.
+     * Routes controller feedback through view interface.
+     *
+     * @param {string} groupId - ID of deleted group
+     */
+    onGroupDeleted(groupId) {
+        const categoriesPage = this.container?.querySelector('finsite-categories');
+        if (categoriesPage && typeof categoriesPage.onGroupDeleted === 'function') {
+            categoriesPage.onGroupDeleted(groupId);
+        }
+        log(`🗑️ Group deleted notification sent to component: ${groupId}`);
     }
 
     /**
