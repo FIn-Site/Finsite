@@ -13,6 +13,7 @@ import {
     buildCategoryAggregates,
     buildGroupBreakdown,
 } from './categoryAggregator.js';
+import { seedDatabase } from '../storage/seedData.js';
 
 /**
  * FinSiteModel - Manages application data and business logic
@@ -257,7 +258,7 @@ export class FinSiteModel {
                 getAllCategories(),
             ]);
 
-            const transactions = Array.isArray(storedTransactions)
+            let transactions = Array.isArray(storedTransactions)
                 ? storedTransactions
                 : [];
 
@@ -265,6 +266,15 @@ export class FinSiteModel {
             let categories = Array.isArray(storedCategories)
                 ? storedCategories
                 : [];
+
+            // If no transactions exist, seed sample data
+            if (transactions.length === 0) {
+                const seeded = await seedDatabase();
+                if (seeded) {
+                    // Reload transactions after seeding
+                    transactions = await getAllTransactions();
+                }
+            }
 
             // If no groups/categories exist yet, seed defaults
             if (groups.length === 0 || categories.length === 0) {

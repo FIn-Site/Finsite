@@ -183,6 +183,77 @@ class FinSiteTransactions extends HTMLElement {
         });
     }
 
+    /**
+     * Update only the transaction list and filter badge without full re-render
+     * Used for search to preserve input focus and cursor position
+     */
+    _updateTransactionList() {
+        const root = this.shadowRoot;
+        const container = root.querySelector('.transaction-list-container');
+        const badge = root.querySelector('.filter-badge');
+        const filterBarLeft = root.querySelector('.filter-bar-left');
+
+        if (!container) return;
+
+        const filtered = this.getFilteredTransactions();
+        const grouped = this.groupTransactionsByDate(filtered);
+        const hasFilters = this.hasActiveFilters();
+
+        // Update transaction list
+        if (filtered.length === 0) {
+            container.innerHTML = this.renderEmptyState(hasFilters);
+        } else {
+            container.innerHTML = this.renderTransactionList(grouped);
+        }
+
+        // Update filter badge
+        if (hasFilters && filterBarLeft) {
+            const existingBadge = filterBarLeft.querySelector('.filter-badge');
+            if (existingBadge) {
+                existingBadge.textContent = `${filtered.length} of ${this.transactions.length}`;
+            } else {
+                const badgeEl = document.createElement('span');
+                badgeEl.className = 'filter-badge';
+                badgeEl.textContent = `${filtered.length} of ${this.transactions.length}`;
+                filterBarLeft.appendChild(badgeEl);
+            }
+        } else if (!hasFilters && filterBarLeft) {
+            const existingBadge = filterBarLeft.querySelector('.filter-badge');
+            if (existingBadge) existingBadge.remove();
+        }
+
+        // Re-attach transaction row listeners
+        this._setupTransactionRowListeners();
+    }
+
+    /**
+     * Setup event listeners for transaction rows only
+     */
+    _setupTransactionRowListeners() {
+        const root = this.shadowRoot;
+
+        // Transaction row clicks
+        root.querySelectorAll('.transaction-row').forEach((row) => {
+            row.addEventListener('click', (e) => {
+                if (e.target.closest('.tx-checkbox')) return;
+                const id = Number(row.dataset.id);
+                if (this.isEditMultipleMode) {
+                    this._toggleTransactionSelection(id);
+                } else {
+                    this.openTransactionModal(id);
+                }
+            });
+        });
+
+        // Checkboxes in edit multiple mode
+        root.querySelectorAll('.tx-checkbox').forEach((cb) => {
+            cb.addEventListener('change', (e) => {
+                const id = Number(e.target.dataset.id);
+                this._toggleTransactionSelection(id);
+            });
+        });
+    }
+
     clearAllFilters() {
         this.filters = {
             scope: 'all', search: '', dateRange: null, groups: [], categories: [],
@@ -604,13 +675,14 @@ class FinSiteTransactions extends HTMLElement {
             this.setupEventListeners();
         });
 
-        // Search input
-        root.querySelector('#search-input')?.addEventListener('input', (e) => {
-            this.filters.search = e.target.value;
-            this.render();
-            this.setupEventListeners();
-            root.querySelector('#search-input')?.focus();
-        });
+        // Search input - updates immediately while preserving cursor position
+        const searchInput = root.querySelector('#search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.filters.search = e.target.value;
+                this._updateTransactionList();
+            });
+        }
 
         // Search close
         root.querySelector('#search-close-btn')?.addEventListener('click', () => {
