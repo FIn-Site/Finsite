@@ -81,6 +81,7 @@ export function buildGroupBreakdown({
         return {
             groupId: group.id,
             groupName: group.name || 'Group',
+            groupIcon: group.icon || null,
             groupIsCustom: Boolean(group.isCustom),
             categories: [],
             transactions: [],
@@ -108,6 +109,7 @@ export function buildCategoryAggregates({ groups = [], categories = [], transact
         const emptyBreakdowns = groups.filter(Boolean).map((group) => ({
             groupId: group.id,
             groupName: group.name || 'Group',
+            groupIcon: group.icon || null,
             groupIsCustom: Boolean(group.isCustom),
             categories: [],
             transactions: [],
@@ -147,6 +149,7 @@ export function buildGroupBreakdownFromPrepared({ group, categoriesWithAmounts =
     return {
         groupId: group.id,
         groupName: group.name || 'Group',
+        groupIcon: group.icon || null,
         groupIsCustom: Boolean(group.isCustom),
         categories: groupCategories,
         transactions: groupTransactions,

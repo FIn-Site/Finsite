@@ -19,6 +19,7 @@ class FinSiteCategoryChart extends HTMLElement {
         // Chart data
         this.groupId = '';
         this.groupName = '';
+        this.groupIcon = null; // Custom icon for the group
         this.categories = []; // { id, name, amount }
         this.transactions = []; // Raw transactions for this group
         this.totalSpent = 0;
@@ -45,6 +46,7 @@ class FinSiteCategoryChart extends HTMLElement {
     setData(data) {
         this.groupId = data.groupId || '';
         this.groupName = data.groupName || 'Unknown';
+        this.groupIcon = data.groupIcon || null; // Custom icon from group object
         this.transactions = Array.isArray(data.transactions) ? data.transactions : [];
         this.hasTransactions = this.transactions.length > 0;
         this.categories = this.hasTransactions && Array.isArray(data.categories)
@@ -274,7 +276,7 @@ class FinSiteCategoryChart extends HTMLElement {
             <div class="chart-card" data-group-id="${this.groupId}">
                 <div class="card-header">
                     <div class="group-info">
-                        <div class="group-icon">${getGroupIcon(this.groupId)}</div>
+                        <div class="group-icon">${getGroupIcon(this.groupId, this.groupIcon)}</div>
                         <span class="group-name">${this.groupName}</span>
                     </div>
                     <span class="total-amount">${this._formatCurrency(this.totalSpent)}</span>

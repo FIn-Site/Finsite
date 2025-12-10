@@ -3,7 +3,7 @@ import './category-chart.js';
 import './category-modal-chart.js';
 
 import { buildCategoryAggregates, buildGroupBreakdown } from '../model/categoryAggregator.js';
-import { getCategoryIcon } from '../constants/icons.js';
+import { getCategoryIcon, CUSTOM_GROUP_ICONS } from '../constants/icons.js';
 
 /**
  * Categories Web Component for FinSite
@@ -39,6 +39,7 @@ class FinSiteCategories extends HTMLElement {
         // Add group modal state
         this.isAddGroupModalOpen = false;
         this.newGroupName = '';
+        this.selectedIcon = '📁'; // Default icon for new groups
         this.selectedCategoryIds = new Set();
         this.newSubcategories = []; // User-created subcategories for the new group
     }
@@ -284,6 +285,7 @@ class FinSiteCategories extends HTMLElement {
     openAddGroupModal() {
         this.isAddGroupModalOpen = true;
         this.newGroupName = '';
+        this.selectedIcon = '📁';
         this.selectedCategoryIds = new Set();
         this.newSubcategories = [];
         this.renderAddGroupModal();
@@ -376,6 +378,7 @@ class FinSiteCategories extends HTMLElement {
         const newGroup = {
             id: groupId,
             name: groupName,
+            icon: this.selectedIcon, // Custom icon selected by user
             isCustom: true,
             categoryIds: selectedCategoryIdsArray, // Store which categories belong to this custom group
         };
@@ -457,6 +460,15 @@ class FinSiteCategories extends HTMLElement {
             </div>
         `).join('');
 
+        // Build icon picker HTML
+        const iconPickerHtml = CUSTOM_GROUP_ICONS.map((icon) => `
+            <button type="button" 
+                    class="icon-option ${this.selectedIcon === icon ? 'selected' : ''}" 
+                    data-icon="${icon}">
+                ${icon}
+            </button>
+        `).join('');
+
         overlay.innerHTML = `
             <div class="modal-container add-group-modal">
                 <div class="modal-header">
@@ -478,6 +490,15 @@ class FinSiteCategories extends HTMLElement {
                                    placeholder="e.g., Entertainment, Travel, Subscriptions"
                                    value="${this.newGroupName}"
                                    autocomplete="off">
+                        </div>
+
+                        <!-- Icon Selection -->
+                        <div class="form-group">
+                            <label class="form-label">Group Icon</label>
+                            <p class="form-help">Choose an icon for your group</p>
+                            <div class="icon-picker">
+                                ${iconPickerHtml}
+                            </div>
                         </div>
 
                         <!-- Select Existing Categories -->
@@ -535,6 +556,17 @@ class FinSiteCategories extends HTMLElement {
         // Create button
         const createBtn = overlay.querySelector('#create-group-btn');
         createBtn?.addEventListener('click', () => this.handleCreateGroup());
+
+        // Icon picker buttons
+        overlay.querySelectorAll('.icon-option').forEach((btn) => {
+            btn.addEventListener('click', (e) => {
+                const icon = e.target.dataset.icon;
+                this.selectedIcon = icon;
+                // Update UI to show selection
+                overlay.querySelectorAll('.icon-option').forEach((b) => b.classList.remove('selected'));
+                e.target.classList.add('selected');
+            });
+        });
 
         // Add subcategory button
         const addSubBtn = overlay.querySelector('#add-subcategory-btn');
@@ -1227,6 +1259,42 @@ class FinSiteCategories extends HTMLElement {
 
                 .form-input::placeholder {
                     color: #64748b;
+                }
+
+                .icon-picker {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.5rem;
+                    background: #0f172a;
+                    border-radius: 0.5rem;
+                    padding: 0.75rem;
+                    max-height: 150px;
+                    overflow-y: auto;
+                }
+
+                .icon-option {
+                    width: 2.5rem;
+                    height: 2.5rem;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1.25rem;
+                    background: #1e293b;
+                    border: 2px solid transparent;
+                    border-radius: 0.5rem;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                }
+
+                .icon-option:hover {
+                    background: #334155;
+                    border-color: #475569;
+                }
+
+                .icon-option.selected {
+                    background: #1e3a5f;
+                    border-color: #3b82f6;
+                    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
                 }
 
                 .categories-selection {
