@@ -349,17 +349,17 @@ class SidebarComponent extends HTMLElement {
                 </div>
             </div>
 
-            <nav class="nav-section">
+            <nav class="nav-section" data-testid= "navbar">
                 <div class="nav-label">Menu</div>
-                <a class="nav-item active" data-page="dashboard" data-tooltip="Dashboard">
+                <a class="nav-item active" data-page="dashboard" data-tooltip="Dashboard" data-testid="nav-dashboard">
                     <span class="nav-item-icon">📊</span>
                     <span class="nav-item-text">Dashboard</span>
                 </a>
-                <a class="nav-item" data-page="transactions" data-tooltip="Transactions">
+                <a class="nav-item" data-page="transactions" data-tooltip="Transactions" data-testid="nav-transactions">
                     <span class="nav-item-icon">💳</span>
                     <span class="nav-item-text">Transactions</span>
                 </a>
-                <a class="nav-item" data-page="categories" data-tooltip="Categories">
+                <a class="nav-item" data-page="categories" data-tooltip="Categories" data-testid="nav-categories">
                     <span class="nav-item-icon">🏷️</span>
                     <span class="nav-item-text">Categories</span>
                 </a>
