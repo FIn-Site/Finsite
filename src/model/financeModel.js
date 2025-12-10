@@ -14,6 +14,10 @@ import {
     buildCategoryAggregates,
     buildGroupBreakdown,
 } from '../utils/categoryAggregator.js';
+import { createPrefixedLogger } from '../utils/debugService.js';
+
+// Prefixed logger for model layer
+const log = createPrefixedLogger('[Model]');
 
 /**
  * FinSiteModel - Manages application data and business logic
@@ -66,27 +70,7 @@ export class FinSiteModel {
          */
         this._lastNMonthKeysCache = null;
 
-        /**
-         * Debug flag - set to true to enable console logging
-         * @type {boolean}
-         */
-        this.debug = false;
-
-        this._debugLog('FinSiteModel initialized with incremental aggregation');
-    }
-
-    // ============================================================
-    // DEBUG LOGGING
-    // ============================================================
-
-    /**
-     * Conditional debug logger - only outputs when this.debug is true
-     * @param {...any} args - Arguments to pass to console.log
-     */
-    _debugLog(...args) {
-        if (this.debug) {
-            console.log(...args);
-        }
+        log('FinSiteModel initialized with incremental aggregation');
     }
 
     // ============================================================
@@ -240,7 +224,7 @@ export class FinSiteModel {
             }
         }
 
-        this._debugLog('📊 Aggregates rebuilt:', {
+        log('📊 Aggregates rebuilt:', {
             timeBuckets: this._timeBuckets.size,
             groupTotals: this._groupTotals.size,
             metrics: this._cachedMetrics,
@@ -271,7 +255,7 @@ export class FinSiteModel {
      */
     updateData(newData) {
         this.data = { ...this.data, ...newData };
-        this._debugLog('Model data updated:', this.data);
+        log('Model data updated:', this.data);
     }
 
     /**
@@ -323,7 +307,7 @@ export class FinSiteModel {
             // OPTIMIZATION A: Build aggregates once on init
             this._rebuildAggregates();
 
-            this._debugLog(
+            log(
                 'Model initialized from storage.',
                 'Transactions:',
                 transactions.length,
@@ -400,7 +384,7 @@ export class FinSiteModel {
             // OPTIMIZATION A: Incremental aggregate update (O(1))
             this._applyTransactionDelta(saved, 1);
 
-            this._debugLog('Transaction added:', saved);
+            log('Transaction added:', saved);
             return saved;
         } catch (error) {
             console.error('Error adding transaction in FinSiteModel:', error);
@@ -432,7 +416,7 @@ export class FinSiteModel {
                 } catch (validationError) {
                     // Skip invalid transactions but continue with valid ones
                     skipped.push({ input, error: validationError.message });
-                    this._debugLog('Skipping invalid transaction:', input, validationError.message);
+                    log('Skipping invalid transaction:', input, validationError.message);
                 }
             }
 
@@ -443,7 +427,7 @@ export class FinSiteModel {
                 this._rebuildAggregates();
             }
 
-            this._debugLog(`Bulk import complete: ${saved.length} saved, ${skipped.length} skipped`);
+            log(`Bulk import complete: ${saved.length} saved, ${skipped.length} skipped`);
             return { saved, skipped };
         } catch (error) {
             console.error('Error in bulk import:', error);
@@ -480,7 +464,7 @@ export class FinSiteModel {
                 (tx) => !idSet.has(Number(tx.id)),
             );
 
-            this._debugLog(
+            log(
                 'Transactions deleted. New count:',
                 this.data.transactions.length,
             );
@@ -508,7 +492,7 @@ export class FinSiteModel {
             this._cachedMetrics = { thisMonth: 0, lastMonth: 0, sixMonthTotal: 0 };
             this._lastNMonthKeysCache = null;
 
-            this._debugLog('All transactions cleared in FinSiteModel');
+            log('All transactions cleared in FinSiteModel');
             return this.getData();
         } catch (error) {
             console.error('Error clearing transactions in FinSiteModel:', error);
@@ -670,7 +654,7 @@ export class FinSiteModel {
             this.data.groups = this.data.groups.filter((g) => g.id !== groupId);
             this.data.categories = updatedCategories;
 
-            this._debugLog(`Group '${groupId}' deleted, ${categoriesToUpdate.length} categories reassigned`);
+            log(`Group '${groupId}' deleted, ${categoriesToUpdate.length} categories reassigned`);
         } catch (error) {
             console.error(`Error deleting group '${groupId}':`, error);
             throw error;

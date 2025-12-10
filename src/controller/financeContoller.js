@@ -1,3 +1,8 @@
+import { createPrefixedLogger } from '../utils/debugService.js';
+
+// Prefixed logger for controller layer
+const log = createPrefixedLogger('[Controller]');
+
 /**
  * FinSiteController - Coordinates between Model and View
  * Handles user interactions and application logic
@@ -16,9 +21,6 @@ export class FinSiteController {
         this.model = model;
         this.view = view;
 
-        /** @type {boolean} When false, suppresses debug logs in production */
-        this.debug = false;
-
         if (typeof this.view.bindHandlers === 'function') {
             this.view.bindHandlers({
                 onNavigate: (route) => this.navigate(route),
@@ -26,22 +28,7 @@ export class FinSiteController {
             });
         }
 
-        this._debugLog('FinSiteController initialized with model and view');
-    }
-
-    // ============================================================
-    // DEBUG LOGGING
-    // ============================================================
-
-    /**
-     * Conditional debug logger - only outputs when this.debug is true
-     * @param {...any} args - Arguments to pass to console.log
-     * @private
-     */
-    _debugLog(...args) {
-        if (this.debug) {
-            console.log(...args);
-        }
+        log('FinSiteController initialized with model and view');
     }
 
     /**
@@ -87,7 +74,7 @@ export class FinSiteController {
      * Sets up event listeners and initial data
      */
     async init() {
-        this._debugLog('Controller initialization started');
+        log('Controller initialization started');
 
         try {
             // 1) Load from storage via the model (async)
@@ -101,7 +88,7 @@ export class FinSiteController {
             // 3) Sync model state to view (includes dashboard refresh)
             this._syncModelToView();
 
-            this._debugLog('Controller initialization complete');
+            log('Controller initialization complete');
         } catch (error) {
             this._handleError('Error during controller initialization', error, 
                 'Failed to load application data. Please refresh the page.');
@@ -119,7 +106,7 @@ export class FinSiteController {
                 this.navigate(payload.route);
                 break;
             default:
-                this._debugLog('Unknown action:', action);
+                log('Unknown action:', action);
         }
     }
 
@@ -128,7 +115,7 @@ export class FinSiteController {
      * @param {string} route - Route to navigate to
      */
     navigate(route) {
-        this._debugLog(`🧭 Navigating to: ${route}`);
+        log(`🧭 Navigating to: ${route}`);
         this.model.updateData({ currentView: route });
         
         // Navigate through view interface, then sync state
@@ -163,8 +150,8 @@ export class FinSiteController {
             this.view.updateDashboardPanel(panelSummary);
         }
 
-        this._debugLog('📊 Dashboard refreshed with chart data:', chartData);
-        this._debugLog('📋 Dashboard panel updated with summary:', panelSummary);
+        log('📊 Dashboard refreshed with chart data:', chartData);
+        log('📋 Dashboard panel updated with summary:', panelSummary);
     }
 
     /**
@@ -180,13 +167,13 @@ export class FinSiteController {
      * @param {Object} transactionData - Transaction data from the form
      */
     async handleAddTransaction(transactionData) {
-        this._debugLog('💰 Handling add transaction:', transactionData);
+        log('💰 Handling add transaction:', transactionData);
 
         try {
             // Use the model to persist the transaction to IndexedDB
             const savedTransaction = await this.model.addTransaction(transactionData);
 
-            this._debugLog('✅ Transaction saved successfully:', savedTransaction);
+            log('✅ Transaction saved successfully:', savedTransaction);
 
             // Notify view of success (view routes to appropriate component)
             if (typeof this.view.onTransactionAdded === 'function') {
@@ -212,7 +199,7 @@ export class FinSiteController {
      * @returns {Promise<{saved: number, skipped: number}>} Import result summary
      */
     async handleBulkImport(transactions) {
-        this._debugLog('📦 Handling bulk import:', transactions.length, 'transactions');
+        log('📦 Handling bulk import:', transactions.length, 'transactions');
 
         try {
             // Use bulk import method (single aggregate rebuild at the end)
@@ -221,7 +208,7 @@ export class FinSiteController {
             // Sync model state to view (bulk = heavy update, no animation)
             this._syncModelToView({ isHeavyUpdate: true });
 
-            this._debugLog(`✅ Bulk import complete: ${saved.length} saved, ${skipped.length} skipped`);
+            log(`✅ Bulk import complete: ${saved.length} saved, ${skipped.length} skipped`);
 
             // Notify view of completion with summary
             if (typeof this.view.onBulkImportComplete === 'function') {
@@ -245,7 +232,7 @@ export class FinSiteController {
      * @param {Array} ids - Array of transaction IDs to delete
      */
     async handleDeleteTransactions(ids) {
-        this._debugLog('🗑️ Handling delete transactions:', ids);
+        log('🗑️ Handling delete transactions:', ids);
 
         try {
             await this.model.deleteTransactions(ids);
@@ -253,7 +240,7 @@ export class FinSiteController {
             // Sync model state to view (many deletions = heavy update)
             this._syncModelToView({ isHeavyUpdate: ids.length > 5 });
 
-            this._debugLog('✅ Transactions deleted');
+            log('✅ Transactions deleted');
 
             // Notify view of success
             if (typeof this.view.onTransactionsDeleted === 'function') {

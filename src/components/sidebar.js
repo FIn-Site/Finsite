@@ -1,3 +1,8 @@
+import { createPrefixedLogger } from '../utils/debugService.js';
+
+// Prefixed logger for sidebar component
+const log = createPrefixedLogger('[Sidebar]');
+
 /**
  * Sidebar Web Component for FinSite
  * Mint-style persistent sidebar with collapsible feature
@@ -427,7 +432,7 @@ class SidebarComponent extends HTMLElement {
             composed: true,
         }));
 
-        console.log(`🔄 Sidebar ${this.isCollapsed ? 'collapsed' : 'expanded'}`);
+        log(`🔄 Sidebar ${this.isCollapsed ? 'collapsed' : 'expanded'}`);
     }
 
     navigate(page, clickedItem) {
@@ -446,7 +451,7 @@ class SidebarComponent extends HTMLElement {
             composed: true,
         }));
 
-        console.log(`🧭 Sidebar navigated to: ${page}`);
+        log(`🧭 Sidebar navigated to: ${page}`);
     }
 
     /**

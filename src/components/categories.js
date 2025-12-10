@@ -4,6 +4,10 @@ import './category-modal-chart.js';
 
 import { buildCategoryAggregates, buildGroupBreakdown } from '../utils/categoryAggregator.js';
 import { getCategoryIcon } from '../constants/icons.js';
+import { createPrefixedLogger } from '../utils/debugService.js';
+
+// Prefixed logger for categories component
+const log = createPrefixedLogger('[Categories]');
 
 /**
  * Categories Web Component for FinSite
@@ -253,7 +257,7 @@ class FinSiteCategories extends HTMLElement {
             this.closeModal();
             await this.loadFromModel();
 
-            console.log(`✅ Successfully deleted group: ${groupName}`);
+            log(`✅ Successfully deleted group: ${groupName}`);
         } catch (error) {
             console.error('❌ Failed to delete group:', error);
             alert('Failed to delete group. Please try again.');
@@ -346,7 +350,7 @@ class FinSiteCategories extends HTMLElement {
 
                     try {
                         await this._model.addCategory(newCategory);
-                        console.log(`💾 Saved new category via model: ${subName}`);
+                        log(`💾 Saved new category via model: ${subName}`);
                     } catch (error) {
                         console.error('❌ Failed to save category via model:', error);
                     }
@@ -364,7 +368,7 @@ class FinSiteCategories extends HTMLElement {
 
         try {
             await this._model.addGroup(newGroup);
-            console.log(`💾 Saved custom group via model: ${groupName}`);
+            log(`💾 Saved custom group via model: ${groupName}`);
 
             // Dispatch event for controller/model
             this.dispatchEvent(new CustomEvent('group-created', {
@@ -1447,7 +1451,7 @@ class FinSiteCategories extends HTMLElement {
         this.shadowRoot.addEventListener('group-selected', (event) => {
             const { groupId, groupName } = event.detail || {};
             if (!groupId) return;
-            console.log(`📂 Group selected: ${groupName || 'Group'} (${groupId})`);
+            log(`📂 Group selected: ${groupName || 'Group'} (${groupId})`);
             this.openModal(groupId);
         });
 
@@ -1455,7 +1459,7 @@ class FinSiteCategories extends HTMLElement {
         const addGroupBtn = this.shadowRoot.querySelector('#add-group-btn');
         if (addGroupBtn) {
             addGroupBtn.addEventListener('click', () => {
-                console.log('➕ Add new group clicked');
+                log('➕ Add new group clicked');
                 this.openAddGroupModal();
             });
         }

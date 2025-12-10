@@ -2,6 +2,10 @@ import '../components/sidebar.js';
 import '../components/dashboard.js';
 import '../components/transactions.js';
 import '../components/categories.js';
+import { createPrefixedLogger } from '../utils/debugService.js';
+
+// Prefixed logger for view layer
+const log = createPrefixedLogger('[View]');
 
 /**
  * FinSiteView - Handles all UI rendering and DOM manipulation
@@ -29,16 +33,16 @@ export class FinSiteView {
      * @param {string} selector - CSS selector for the container element
      */
     render(selector) {
-        console.log('🔍 Looking for container:', selector);
+        log('🔍 Looking for container:', selector);
         this.container = document.querySelector(selector);
 
         if (!this.container) {
             console.error(`❌ Container element ${selector} not found`);
             this.container = document.body;
-            console.log('📍 Using body as fallback container');
+            log('📍 Using body as fallback container');
         }
 
-        console.log('📦 Container found, rendering layout...');
+        log('📦 Container found, rendering layout...');
 
         // Create the two-pane layout: sidebar + main content
         this.container.innerHTML = `
@@ -58,7 +62,7 @@ export class FinSiteView {
         // Pass model reference to categories component if available
         this._wireModelToCategories();
 
-        console.log('✅ FinSite layout rendered successfully');
+        log('✅ FinSite layout rendered successfully');
     }
 
     /**
@@ -98,7 +102,7 @@ export class FinSiteView {
         // Set up add-transaction listener (bubbles from finsite-transactions component)
         this.container.addEventListener('add-transaction', (event) => {
             const transactionData = event.detail;
-            console.log('📝 Add transaction event received:', transactionData);
+            log('📝 Add transaction event received:', transactionData);
 
             if (this.handlers && typeof this.handlers.onAddTransaction === 'function') {
                 this.handlers.onAddTransaction(transactionData);
@@ -107,7 +111,7 @@ export class FinSiteView {
 
         // Set up open-manual-entry listener for analytics/logging
         this.container.addEventListener('open-manual-entry', (event) => {
-            console.log('📊 Manual entry modal opened from:', event.detail.source);
+            log('📊 Manual entry modal opened from:', event.detail.source);
         });
     }
 
@@ -124,7 +128,7 @@ export class FinSiteView {
 
         // Ensure freshly-rendered categories receive the model
         this._wireModelToCategories();
-        console.log(`📄 Navigated to ${page} page`);
+        log(`📄 Navigated to ${page} page`);
     }
 
     /**
@@ -197,7 +201,7 @@ export class FinSiteView {
             }
         }
 
-        console.log('View updated with data:', data);
+        log('View updated with data:', data);
     }
 
     /**
@@ -211,7 +215,7 @@ export class FinSiteView {
         const dashboard = this.container?.querySelector('finsite-dashboard');
         if (dashboard && typeof dashboard.updateChartData === 'function') {
             dashboard.updateChartData(chartData, isHeavyUpdate);
-            console.log('📊 Dashboard charts updated with:', chartData);
+            log('📊 Dashboard charts updated with:', chartData);
         }
     }
 
@@ -225,7 +229,7 @@ export class FinSiteView {
         const dashboard = this.container?.querySelector('finsite-dashboard');
         if (dashboard && typeof dashboard.updateFromSummary === 'function') {
             dashboard.updateFromSummary(panelSummary);
-            console.log('📋 Dashboard panel updated with:', panelSummary);
+            log('📋 Dashboard panel updated with:', panelSummary);
         }
     }
 
@@ -257,7 +261,7 @@ export class FinSiteView {
         if (this.transactionsEl && typeof this.transactionsEl.onTransactionAdded === 'function') {
             this.transactionsEl.onTransactionAdded(savedTransaction);
         }
-        this._debugLog('✅ Transaction added notification sent to component');
+        log('✅ Transaction added notification sent to component');
     }
 
     /**
@@ -270,7 +274,7 @@ export class FinSiteView {
         if (this.transactionsEl && typeof this.transactionsEl.onTransactionError === 'function') {
             this.transactionsEl.onTransactionError(errorMessage);
         }
-        this._debugLog('❌ Transaction error notification sent to component:', errorMessage);
+        log('❌ Transaction error notification sent to component:', errorMessage);
     }
 
     /**
@@ -280,7 +284,7 @@ export class FinSiteView {
      * @param {Array} ids - IDs of deleted transactions
      */
     onTransactionsDeleted(ids) {
-        this._debugLog(`🗑️ ${ids.length} transactions deleted`);
+        log(`🗑️ ${ids.length} transactions deleted`);
         // Transactions component will update via the normal update() flow
         // This hook is available for additional UI feedback if needed
     }
@@ -295,7 +299,7 @@ export class FinSiteView {
      * @param {Array} result.skippedDetails - Details of skipped transactions with error reasons
      */
     onBulkImportComplete(result) {
-        this._debugLog(`📦 Bulk import: ${result.savedCount} saved, ${result.skippedCount} skipped`);
+        log(`📦 Bulk import: ${result.savedCount} saved, ${result.skippedCount} skipped`);
         // Could show a toast notification here
         // For now, transactions component updates via normal update() flow
     }

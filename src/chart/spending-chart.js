@@ -13,6 +13,10 @@ import {
     createBarChartConfig,
     formatCurrency,
 } from './chart-core.js';
+import { createPrefixedLogger } from '../utils/debugService.js';
+
+// Prefixed logger for spending chart component
+const log = createPrefixedLogger('[SpendingChart]');
 
 class FinSiteSpendingChart extends HTMLElement {
     constructor() {
@@ -344,7 +348,7 @@ class FinSiteSpendingChart extends HTMLElement {
         this._createLineChart(Chart);
         this._createBarChart(Chart);
 
-        console.log('📊 Chart.js instances created via chart-core module');
+        log('📊 Chart.js instances created via chart-core module');
     }
 
     /**
@@ -461,7 +465,7 @@ class FinSiteSpendingChart extends HTMLElement {
             this._barChart.destroy();
             this._barChart = null;
         }
-        console.log('📊 Chart.js instances destroyed');
+        log('📊 Chart.js instances destroyed');
     }
 
     /**

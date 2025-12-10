@@ -5,13 +5,17 @@
 import { FinSiteModel } from './model/financeModel.js';
 import { FinSiteView } from './view/financeView.js';
 import { FinSiteController } from './controller/financeContoller.js';
+import { createPrefixedLogger } from './utils/debugService.js';
+
+// Prefixed logger for app initialization
+const log = createPrefixedLogger('[App]');
 
 /**
  * Initialize the chat application
  * Sets up MVC components and establishes their connections
  */
 async function initializeApp() {
-    console.log('🚀 Initialize FinSite...');
+    log('🚀 Initialize FinSite...');
 
     try {
     // 1) Create model & view
@@ -27,7 +31,7 @@ async function initializeApp() {
         // 4) Let controller initialize model (storage) and push state to view
         await controller.init();
 
-        console.log('✅ FinSite initialization complete!');
+        log('✅ FinSite initialization complete!');
     } catch (error) {
         console.error('❌ Error during initialization:', error);
         const appRoot = document.querySelector('#app');

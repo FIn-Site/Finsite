@@ -1,6 +1,10 @@
 // Import spending chart component
 import '../chart/spending-chart.js';
 import { getCategoryIcon, getRelativeDate } from '../utils/formatters.js';
+import { createPrefixedLogger } from '../utils/debugService.js';
+
+// Prefixed logger for dashboard component
+const log = createPrefixedLogger('[Dashboard]');
 
 /**
  * Dashboard Web Component for FinSite
@@ -397,7 +401,7 @@ class FinSiteDashboard extends HTMLElement {
             }
         });
 
-        console.log('📋 Dashboard panel updated from summary:', summary);
+        log('📋 Dashboard panel updated from summary:', summary);
     }
 
     /**

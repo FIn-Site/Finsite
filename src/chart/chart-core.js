@@ -13,6 +13,10 @@
  * We use string labels for the X-axis, not a time scale,
  * so the date adapter is intentionally not loaded.
  */
+import { createPrefixedLogger } from '../utils/debugService.js';
+
+// Prefixed logger for chart-core module
+const log = createPrefixedLogger('[ChartCore]');
 
 // Module state
 let _chartInstance = null;
@@ -100,7 +104,7 @@ export async function initChartCore() {
         _applyDefaults(Chart);
         _chartInstance = Chart;
         _isInitialized = true;
-        console.log('📊 Chart.js already loaded, using existing instance');
+        log('📊 Chart.js already loaded, using existing instance');
         return _chartInstance;
     }
 
@@ -148,7 +152,7 @@ async function _doInit() {
         _chartInstance = Chart;
         _isInitialized = true;
 
-        console.log('📊 Chart core initialized (lazy loaded, no date adapter)');
+        log('📊 Chart core initialized (lazy loaded, no date adapter)');
         return Chart;
     } catch (error) {
         console.error('Failed to initialize Chart.js:', error);

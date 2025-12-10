@@ -1,4 +1,8 @@
 import { getCategoryIcon, getGroupIcon } from '../constants/icons.js';
+import { createPrefixedLogger } from '../utils/debugService.js';
+
+// Prefixed logger for transactions component
+const log = createPrefixedLogger('[Transactions]');
 
 /**
  * Transactions Web Component for FinSite
@@ -755,7 +759,7 @@ class FinSiteTransactions extends HTMLElement {
         root.querySelectorAll('.transaction-row').forEach((row) => {
             row.addEventListener('click', (e) => {
                 if (e.target.classList.contains('tx-checkbox')) return;
-                console.log('Transaction clicked:', row.dataset.id);
+                log('Transaction clicked:', row.dataset.id);
             });
         });
 
