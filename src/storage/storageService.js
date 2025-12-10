@@ -108,7 +108,18 @@ export async function deleteTransactions(ids) {
         const transaction = db.transaction([TRANSACTION_STORE], 'readwrite');
         const store = transaction.objectStore(TRANSACTION_STORE);
 
-        const normalizedIds = (ids || []).map((rawId) => Number(rawId));
+        // Validate and normalize IDs - reject if any are invalid
+        const rawIds = ids || [];
+        const normalizedIds = [];
+        
+        for (const rawId of rawIds) {
+            const numId = Number(rawId);
+            if (Number.isNaN(numId)) {
+                reject(createError('Invalid transaction ID', `Cannot convert '${rawId}' to number`));
+                return;
+            }
+            normalizedIds.push(numId);
+        }
 
         for (const id of normalizedIds) {
             store.delete(id);
@@ -205,7 +216,7 @@ export async function deleteGroup(groupId) {
         };
 
         request.onerror = (event) => {
-            reject(`Failed to delete group: ${event.target.error}`);
+            reject(createError('Failed to delete group', event.target.error));
         };
     });
 }
@@ -271,7 +282,6 @@ export async function updateCategoriesBatch(categories) {
         const tx = db.transaction([CATEGORIES_STORE], 'readwrite');
         const store = tx.objectStore(CATEGORIES_STORE);
 
-        let completed = 0;
         const results = [];
 
         // Handle transaction-level events for atomicity
@@ -293,13 +303,10 @@ export async function updateCategoriesBatch(categories) {
 
             request.onsuccess = () => {
                 results.push(category);
-                completed++;
             };
 
             // Individual request errors will cause transaction abort
-            request.onerror = (event) => {
-                // Transaction will abort automatically, handled by tx.onerror/onabort
-            };
+            // Transaction will abort automatically, handled by tx.onerror/onabort
         }
     });
 }
