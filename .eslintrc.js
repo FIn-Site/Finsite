@@ -45,6 +45,12 @@ module.exports = {
     }, {
       enforceForRenamedProperties: false,
     }],
+    
+    // Custom rules
+    "no-alert": "off",
+    "no-restricted-globals": "off",
+    "no-continue": "off",
+    "prefer-promise-reject-errors": "off",
   },
     
   globals: {

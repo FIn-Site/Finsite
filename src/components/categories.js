@@ -525,7 +525,7 @@ class FinSiteCategories extends HTMLElement {
         // Remove subcategory buttons
         overlay.querySelectorAll('.remove-subcategory-btn').forEach((btn) => {
             btn.addEventListener('click', (e) => {
-                const index = parseInt(e.target.dataset.index);
+                const index = parseInt(e.target.dataset.index, 10); // Satisfies radix error, required second argument
                 this.removeSubcategoryField(index);
             });
         });
