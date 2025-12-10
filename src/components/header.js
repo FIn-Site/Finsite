@@ -30,9 +30,10 @@ class FinSiteHeader extends HTMLElement {
                     left: 0;
                     right: 0;
                     height: 60px;
-                    background: #1a1a1a;
+                    background: var(--header-bg, #1a1a1a);
                     z-index: 1001;
-                    border-bottom: 1px solid #333;
+                    border-bottom: 1px solid var(--border-color, #333);
+                    transition: background 0.3s ease, border-color 0.3s ease;
                 }
 
                 .top-nav {
@@ -81,12 +82,64 @@ class FinSiteHeader extends HTMLElement {
                     color: #ffffff;
                 }
 
+                /* Theme Toggle Switch */
+                .theme-toggle {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+
+                .theme-toggle-label {
+                    font-size: 18px;
+                    cursor: pointer;
+                    transition: opacity 0.2s ease;
+                }
+
+                .theme-toggle-label.inactive {
+                    opacity: 0.4;
+                }
+
+                .toggle-switch {
+                    position: relative;
+                    width: 50px;
+                    height: 26px;
+                    background: #374151;
+                    border-radius: 13px;
+                    cursor: pointer;
+                    transition: background 0.3s ease;
+                    border: none;
+                    padding: 0;
+                }
+
+                .toggle-switch::after {
+                    content: '';
+                    position: absolute;
+                    top: 3px;
+                    left: 3px;
+                    width: 20px;
+                    height: 20px;
+                    background: #f59e0b;
+                    border-radius: 50%;
+                    transition: transform 0.3s ease, background 0.3s ease;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+                }
+
+                .toggle-switch.dark::after {
+                    transform: translateX(24px);
+                    background: #6366f1;
+                }
+
+                .toggle-switch:hover {
+                    background: #4b5563;
+                }
+
                 .greeting {
                     font-size: 18px;
                     font-weight: 600;
-                    color: #ffffff;
+                    color: var(--text-primary, #ffffff);
                     margin-left: 10px;
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    transition: color 0.3s ease;
                 }
 
                 /* Responsive Design */
@@ -106,8 +159,11 @@ class FinSiteHeader extends HTMLElement {
                     <button class="nav-icon" id="menu-toggle">☰</button>
                 </div>
                 <div class="top-nav-right">
-                    <button class="nav-icon">🔔</button>
-                    <button class="nav-icon">⚙️</button>
+                    <div class="theme-toggle">
+                        <span class="theme-toggle-label" id="light-icon">☀️</span>
+                        <button class="toggle-switch dark" id="theme-toggle" aria-label="Toggle dark/light mode"></button>
+                        <span class="theme-toggle-label inactive" id="dark-icon">🌙</span>
+                    </div>
                     <span class="greeting">Good evening, Jenner</span>
                 </div>
             </div>
@@ -116,6 +172,9 @@ class FinSiteHeader extends HTMLElement {
 
     setupEventListeners() {
         const menuToggle = this.shadowRoot.querySelector('#menu-toggle');
+        const themeToggle = this.shadowRoot.querySelector('#theme-toggle');
+        const lightIcon = this.shadowRoot.querySelector('#light-icon');
+        const darkIcon = this.shadowRoot.querySelector('#dark-icon');
 
         if (menuToggle) {
             menuToggle.addEventListener('click', () => {
@@ -125,6 +184,43 @@ class FinSiteHeader extends HTMLElement {
                     composed: true,
                 }));
             });
+        }
+
+        if (themeToggle) {
+            // Check for saved theme preference or default to dark
+            const savedTheme = localStorage.getItem('finsite-theme') || 'dark';
+            this.setTheme(savedTheme, themeToggle, lightIcon, darkIcon);
+
+            themeToggle.addEventListener('click', () => {
+                const isDark = themeToggle.classList.contains('dark');
+                const newTheme = isDark ? 'light' : 'dark';
+                this.setTheme(newTheme, themeToggle, lightIcon, darkIcon);
+                localStorage.setItem('finsite-theme', newTheme);
+
+                // Dispatch custom event for theme change
+                this.dispatchEvent(new CustomEvent('theme-change', {
+                    bubbles: true,
+                    composed: true,
+                    detail: { theme: newTheme },
+                }));
+            });
+        }
+    }
+
+    /**
+     * Set the theme and update toggle UI
+     */
+    setTheme(theme, toggleBtn, lightIcon, darkIcon) {
+        if (theme === 'dark') {
+            toggleBtn.classList.add('dark');
+            lightIcon.classList.add('inactive');
+            darkIcon.classList.remove('inactive');
+            document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+            toggleBtn.classList.remove('dark');
+            lightIcon.classList.remove('inactive');
+            darkIcon.classList.add('inactive');
+            document.documentElement.setAttribute('data-theme', 'light');
         }
     }
 

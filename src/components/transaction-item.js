@@ -162,7 +162,7 @@ class FinSiteTransactionItem extends HTMLElement {
                     ${transaction.icon}
                 </div>
                 <div class="transaction-details">
-                    <div class="transaction-name">${transaction.name}</div>
+                    <div class="transaction-name">${transaction.merchant}</div>
                     <div class="transaction-meta">
                         <span>${transaction.account}</span>
                         <span>${transaction.type}</span>

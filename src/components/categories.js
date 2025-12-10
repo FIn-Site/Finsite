@@ -3,7 +3,7 @@ import './category-chart.js';
 import './category-modal-chart.js';
 
 import { buildCategoryAggregates, buildGroupBreakdown } from '../model/categoryAggregator.js';
-import { getCategoryIcon } from '../constants/icons.js';
+import { getCategoryIcon, CUSTOM_GROUP_ICONS } from '../constants/icons.js';
 
 /**
  * Categories Web Component for FinSite
@@ -39,6 +39,7 @@ class FinSiteCategories extends HTMLElement {
         // Add group modal state
         this.isAddGroupModalOpen = false;
         this.newGroupName = '';
+        this.selectedIcon = '📁'; // Default icon for new groups
         this.selectedCategoryIds = new Set();
         this.newSubcategories = []; // User-created subcategories for the new group
     }
@@ -240,7 +241,12 @@ class FinSiteCategories extends HTMLElement {
                 throw new Error('Model does not support group deletion');
             }
 
+            console.log('🗑️ Deleting group:', groupId);
+            console.log('Groups before delete:', this._model.getGroups?.().map(g => g.id));
+
             await this._model.deleteGroup(groupId);
+
+            console.log('Groups after delete:', this._model.getGroups?.().map(g => g.id));
 
             // Dispatch event for controller awareness
             this.dispatchEvent(new CustomEvent('group-deleted', {
@@ -249,8 +255,21 @@ class FinSiteCategories extends HTMLElement {
                 composed: true,
             }));
 
-            // Close modal and re-sync from model
+            // Clear selected group state
+            this.selectedGroup = null;
+            this.selectedTransactions = [];
+            this.selectedCategories = [];
+
+            // Close modal
             this.closeModal();
+
+            // Clear local group cache and force fresh load from model
+            this.groups = [];
+            this.categories = [];
+            this.groupBreakdowns = [];
+            this.categoriesWithAmounts = [];
+
+            // Re-sync from model with fresh data
             await this.loadFromModel();
 
             console.log(`✅ Successfully deleted group: ${groupName}`);
@@ -266,6 +285,7 @@ class FinSiteCategories extends HTMLElement {
     openAddGroupModal() {
         this.isAddGroupModalOpen = true;
         this.newGroupName = '';
+        this.selectedIcon = '📁';
         this.selectedCategoryIds = new Set();
         this.newSubcategories = [];
         this.renderAddGroupModal();
@@ -358,6 +378,7 @@ class FinSiteCategories extends HTMLElement {
         const newGroup = {
             id: groupId,
             name: groupName,
+            icon: this.selectedIcon, // Custom icon selected by user
             isCustom: true,
             categoryIds: selectedCategoryIdsArray, // Store which categories belong to this custom group
         };
@@ -439,6 +460,15 @@ class FinSiteCategories extends HTMLElement {
             </div>
         `).join('');
 
+        // Build icon picker HTML
+        const iconPickerHtml = CUSTOM_GROUP_ICONS.map((icon) => `
+            <button type="button" 
+                    class="icon-option ${this.selectedIcon === icon ? 'selected' : ''}" 
+                    data-icon="${icon}">
+                ${icon}
+            </button>
+        `).join('');
+
         overlay.innerHTML = `
             <div class="modal-container add-group-modal">
                 <div class="modal-header">
@@ -460,6 +490,15 @@ class FinSiteCategories extends HTMLElement {
                                    placeholder="e.g., Entertainment, Travel, Subscriptions"
                                    value="${this.newGroupName}"
                                    autocomplete="off">
+                        </div>
+
+                        <!-- Icon Selection -->
+                        <div class="form-group">
+                            <label class="form-label">Group Icon</label>
+                            <p class="form-help">Choose an icon for your group</p>
+                            <div class="icon-picker">
+                                ${iconPickerHtml}
+                            </div>
                         </div>
 
                         <!-- Select Existing Categories -->
@@ -517,6 +556,17 @@ class FinSiteCategories extends HTMLElement {
         // Create button
         const createBtn = overlay.querySelector('#create-group-btn');
         createBtn?.addEventListener('click', () => this.handleCreateGroup());
+
+        // Icon picker buttons
+        overlay.querySelectorAll('.icon-option').forEach((btn) => {
+            btn.addEventListener('click', (e) => {
+                const icon = e.target.dataset.icon;
+                this.selectedIcon = icon;
+                // Update UI to show selection
+                overlay.querySelectorAll('.icon-option').forEach((b) => b.classList.remove('selected'));
+                e.target.classList.add('selected');
+            });
+        });
 
         // Add subcategory button
         const addSubBtn = overlay.querySelector('#add-subcategory-btn');
@@ -751,27 +801,27 @@ class FinSiteCategories extends HTMLElement {
                 .page-title {
                     font-size: 1.75rem;
                     font-weight: 700;
-                    color: #f1f5f9;
+                    color: var(--text-primary, #f1f5f9);
                     margin: 0;
                 }
 
                 .page-subtitle {
                     font-size: 0.875rem;
-                    color: #64748b;
+                    color: var(--text-muted, #64748b);
                     margin-top: 0.25rem;
                 }
 
                 .loading-indicator {
-                    color: #94a3b8;
+                    color: var(--text-secondary, #94a3b8);
                     font-size: 0.875rem;
                 }
 
                 .loading-card {
-                    background: #0f172a;
-                    border: 1px dashed #334155;
+                    background: var(--bg-primary, #0f172a);
+                    border: 1px dashed var(--border-color, #334155);
                     border-radius: 0.75rem;
                     padding: 1.5rem;
-                    color: #94a3b8;
+                    color: var(--text-secondary, #94a3b8);
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -785,10 +835,10 @@ class FinSiteCategories extends HTMLElement {
                 }
 
                 .add-group-card {
-                    background: #1e293b;
+                    background: var(--bg-card, #1e293b);
                     border-radius: 0.75rem;
                     padding: 1.25rem;
-                    border: 2px dashed #334155;
+                    border: 2px dashed var(--border-color, #334155);
                     display: flex;
                     flex-direction: column;
                     align-items: center;
@@ -818,7 +868,7 @@ class FinSiteCategories extends HTMLElement {
 
                 .add-text {
                     font-size: 0.875rem;
-                    color: #64748b;
+                    color: var(--text-muted, #64748b);
                     font-weight: 500;
                 }
 
@@ -842,14 +892,14 @@ class FinSiteCategories extends HTMLElement {
                 }
 
                 .modal-container {
-                    background: #1e293b;
+                    background: var(--bg-card, #1e293b);
                     border-radius: 1rem;
                     padding: 1.5rem;
                     width: 100%;
                     max-width: 700px;
                     max-height: 85vh;
-                    border: 1px solid #334155;
-                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                    border: 1px solid var(--border-color, #334155);
+                    box-shadow: var(--shadow-lg, 0 25px 50px -12px rgba(0, 0, 0, 0.5));
                     animation: modalSlideIn 0.2s ease-out;
                     display: flex;
                     flex-direction: column;
@@ -872,19 +922,19 @@ class FinSiteCategories extends HTMLElement {
                     align-items: flex-start;
                     margin-bottom: 1.25rem;
                     padding-bottom: 1rem;
-                    border-bottom: 1px solid #334155;
+                    border-bottom: 1px solid var(--border-color, #334155);
                 }
 
                 .modal-title {
                     font-size: 1.25rem;
                     font-weight: 600;
-                    color: #f1f5f9;
+                    color: var(--text-primary, #f1f5f9);
                     margin: 0;
                 }
 
                 .modal-subtitle {
                     font-size: 0.875rem;
-                    color: #10b981;
+                    color: var(--positive-color, #10b981);
                     margin-top: 0.25rem;
                     font-weight: 600;
                 }
@@ -892,7 +942,7 @@ class FinSiteCategories extends HTMLElement {
                 .modal-close-btn {
                     background: none;
                     border: none;
-                    color: #64748b;
+                    color: var(--text-muted, #64748b);
                     font-size: 1.5rem;
                     cursor: pointer;
                     padding: 0;
@@ -900,7 +950,7 @@ class FinSiteCategories extends HTMLElement {
                 }
 
                 .modal-close-btn:hover {
-                    color: #f1f5f9;
+                    color: var(--text-primary, #f1f5f9);
                 }
 
                 .modal-body {
@@ -919,7 +969,7 @@ class FinSiteCategories extends HTMLElement {
                 .section-title {
                     font-size: 0.875rem;
                     font-weight: 600;
-                    color: #94a3b8;
+                    color: var(--text-secondary, #94a3b8);
                     margin-bottom: 0.75rem;
                     text-transform: uppercase;
                     letter-spacing: 0.05em;
@@ -927,7 +977,7 @@ class FinSiteCategories extends HTMLElement {
 
                 /* Week-over-Week Chart Styles */
                 .week-chart-container {
-                    background: #0f172a;
+                    background: var(--bg-primary, #0f172a);
                     border-radius: 0.5rem;
                     padding: 1rem;
                 }
@@ -959,7 +1009,7 @@ class FinSiteCategories extends HTMLElement {
 
                 .badge-day-label {
                     font-size: 0.65rem;
-                    color: #64748b;
+                    color: var(--text-muted, #64748b);
                     margin-bottom: 0.25rem;
                     text-transform: uppercase;
                 }
@@ -973,15 +1023,15 @@ class FinSiteCategories extends HTMLElement {
                 }
 
                 .day-change.change-up {
-                    color: #ef4444;
+                    color: var(--negative-color, #ef4444);
                 }
 
                 .day-change.change-down {
-                    color: #10b981;
+                    color: var(--positive-color, #10b981);
                 }
 
                 .day-change.neutral {
-                    color: #64748b;
+                    color: var(--text-muted, #64748b);
                 }
 
                 .chart-legend {
@@ -1013,13 +1063,13 @@ class FinSiteCategories extends HTMLElement {
 
                 .legend-label {
                     font-size: 0.75rem;
-                    color: #94a3b8;
+                    color: var(--text-secondary, #94a3b8);
                 }
 
                 .legend-value {
                     font-size: 0.75rem;
                     font-weight: 600;
-                    color: #f1f5f9;
+                    color: var(--text-primary, #f1f5f9);
                 }
 
                 .chart-stats {
@@ -1027,7 +1077,7 @@ class FinSiteCategories extends HTMLElement {
                     flex-direction: column;
                     gap: 0.375rem;
                     padding-top: 0.75rem;
-                    border-top: 1px solid #334155;
+                    border-top: 1px solid var(--border-color, #334155);
                 }
 
                 .stat-item {
@@ -1042,11 +1092,11 @@ class FinSiteCategories extends HTMLElement {
 
                 .stat-text {
                     font-size: 0.75rem;
-                    color: #94a3b8;
+                    color: var(--text-secondary, #94a3b8);
                 }
 
                 .stat-text.change-up {
-                    color: #ef4444;
+                    color: var(--negative-color, #ef4444);
                 }
 
                 .stat-text.change-down {
@@ -1064,7 +1114,7 @@ class FinSiteCategories extends HTMLElement {
                     align-items: center;
                     gap: 0.75rem;
                     padding: 0.625rem 0.75rem;
-                    background: #0f172a;
+                    background: var(--bg-primary);
                     border-radius: 0.5rem;
                 }
 
@@ -1075,7 +1125,7 @@ class FinSiteCategories extends HTMLElement {
                 .cat-name {
                     flex: 1;
                     font-size: 0.875rem;
-                    color: #f1f5f9;
+                    color: var(--text-primary);
                 }
 
                 .cat-amount {
@@ -1097,13 +1147,13 @@ class FinSiteCategories extends HTMLElement {
                     align-items: center;
                     gap: 0.75rem;
                     padding: 0.75rem;
-                    background: #0f172a;
+                    background: var(--bg-primary);
                     border-radius: 0.5rem;
                     transition: background 0.15s ease;
                 }
 
                 .transaction-row:hover {
-                    background: #1e293b;
+                    background: var(--bg-hover);
                 }
 
                 .tx-icon {
@@ -1125,7 +1175,7 @@ class FinSiteCategories extends HTMLElement {
                 .tx-merchant {
                     font-size: 0.875rem;
                     font-weight: 500;
-                    color: #f1f5f9;
+                    color: var(--text-primary);
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
@@ -1181,7 +1231,7 @@ class FinSiteCategories extends HTMLElement {
                     display: block;
                     font-size: 0.875rem;
                     font-weight: 600;
-                    color: #f1f5f9;
+                    color: var(--text-primary);
                     margin-bottom: 0.5rem;
                 }
 
@@ -1194,10 +1244,10 @@ class FinSiteCategories extends HTMLElement {
                 .form-input {
                     width: 100%;
                     padding: 0.75rem 1rem;
-                    background: #0f172a;
-                    border: 1px solid #334155;
+                    background: var(--bg-primary);
+                    border: 1px solid var(--border-color);
                     border-radius: 0.5rem;
-                    color: #f1f5f9;
+                    color: var(--text-primary);
                     font-size: 0.875rem;
                     transition: border-color 0.2s ease;
                 }
@@ -1211,10 +1261,46 @@ class FinSiteCategories extends HTMLElement {
                     color: #64748b;
                 }
 
+                .icon-picker {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.5rem;
+                    background: var(--bg-primary);
+                    border-radius: 0.5rem;
+                    padding: 0.75rem;
+                    max-height: 150px;
+                    overflow-y: auto;
+                }
+
+                .icon-option {
+                    width: 2.5rem;
+                    height: 2.5rem;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1.25rem;
+                    background: var(--bg-card);
+                    border: 2px solid transparent;
+                    border-radius: 0.5rem;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                }
+
+                .icon-option:hover {
+                    background: var(--bg-hover);
+                    border-color: var(--border-color);
+                }
+
+                .icon-option.selected {
+                    background: rgba(59, 130, 246, 0.15);
+                    border-color: #3b82f6;
+                    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+                }
+
                 .categories-selection {
                     max-height: 200px;
                     overflow-y: auto;
-                    background: #0f172a;
+                    background: var(--bg-primary);
                     border-radius: 0.5rem;
                     padding: 0.5rem;
                 }
@@ -1271,7 +1357,7 @@ class FinSiteCategories extends HTMLElement {
                 .checkbox-label {
                     flex: 1;
                     font-size: 0.8rem;
-                    color: #f1f5f9;
+                    color: var(--text-primary);
                 }
 
                 .checkbox-amount {
@@ -1345,7 +1431,7 @@ class FinSiteCategories extends HTMLElement {
                     gap: 0.75rem;
                     padding-top: 1rem;
                     margin-top: 0.5rem;
-                    border-top: 1px solid #334155;
+                    border-top: 1px solid var(--border-color);
                 }
 
                 .btn {
@@ -1358,13 +1444,13 @@ class FinSiteCategories extends HTMLElement {
                 }
 
                 .btn-secondary {
-                    background: #334155;
+                    background: var(--bg-hover);
                     border: none;
-                    color: #f1f5f9;
+                    color: var(--text-primary);
                 }
 
                 .btn-secondary:hover {
-                    background: #475569;
+                    background: var(--border-color);
                 }
 
                 .btn-primary {
@@ -1390,7 +1476,7 @@ class FinSiteCategories extends HTMLElement {
                 .modal-footer-actions {
                     padding-top: 1rem;
                     margin-top: 0.5rem;
-                    border-top: 1px solid #334155;
+                    border-top: 1px solid var(--border-color);
                     display: flex;
                     justify-content: flex-end;
                 }

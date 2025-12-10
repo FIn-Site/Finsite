@@ -135,8 +135,9 @@ class FinSiteSpendingChart extends HTMLElement {
     render() {
         const { metrics } = this.chartData;
         const percentChange = metrics.percentChange || 0;
-        const changeClass = percentChange >= 0 ? 'positive' : 'negative';
-        const changeSymbol = percentChange >= 0 ? '+' : '';
+        // For spending: negative change (spent less) = good (green), positive change (spent more) = bad (red)
+        const changeClass = percentChange < 0 ? 'positive' : 'negative';
+        const changeSymbol = percentChange > 0 ? '+' : '';
 
         this.shadowRoot.innerHTML = `
             <style>
@@ -161,14 +162,16 @@ class FinSiteSpendingChart extends HTMLElement {
                 }
 
                 .chart-card {
-                    background: #1e293b;
+                    background: var(--bg-card, #1e293b);
                     border-radius: 1rem;
                     padding: 1.5rem;
-                    border: 1px solid #334155;
+                    border: 1px solid var(--border-color, #334155);
+                    box-shadow: var(--shadow-sm);
                     flex: 1;
                     display: flex;
                     flex-direction: column;
                     min-height: 280px;
+                    transition: background 0.3s ease, border-color 0.3s ease;
                 }
 
                 .chart-header {
@@ -181,13 +184,13 @@ class FinSiteSpendingChart extends HTMLElement {
                 .chart-title {
                     font-size: 1rem;
                     font-weight: 600;
-                    color: #f1f5f9;
+                    color: var(--text-primary, #f1f5f9);
                     margin: 0;
                 }
 
                 .chart-subtitle {
                     font-size: 0.75rem;
-                    color: #64748b;
+                    color: var(--text-muted, #64748b);
                     margin-top: 0.25rem;
                 }
 
@@ -210,30 +213,32 @@ class FinSiteSpendingChart extends HTMLElement {
                 }
 
                 .metric-card {
-                    background: #1e293b;
+                    background: var(--bg-card, #1e293b);
                     border-radius: 0.75rem;
                     padding: 1rem 1.25rem;
-                    border: 1px solid #334155;
+                    border: 1px solid var(--border-color, #334155);
+                    box-shadow: var(--shadow-sm);
+                    transition: background 0.3s ease, border-color 0.3s ease;
                 }
 
                 .metric-value {
                     font-size: 1.5rem;
                     font-weight: 700;
-                    color: #f1f5f9;
+                    color: var(--text-primary, #f1f5f9);
                     margin-bottom: 0.25rem;
                 }
 
                 .metric-value.positive {
-                    color: #10b981;
+                    color: var(--positive-color, #10b981);
                 }
 
                 .metric-value.negative {
-                    color: #ef4444;
+                    color: var(--negative-color, #ef4444);
                 }
 
                 .metric-label {
                     font-size: 0.75rem;
-                    color: #64748b;
+                    color: var(--text-muted, #64748b);
                     font-weight: 500;
                 }
 
@@ -434,8 +439,9 @@ class FinSiteSpendingChart extends HTMLElement {
         }
 
         if (changeEl) {
-            const changeClass = metrics.percentChange >= 0 ? 'positive' : 'negative';
-            const changeSymbol = metrics.percentChange >= 0 ? '+' : '';
+            // For spending: negative change (spent less) = good (green), positive change (spent more) = bad (red)
+            const changeClass = metrics.percentChange < 0 ? 'positive' : 'negative';
+            const changeSymbol = metrics.percentChange > 0 ? '+' : '';
             changeEl.textContent = `${changeSymbol}${metrics.percentChange.toFixed(1)}%`;
             changeEl.className = `metric-value ${changeClass}`;
         }
