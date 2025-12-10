@@ -16,7 +16,6 @@ class FinSiteTransactions extends HTMLElement {
 
         // Filter state
         this.filters = {
-            scope: 'all', // all, income, expense
             search: '', // search query
             dateRange: null, // { start: Date, end: Date } or null
             groups: [], // selected group IDs
@@ -93,13 +92,6 @@ class FinSiteTransactions extends HTMLElement {
 
     getFilteredTransactions() {
         let filtered = [...this.transactions];
-
-        // Scope filter
-        if (this.filters.scope === 'expense') {
-            filtered = filtered.filter((tx) => Number(tx.amount) > 0);
-        } else if (this.filters.scope === 'income') {
-            filtered = filtered.filter((tx) => Number(tx.amount) < 0);
-        }
 
         // Search filter
         if (this.filters.search.trim()) {
@@ -256,7 +248,7 @@ class FinSiteTransactions extends HTMLElement {
 
     clearAllFilters() {
         this.filters = {
-            scope: 'all', search: '', dateRange: null, groups: [], categories: [],
+            search: '', dateRange: null, groups: [], categories: [],
         };
         this.isSearchActive = false;
         this.isDatePickerOpen = false;
@@ -266,8 +258,7 @@ class FinSiteTransactions extends HTMLElement {
     }
 
     hasActiveFilters() {
-        return this.filters.scope !== 'all'
-               || this.filters.search.trim() !== ''
+        return this.filters.search.trim() !== ''
                || this.filters.dateRange !== null
                || this.filters.groups.length > 0
                || this.filters.categories.length > 0;
@@ -323,11 +314,6 @@ class FinSiteTransactions extends HTMLElement {
 
                 <div class="filter-bar">
                     <div class="filter-bar-left">
-                        <select class="scope-select" id="scope-select">
-                            <option value="all" ${this.filters.scope === 'all' ? 'selected' : ''}>All transactions</option>
-                            <option value="expense" ${this.filters.scope === 'expense' ? 'selected' : ''}>Expenses only</option>
-                            <option value="income" ${this.filters.scope === 'income' ? 'selected' : ''}>Income only</option>
-                        </select>
                         ${hasFilters ? `<span class="filter-badge">${filtered.length} of ${this.transactions.length}</span>` : ''}
                     </div>
                     <div class="filter-bar-right">
@@ -562,7 +548,7 @@ class FinSiteTransactions extends HTMLElement {
             /* Filter Bar */
             .filter-bar { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 2rem; background: var(--bg-primary, #0f172a); border-bottom: 1px solid var(--border-color, #334155); transition: background 0.3s ease; }
             .filter-bar-left { display: flex; align-items: center; gap: 1rem; }
-            .scope-select, .sort-select { padding: 0.5rem 2rem 0.5rem 0.75rem; background: var(--bg-card, #1e293b); border: 1px solid var(--border-color, #334155); border-radius: 9999px; color: var(--text-primary, #f1f5f9); font-size: 0.875rem; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.75rem center; }
+            .sort-select { padding: 0.5rem 2rem 0.5rem 0.75rem; background: var(--bg-card, #1e293b); border: 1px solid var(--border-color, #334155); border-radius: 9999px; color: var(--text-primary, #f1f5f9); font-size: 0.875rem; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.75rem center; }
             .filter-badge { font-size: 0.75rem; color: var(--text-secondary, #94a3b8); background: var(--bg-card, #1e293b); padding: 0.25rem 0.5rem; border-radius: 9999px; }
             .filter-bar-right { display: flex; align-items: center; gap: 0.75rem; }
             .control-btn { padding: 0.5rem 0.875rem; background: var(--bg-card, #1e293b); border: 1px solid var(--border-color, #334155); border-radius: 0.5rem; color: var(--text-secondary, #94a3b8); font-size: 0.8125rem; cursor: pointer; }
@@ -581,9 +567,7 @@ class FinSiteTransactions extends HTMLElement {
             .transaction-row.selected { background: rgba(249, 115, 22, 0.1); }
             .row-checkbox { display: flex; align-items: center; }
             .tx-checkbox { width: 1rem; height: 1rem; cursor: pointer; accent-color: var(--accent-primary, #f97316); }
-            .row-icon { width: 2.5rem; height: 2.5rem; border-radius: 0.625rem; display: flex; align-items: center; justify-content: center; font-size: 1.125rem; }
-            .row-icon.expense { background: var(--negative-bg, rgba(239, 68, 68, 0.15)); }
-            .row-icon.income { background: var(--positive-bg, rgba(16, 185, 129, 0.15)); }
+            .row-icon { width: 2.5rem; height: 2.5rem; border-radius: 0.625rem; display: flex; align-items: center; justify-content: center; font-size: 1.125rem; background: var(--icon-bg, #f5f5f5); }
             .row-merchant { min-width: 0; }
             .merchant-name { font-size: 0.9375rem; font-weight: 500; color: var(--text-primary, #f1f5f9); }
             .row-category, .row-account { display: flex; align-items: center; gap: 0.375rem; font-size: 0.8125rem; color: var(--text-muted, #64748b); }
@@ -797,13 +781,6 @@ class FinSiteTransactions extends HTMLElement {
             this.filters.groups = Array.from(root.querySelectorAll('.group-checkbox:checked')).map((cb) => cb.value);
             this.filters.categories = Array.from(root.querySelectorAll('.category-checkbox:checked')).map((cb) => cb.value);
             this.isFilterPanelOpen = false;
-            this.render();
-            this.setupEventListeners();
-        });
-
-        // Scope dropdown
-        root.querySelector('#scope-select')?.addEventListener('change', (e) => {
-            this.filters.scope = e.target.value;
             this.render();
             this.setupEventListeners();
         });

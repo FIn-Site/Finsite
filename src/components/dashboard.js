@@ -149,21 +149,7 @@ class FinSiteDashboard extends HTMLElement {
                     align-items: center;
                     justify-content: center;
                     font-size: 1rem;
-                }
-
-                .stat-icon.balance {
-                    background: var(--positive-bg, rgba(16, 185, 129, 0.15));
-                    color: var(--positive-color, #10b981);
-                }
-
-                .stat-icon.transactions {
-                    background: rgba(59, 130, 246, 0.15);
-                    color: #3b82f6;
-                }
-
-                .stat-icon.spending {
-                    background: rgba(245, 158, 11, 0.15);
-                    color: #f59e0b;
+                    background: var(--icon-bg, #f5f5f5);
                 }
 
                 .stat-label {
