@@ -80,8 +80,7 @@ class SidebarComponent extends HTMLElement {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    padding: 1rem 1rem;
-                    border-bottom: 1px solid var(--border-color, #1e293b);
+                    padding: 1rem 0;
                     min-height: 60px;
                 }
 
@@ -90,13 +89,15 @@ class SidebarComponent extends HTMLElement {
                     align-items: center;
                     gap: 0.75rem;
                     overflow: hidden;
+                    padding-left: 0.75rem;
+                    height: 44px;
                 }
 
                 .logo-icon {
-                    width: 32px;
-                    height: 32px;
+                    width: 44px;
+                    height: 44px;
                     background: var(--bg-card, #1e293b);
-                    border-radius: 8px;
+                    border-radius: 0.5rem;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -108,7 +109,7 @@ class SidebarComponent extends HTMLElement {
                 }
 
                 .logo-text {
-                    font-size: 1.125rem;
+                    font-size: 1.75rem;
                     font-weight: 700;
                     color: var(--text-primary, #ffffff);
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -187,7 +188,7 @@ class SidebarComponent extends HTMLElement {
                 /* Navigation Section */
                 .nav-section {
                     flex: 1;
-                    padding: 1rem 0.75rem;
+                    padding: 0.5rem 0.75rem 0;
                     overflow-y: auto;
                     overflow-x: hidden;
                 }
@@ -411,7 +412,6 @@ class SidebarComponent extends HTMLElement {
             </div>
 
             <nav class="nav-section" data-testid= "navbar">
-                <div class="nav-label">Menu</div>
                 <a class="nav-item active" data-page="dashboard" data-tooltip="Dashboard" data-testid="nav-dashboard">
                     <span class="nav-item-icon">📊</span>
                     <span class="nav-item-text">Dashboard</span>
@@ -432,7 +432,8 @@ class SidebarComponent extends HTMLElement {
                     <button class="toggle-switch dark" id="theme-toggle" aria-label="Toggle dark/light mode"></button>
                     <span class="theme-icon inactive" id="dark-icon">🌙</span>
                 </div>
-                <button class="collapse-btn" id="collapse-btn">
+
+                <button class="collapse-btn" id="collapse-btn" aria-label="Collapse sidebar">
                     <span class="collapse-icon">◀</span>
                     <span class="collapse-text">Collapse</span>
                 </button>
