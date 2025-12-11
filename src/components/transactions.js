@@ -340,6 +340,12 @@ class FinSiteTransactions extends HTMLElement {
         const grouped = this.groupTransactionsByDate(filtered);
         const hasFilters = this.hasActiveFilters();
 
+        // Preserve notification state before re-render
+        const oldBanner = this.shadowRoot.querySelector('#notification-banner');
+        const wasShowing = oldBanner?.classList.contains('show');
+        const bannerContent = oldBanner?.innerHTML;
+        const bannerClass = oldBanner?.className;
+
         this.shadowRoot.innerHTML = `
             <style>${this.getStyles()}</style>
             <div class="transactions-page">
@@ -390,6 +396,21 @@ class FinSiteTransactions extends HTMLElement {
                 ${this.renderModal()}
             </div>
         `;
+
+        // Restore notification state after re-render
+        if (wasShowing && bannerContent) {
+            const newBanner = this.shadowRoot.querySelector('#notification-banner');
+            if (newBanner) {
+                newBanner.innerHTML = bannerContent;
+                newBanner.className = bannerClass;
+                // Restart the timer to remove the notification
+                clearTimeout(this._notificationTimer);
+                this._notificationTimer = setTimeout(() => {
+                    const banner = this.shadowRoot.querySelector('#notification-banner');
+                    if (banner) banner.classList.remove('show');
+                }, 2500);
+            }
+        }
     }
 
     renderSearchBar() {
@@ -501,6 +522,7 @@ class FinSiteTransactions extends HTMLElement {
         // Get categories filtered by currently selected group
         const filteredCategories = this.getCategoriesForCurrentGroup();
         const showCategoryPlaceholder = !this.currentGroupId || filteredCategories.length === 0;
+        const todayDate = new Date().toISOString().split('T')[0];
 
         return `
             <div class="modal-overlay ${this.isModalOpen ? '' : 'hidden'}" id="modal-overlay">
@@ -514,7 +536,7 @@ class FinSiteTransactions extends HTMLElement {
                             <div class="form-group"><label class="form-label" for="tx-amount">Amount (USD)</label>
                                 <input class="form-input" type="number" id="tx-amount" data-testid="input-amount" name="amount" step="0.01" min="0.01" placeholder="e.g., 12.34" required /></div>
                             <div class="form-group"><label class="form-label" for="tx-date">Date</label>
-                                <input class="form-input" type="date" id="tx-date" data-testid="input-date" name="date" required /></div>
+                                <input class="form-input" type="date" id="tx-date" data-testid="input-date" name="date" value="${todayDate}" required /></div>
                         </div>
                         <div class="form-row">
                             <div class="form-group"><label class="form-label" for="tx-group">Group</label>
@@ -647,8 +669,8 @@ class FinSiteTransactions extends HTMLElement {
             /* Notification */
             .notification-banner { position: fixed; top: 0; left: 0; right: 0; padding: 0.75rem 1rem; text-align: center; font-size: 0.875rem; font-weight: 500; transform: translateY(-100%); transition: transform 0.3s ease; z-index: 1001; }
             .notification-banner.show { transform: translateY(0); }
-            .notification-banner.success { background: rgba(16, 185, 129, 0.95); color: #ffffff; }
-            .notification-banner.error { background: rgba(239, 68, 68, 0.95); color: #ffffff; }
+            .notification-banner.success { background: #16b981; color: #ffffff; }
+            .notification-banner.error { background: #ef4444; color: #ffffff; }
 
             /* Modal */
             .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
@@ -973,11 +995,23 @@ class FinSiteTransactions extends HTMLElement {
             amount, date, group, category, merchant, notes, name: merchant || category, account: 'Manual Entry', type: category, status: 'complete',
         };
         this.dispatchEvent(new CustomEvent('add-transaction', { bubbles: true, composed: true, detail: transactionData }));
+        
+        // Show success notification immediately (same as error notifications)
+        this.showNotification('Transaction successfully added!', true);
+        
+        // Reset form but keep today's date
+        form.reset();
+        const dateInput = this.shadowRoot.querySelector('#tx-date');
+        if (dateInput) {
+            dateInput.value = new Date().toISOString().split('T')[0];
+        }
+        this.currentGroupId = null;
+        this._updateCategoryDropdown();
     }
 
     onTransactionAdded(savedTransaction) {
-        this.showNotification(`Added: ${savedTransaction.merchant || savedTransaction.category} • $${Number(savedTransaction.amount).toFixed(2)}`, true);
-        this.closeModal();
+        this.showNotification('Transaction successfully added!', true);
+        // Modal remains open for further additions
     }
 
     onTransactionError(errorMessage) {
