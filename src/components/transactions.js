@@ -588,7 +588,7 @@ class FinSiteTransactions extends HTMLElement {
             .transactions-page { display: flex; flex-direction: column; height: 100%; background: var(--bg-primary, #0f172a); transition: background 0.3s ease; }
 
             /* Header */
-            .page-header { position: sticky; top: 0; z-index: 100; background: var(--bg-primary, #0f172a); border-bottom: 1px solid var(--border-color, #334155); padding: 1.25rem 2rem 0; transition: background 0.3s ease, border-color 0.3s ease; }
+            .page-header { position: sticky; top: 0; z-index: 100; background: var(--bg-primary, #0f172a); padding: 2rem 2rem 0; transition: background 0.3s ease, border-color 0.3s ease; }
             .header-content { display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; }
             .header-title-section { display: flex; flex-direction: column; gap: 0.25rem; }
             .page-title { font-size: 1.75rem; font-weight: 700; color: var(--text-primary, #f1f5f9); margin: 0; }
