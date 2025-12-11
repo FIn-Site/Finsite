@@ -221,6 +221,8 @@ export class FinSiteView {
         // Update transactions component with new data if it's active
         if (this.currentPage === 'transactions') {
             const transactionsPage = this.container.querySelector('finsite-transactions');
+            // Store reference for notifications
+            this.transactionsEl = transactionsPage;
             if (transactionsPage && typeof transactionsPage.setTransactions === 'function') {
                 transactionsPage.setTransactions(data.transactions || []);
                 if (this.model) {

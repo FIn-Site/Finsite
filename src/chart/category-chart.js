@@ -104,7 +104,7 @@ class FinSiteCategoryChart extends HTMLElement {
                             type: 'category',
                             grid: { display: false },
                             ticks: {
-                                color: '#e2e8f0',
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#94a3b8',
                                 font: { size: 10, weight: '500' },
                                 maxRotation: 45,
                                 callback: (value) => {
@@ -119,9 +119,9 @@ class FinSiteCategoryChart extends HTMLElement {
                                 drawBorder: false,
                             },
                             ticks: {
-                                color: '#64748b',
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#94a3b8',
                                 font: { size: 10 },
-                                callback: (value) => `$${this._formatCurrency(value)}`,
+                                callback: (value) => this._formatCurrency(value),
                             },
                             beginAtZero: true,
                         },
@@ -233,7 +233,7 @@ class FinSiteCategoryChart extends HTMLElement {
                 .total-amount {
                     font-size: 0.875rem;
                     font-weight: 600;
-                    color: var(--positive-color, #10b981);
+                    color: var(--text-primary, #f1f5f9);
                 }
 
                 .chart-area {

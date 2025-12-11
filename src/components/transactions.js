@@ -340,12 +340,21 @@ class FinSiteTransactions extends HTMLElement {
         const grouped = this.groupTransactionsByDate(filtered);
         const hasFilters = this.hasActiveFilters();
 
+        // Preserve notification state before re-render
+        const oldBanner = this.shadowRoot.querySelector('#notification-banner');
+        const wasShowing = oldBanner?.classList.contains('show');
+        const bannerContent = oldBanner?.innerHTML;
+        const bannerClass = oldBanner?.className;
+
         this.shadowRoot.innerHTML = `
             <style>${this.getStyles()}</style>
             <div class="transactions-page">
                 <header class="page-header">
                     <div class="header-content">
-                        <h1 class="page-title">Transactions</h1>
+                        <div class="header-title-section">
+                            <h1 class="page-title">Transactions</h1>
+                            <p class="page-subtitle">View and manage all transactions</p>
+                        </div>
                         <div class="header-actions">
                             ${hasFilters ? '<button class="action-link" id="clear-all-btn">Clear</button>' : ''}
                             <button class="action-btn ${this.isSearchActive ? 'active' : ''}" id="search-btn">
@@ -390,6 +399,21 @@ class FinSiteTransactions extends HTMLElement {
                 ${this.renderModal()}
             </div>
         `;
+
+        // Restore notification state after re-render
+        if (wasShowing && bannerContent) {
+            const newBanner = this.shadowRoot.querySelector('#notification-banner');
+            if (newBanner) {
+                newBanner.innerHTML = bannerContent;
+                newBanner.className = bannerClass;
+                // Restart the timer to remove the notification
+                clearTimeout(this._notificationTimer);
+                this._notificationTimer = setTimeout(() => {
+                    const banner = this.shadowRoot.querySelector('#notification-banner');
+                    if (banner) banner.classList.remove('show');
+                }, 2500);
+            }
+        }
     }
 
     renderSearchBar() {
@@ -501,6 +525,7 @@ class FinSiteTransactions extends HTMLElement {
         // Get categories filtered by currently selected group
         const filteredCategories = this.getCategoriesForCurrentGroup();
         const showCategoryPlaceholder = !this.currentGroupId || filteredCategories.length === 0;
+        const todayDate = new Date().toISOString().split('T')[0];
 
         return `
             <div class="modal-overlay ${this.isModalOpen ? '' : 'hidden'}" id="modal-overlay">
@@ -514,7 +539,7 @@ class FinSiteTransactions extends HTMLElement {
                             <div class="form-group"><label class="form-label" for="tx-amount">Amount (USD)</label>
                                 <input class="form-input" type="number" id="tx-amount" data-testid="input-amount" name="amount" step="0.01" min="0.01" placeholder="e.g., 12.34" required /></div>
                             <div class="form-group"><label class="form-label" for="tx-date">Date</label>
-                                <input class="form-input" type="date" id="tx-date" data-testid="input-date" name="date" required /></div>
+                                <input class="form-input" type="date" id="tx-date" data-testid="input-date" name="date" value="${todayDate}" required /></div>
                         </div>
                         <div class="form-row">
                             <div class="form-group"><label class="form-label" for="tx-group">Group</label>
@@ -556,7 +581,9 @@ class FinSiteTransactions extends HTMLElement {
             /* Header */
             .page-header { position: sticky; top: 0; z-index: 100; background: var(--bg-primary, #0f172a); border-bottom: 1px solid var(--border-color, #334155); padding: 1.25rem 2rem 0; transition: background 0.3s ease, border-color 0.3s ease; }
             .header-content { display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; }
-            .page-title { font-size: 1.75rem; font-weight: 700; color: var(--text-primary, #f1f5f9); }
+            .header-title-section { display: flex; flex-direction: column; gap: 0.25rem; }
+            .page-title { font-size: 1.75rem; font-weight: 700; color: var(--text-primary, #f1f5f9); margin: 0; }
+            .page-subtitle { font-size: 0.875rem; color: var(--text-muted, #64748b); margin: 0; }
             .header-actions { display: flex; align-items: center; gap: 0.75rem; }
             .action-link { background: none; border: none; color: var(--accent-primary, #f97316); font-size: 0.875rem; font-weight: 500; cursor: pointer; padding: 0.5rem; }
             .action-link:hover { color: var(--accent-primary-hover, #fb923c); text-decoration: underline; }
@@ -632,7 +659,7 @@ class FinSiteTransactions extends HTMLElement {
             .row-category, .row-account { display: flex; align-items: center; gap: 0.375rem; font-size: 0.8125rem; color: var(--text-muted, #64748b); }
             .category-icon, .account-icon { font-size: 0.875rem; }
             .row-amount { font-size: 0.9375rem; font-weight: 600; text-align: right; min-width: 5rem; }
-            .row-amount.expense { color: var(--negative-color, #ef4444); }
+            .row-amount.expense { color: var(--text-primary, #f1f5f9); }
             .row-amount.income { color: var(--positive-color, #10b981); }
             .row-chevron { color: var(--text-muted, #475569); font-size: 1.25rem; font-weight: 300; }
 
@@ -647,8 +674,8 @@ class FinSiteTransactions extends HTMLElement {
             /* Notification */
             .notification-banner { position: fixed; top: 0; left: 0; right: 0; padding: 0.75rem 1rem; text-align: center; font-size: 0.875rem; font-weight: 500; transform: translateY(-100%); transition: transform 0.3s ease; z-index: 1001; }
             .notification-banner.show { transform: translateY(0); }
-            .notification-banner.success { background: rgba(16, 185, 129, 0.95); color: #ffffff; }
-            .notification-banner.error { background: rgba(239, 68, 68, 0.95); color: #ffffff; }
+            .notification-banner.success { background: #16b981; color: #ffffff; }
+            .notification-banner.error { background: #ef4444; color: #ffffff; }
 
             /* Modal */
             .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
@@ -973,11 +1000,23 @@ class FinSiteTransactions extends HTMLElement {
             amount, date, group, category, merchant, notes, name: merchant || category, account: 'Manual Entry', type: category, status: 'complete',
         };
         this.dispatchEvent(new CustomEvent('add-transaction', { bubbles: true, composed: true, detail: transactionData }));
+        
+        // Show success notification immediately (same as error notifications)
+        this.showNotification('Transaction successfully added!', true);
+        
+        // Reset form but keep today's date
+        form.reset();
+        const dateInput = this.shadowRoot.querySelector('#tx-date');
+        if (dateInput) {
+            dateInput.value = new Date().toISOString().split('T')[0];
+        }
+        this.currentGroupId = null;
+        this._updateCategoryDropdown();
     }
 
     onTransactionAdded(savedTransaction) {
-        this.showNotification(`Added: ${savedTransaction.merchant || savedTransaction.category} • $${Number(savedTransaction.amount).toFixed(2)}`, true);
-        this.closeModal();
+        this.showNotification('Transaction successfully added!', true);
+        // Modal remains open for further additions
     }
 
     onTransactionError(errorMessage) {
