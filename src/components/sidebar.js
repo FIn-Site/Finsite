@@ -95,13 +95,16 @@ class SidebarComponent extends HTMLElement {
                 .logo-icon {
                     width: 32px;
                     height: 32px;
-                    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                    background: var(--bg-card, #1e293b);
                     border-radius: 8px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     font-size: 1.1rem;
                     flex-shrink: 0;
+                    color: var(--accent-primary, #f97316);
+                    border: 1px solid var(--border-color, #334155);
+                    transition: background 0.3s ease, border-color 0.3s ease;
                 }
 
                 .logo-text {
@@ -305,6 +308,27 @@ class SidebarComponent extends HTMLElement {
                 .sidebar-footer {
                     padding: 0.75rem;
                     border-top: 1px solid var(--border-color, #1e293b);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.75rem;
+                }
+
+                .sidebar-footer .theme-toggle {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 6px;
+                }
+
+                :host(.collapsed) .sidebar-footer .theme-toggle {
+                    gap: 0;
+                    justify-content: center;
+                }
+
+                :host(.collapsed) .sidebar-footer .theme-icon {
+                    opacity: 0;
+                    width: 0;
+                    overflow: hidden;
                 }
 
                 .collapse-btn {
@@ -384,13 +408,6 @@ class SidebarComponent extends HTMLElement {
                     <div class="logo-icon">💰</div>
                     <span class="logo-text">FinSite</span>
                 </div>
-                <div class="header-icons">
-                    <div class="theme-toggle">
-                        <span class="theme-icon" id="light-icon">☀️</span>
-                        <button class="toggle-switch dark" id="theme-toggle" aria-label="Toggle dark/light mode"></button>
-                        <span class="theme-icon inactive" id="dark-icon">🌙</span>
-                    </div>
-                </div>
             </div>
 
             <nav class="nav-section" data-testid= "navbar">
@@ -410,6 +427,11 @@ class SidebarComponent extends HTMLElement {
             </nav>
 
             <div class="sidebar-footer">
+                <div class="theme-toggle">
+                    <span class="theme-icon" id="light-icon">☀️</span>
+                    <button class="toggle-switch dark" id="theme-toggle" aria-label="Toggle dark/light mode"></button>
+                    <span class="theme-icon inactive" id="dark-icon">🌙</span>
+                </div>
                 <button class="collapse-btn" id="collapse-btn">
                     <span class="collapse-icon">◀</span>
                     <span class="collapse-text">Collapse</span>

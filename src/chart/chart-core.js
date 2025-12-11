@@ -341,8 +341,8 @@ export function createBarChartConfig(labels, values, overrides = {}) {
         backgroundColor: labels.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
         borderRadius: 6,
         borderSkipped: false,
-        barThickness: isHorizontal ? 32 : 24,
-        maxBarThickness: 40,
+        barThickness: isHorizontal ? 64 : 72,
+        maxBarThickness: 80,
         ...datasetOptions,
     };
 
