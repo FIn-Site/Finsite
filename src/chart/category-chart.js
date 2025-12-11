@@ -313,6 +313,11 @@ class FinSiteCategoryChart extends HTMLElement {
                     background: rgba(239, 68, 68, 0.2);
                     transform: scale(1.1);
                 }
+
+                .delete-spacer {
+                    width: 1.5rem;
+                    height: 1.5rem;
+                }
             </style>
 
             <div class="chart-card" data-group-id="${this.groupId}" data-group-name="${this.groupName}" data-is-custom="${this.isCustom}">

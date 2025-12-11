@@ -3,7 +3,7 @@ import '../chart/category-chart.js';
 import './category-modal-chart.js';
 
 import { buildCategoryAggregates, buildGroupBreakdown } from '../utils/categoryAggregator.js';
-import { getCategoryIcon, CUSTOM_GROUP_ICONS } from '../utils/icons.js';
+import { getCategoryIcon, getGroupIcon, CUSTOM_GROUP_ICONS } from '../utils/icons.js';
 import { createPrefixedLogger } from '../utils/debugService.js';
 
 // Prefixed logger for categories component
@@ -45,7 +45,12 @@ class FinSiteCategories extends HTMLElement {
         this.newGroupName = '';
         this.selectedIcon = '📁'; // Default icon for new groups
         this.selectedCategoryIds = new Set();
-        this.newSubcategories = []; // User-created subcategories for the new group
+
+        // Add category modal state
+        this.isAddCategoryModalOpen = false;
+        this.newCategoryName = '';
+        this.newCategoryIcon = '📝'; // Default icon for new categories
+        this.selectedGroupsForCategory = new Set();
 
         // Event binding flag to prevent multiple listeners
         this._eventsBound = false;
@@ -381,14 +386,84 @@ class FinSiteCategories extends HTMLElement {
     }
 
     /**
+     * Handle removing a category from the current group
+     * @param {string} categoryId - The category ID to remove from group
+     */
+    async handleDeleteCategory(categoryId) {
+        if (!categoryId) {
+            console.error('No category ID provided for removal');
+            return;
+        }
+
+        const category = this.categories.find((c) => c.id === categoryId);
+        const categoryName = category?.name || categoryId;
+        const currentGroupId = this.selectedGroup?.groupId;
+        const currentGroup = this.groups.find((g) => g.id === currentGroupId);
+
+        if (!currentGroup) {
+            console.error('No group selected');
+            return;
+        }
+
+        // Confirm removal
+        const confirmed = confirm(
+            `Remove "${categoryName}" from "${currentGroup.name}"?\n\n` +
+            'This will remove the category from this group only.\n' +
+            'If the category has no other groups, it will become uncategorized.',
+        );
+
+        if (!confirmed) return;
+
+        try {
+            if (!this._model) {
+                throw new Error('Model not available');
+            }
+
+            // If this is a custom group, remove from categoryIds array
+            if (currentGroup.isCustom) {
+                const updatedGroup = {
+                    ...currentGroup,
+                    categoryIds: (currentGroup.categoryIds || []).filter((id) => id !== categoryId)
+                };
+                await this._model.addGroup(updatedGroup);
+                log(`📂 Removed category ${categoryName} from custom group: ${currentGroup.name}`);
+            } else {
+                // If this is the category's primary group (default group), move to uncategorized
+                if (category.groupId === currentGroupId) {
+                    const updatedCategory = { ...category, groupId: 'uncategorized' };
+                    await this._model.addCategory(updatedCategory);
+                    log(`📝 Moved category ${categoryName} to uncategorized`);
+                }
+            }
+
+            // Dispatch event for controller awareness
+            this.dispatchEvent(new CustomEvent('category-removed-from-group', {
+                detail: { categoryId, categoryName, groupId: currentGroupId },
+                bubbles: true,
+                composed: true,
+            }));
+
+            // Reload data and reopen the same group modal
+            await this.loadFromModel();
+            
+            // Reopen the modal for the same group
+            this.openModal(currentGroupId);
+
+            log(`✅ Successfully removed category ${categoryName} from group ${currentGroup.name}`);
+        } catch (error) {
+            console.error('❌ Failed to remove category from group:', error);
+            alert('Failed to remove category. Please try again.');
+        }
+    }
+
+    /**
      * Open the Add Group modal
      */
     openAddGroupModal() {
         this.isAddGroupModalOpen = true;
         this.newGroupName = '';
-        this.selectedIcon = '📁';
+        this.selectedIcon = CUSTOM_GROUP_ICONS[0]; // Default to first icon
         this.selectedCategoryIds = new Set();
-        this.newSubcategories = [];
         this.renderAddGroupModal();
     }
 
@@ -404,19 +479,280 @@ class FinSiteCategories extends HTMLElement {
     }
 
     /**
-     * Add a new subcategory input field
+     * Open Add Category modal
      */
-    addSubcategoryField() {
-        this.newSubcategories.push({ id: `new-${Date.now()}`, name: '' });
-        this.renderAddGroupModal();
+    openAddCategoryModal() {
+        this.isAddCategoryModalOpen = true;
+        this.newCategoryName = '';
+        this.newCategoryIcon = CUSTOM_GROUP_ICONS[0]; // Default to first icon
+        // Set first default group as primary, custom groups as empty
+        const defaultGroups = this.groups.filter((g) => !g.isCustom && g.id !== 'uncategorized' && !g.isSystem);
+        this.newCategoryPrimaryGroup = defaultGroups.length > 0 ? defaultGroups[0].id : 'expenses';
+        this.selectedGroupsForCategory = new Set();
+        this.renderAddCategoryModal();
     }
 
     /**
-     * Remove a subcategory field
+     * Close Add Category modal
      */
-    removeSubcategoryField(index) {
-        this.newSubcategories.splice(index, 1);
-        this.renderAddGroupModal();
+    closeAddCategoryModal() {
+        this.isAddCategoryModalOpen = false;
+        const overlay = this.shadowRoot.querySelector('.add-category-modal-overlay');
+        if (overlay) {
+            overlay.classList.add('hidden');
+        }
+    }
+
+    /**
+     * Render the Add Category modal
+     */
+    renderAddCategoryModal() {
+        const overlay = this.shadowRoot.querySelector('.add-category-modal-overlay');
+        if (!overlay) return;
+
+        // Build icon picker HTML
+        const iconPickerHtml = CUSTOM_GROUP_ICONS.map((icon) => `
+            <button type="button" 
+                    class="icon-option ${this.newCategoryIcon === icon ? 'selected' : ''}" 
+                    data-icon="${icon}">
+                ${icon}
+            </button>
+        `).join('');
+
+        // Build group selection - radio for primary, checkboxes for custom groups only
+        const userVisibleGroups = this.groups.filter((g) => g.id !== 'uncategorized' && !g.isSystem);
+        const defaultGroups = userVisibleGroups.filter((g) => !g.isCustom);
+        const customGroups = userVisibleGroups.filter((g) => g.isCustom);
+        
+        const primaryGroupHtml = defaultGroups.map((group) => `
+            <label class="radio-label">
+                <input type="radio" 
+                       name="primary-group"
+                       class="primary-group-radio" 
+                       data-group-id="${group.id}"
+                       ${this.newCategoryPrimaryGroup === group.id ? 'checked' : ''}>
+                <span class="radio-text">${getGroupIcon(group.id, group.icon)} ${group.name}</span>
+            </label>
+        `).join('');
+        
+        const customGroupHtml = customGroups.length > 0 ? `
+            <div class="form-group">
+                <label class="form-label">Also Include in Custom Groups (Optional)</label>
+                <p class="form-help">Select custom groups to include this category</p>
+                <div class="groups-selection">
+                    ${customGroups.map((group) => `
+                        <label class="checkbox-label">
+                            <input type="checkbox" 
+                                   class="group-checkbox" 
+                                   data-group-id="${group.id}"
+                                   ${this.selectedGroupsForCategory.has(group.id) ? 'checked' : ''}>
+                            <span class="checkbox-text">${getGroupIcon(group.id, group.icon)} ${group.name}</span>
+                        </label>
+                    `).join('')}
+                </div>
+            </div>
+        ` : '';
+
+        overlay.innerHTML = `
+            <div class="modal-container add-category-modal">
+                <div class="modal-header">
+                    <div class="modal-title-section">
+                        <h2 class="modal-title">Create New Category</h2>
+                        <p class="modal-subtitle">Add a category to organize your transactions</p>
+                    </div>
+                    <button class="modal-close-btn" id="add-category-modal-close">✕</button>
+                </div>
+
+                <div class="modal-body">
+                    <form id="add-category-form">
+                        <!-- Category Name -->
+                        <div class="form-group">
+                            <label class="form-label" for="new-category-name">Category Name</label>
+                            <input type="text" 
+                                   id="new-category-name" 
+                                   class="form-input" 
+                                   placeholder="e.g., Netflix, Gym Membership, Groceries"
+                                   value="${this.newCategoryName}"
+                                   autocomplete="off">
+                        </div>
+
+                        <!-- Icon Selection -->
+                        <div class="form-group">
+                            <label class="form-label">Category Icon</label>
+                            <p class="form-help">Choose an icon for your category</p>
+                            <div class="icon-picker">
+                                ${iconPickerHtml}
+                            </div>
+                        </div>
+
+                        <!-- Primary Group Selection -->
+                        <div class="form-group">
+                            <label class="form-label">Primary Group</label>
+                            <p class="form-help">Select the main group for this category</p>
+                            <div class="groups-selection">
+                                ${primaryGroupHtml}
+                            </div>
+                        </div>
+
+                        ${customGroupHtml}
+
+                    </form>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancel-add-category">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="create-category-btn">Create Category</button>
+                </div>
+            </div>
+        `;
+
+        overlay.classList.remove('hidden');
+
+        // Setup event listeners for the modal
+        this.setupAddCategoryModalListeners();
+    }
+
+    /**
+     * Setup event listeners for Add Category modal
+     */
+    setupAddCategoryModalListeners() {
+        const overlay = this.shadowRoot.querySelector('.add-category-modal-overlay');
+        if (!overlay) return;
+
+        // Close button
+        const closeBtn = overlay.querySelector('#add-category-modal-close');
+        closeBtn?.addEventListener('click', () => this.closeAddCategoryModal());
+
+        // Cancel button
+        const cancelBtn = overlay.querySelector('#cancel-add-category');
+        cancelBtn?.addEventListener('click', () => this.closeAddCategoryModal());
+
+        // Create button
+        const createBtn = overlay.querySelector('#create-category-btn');
+        createBtn?.addEventListener('click', () => this.handleCreateCategory());
+
+        // Icon picker buttons
+        overlay.querySelectorAll('.icon-option').forEach((btn) => {
+            btn.addEventListener('click', (e) => {
+                const icon = e.target.dataset.icon;
+                this.newCategoryIcon = icon;
+                // Update UI to show selection
+                overlay.querySelectorAll('.icon-option').forEach((b) => b.classList.remove('selected'));
+                e.target.classList.add('selected');
+            });
+        });
+
+        // Primary group radio buttons
+        overlay.querySelectorAll('.primary-group-radio').forEach((radio) => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    this.newCategoryPrimaryGroup = e.target.dataset.groupId;
+                }
+            });
+        });
+
+        // Custom group checkboxes (additional groups)
+        overlay.querySelectorAll('.group-checkbox').forEach((checkbox) => {
+            checkbox.addEventListener('change', (e) => {
+                const { groupId } = e.target.dataset;
+                if (e.target.checked) {
+                    this.selectedGroupsForCategory.add(groupId);
+                } else {
+                    this.selectedGroupsForCategory.delete(groupId);
+                }
+            });
+        });
+
+        // Close on overlay click
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                this.closeAddCategoryModal();
+            }
+        });
+
+        // Track category name changes
+        const nameInput = overlay.querySelector('#new-category-name');
+        nameInput?.addEventListener('input', (e) => {
+            this.newCategoryName = e.target.value;
+        });
+    }
+
+    /**
+     * Handle form submission for creating a new category
+     */
+    async handleCreateCategory() {
+        const nameInput = this.shadowRoot.querySelector('#new-category-name');
+        const categoryName = nameInput?.value.trim();
+
+        if (!categoryName) {
+            alert('Please enter a category name');
+            return;
+        }
+
+        // Generate category ID from name
+        const categoryId = categoryName.toLowerCase().replace(/\s+/g, '-');
+
+        // Check if category already exists
+        if (this.categories.find((c) => c.id === categoryId)) {
+            alert('A category with this name already exists');
+            return;
+        }
+
+        if (!this._model) {
+            console.error('Model not available for creating category');
+            return;
+        }
+
+        // Use selected primary group (from radio buttons)
+        const primaryGroupId = this.newCategoryPrimaryGroup || 'expenses';
+        const categoryIcon = this.newCategoryIcon || CUSTOM_GROUP_ICONS[0];
+
+        // Create the new category with primary groupId
+        const newCategory = {
+            id: categoryId,
+            groupId: primaryGroupId,
+            name: categoryName,
+            icon: categoryIcon,
+            amount: 0,
+        };
+
+        try {
+            // Save category to database
+            await this._model.addCategory(newCategory);
+            log(`💾 Saved new category: ${categoryName} with icon: ${categoryIcon} to group: ${primaryGroupId}`);
+
+            // Add category to any selected custom groups
+            const selectedCustomGroups = Array.from(this.selectedGroupsForCategory);
+            for (const groupId of selectedCustomGroups) {
+                const group = this._model.data.groups.find((g) => g.id === groupId);
+                if (group && group.isCustom) {
+                    // Initialize categoryIds if needed
+                    if (!group.categoryIds) {
+                        group.categoryIds = [];
+                    }
+                    // Add category if not already present
+                    if (!group.categoryIds.includes(categoryId)) {
+                        group.categoryIds.push(categoryId);
+                        await this._model.addGroup(group);
+                        log(`📂 Added category to custom group: ${group.name}`);
+                    }
+                }
+            }
+
+            // Dispatch event for controller/model
+            this.dispatchEvent(new CustomEvent('category-created', {
+                detail: { category: newCategory },
+                bubbles: true,
+                composed: true,
+            }));
+
+            // Close modal and reload data
+            this.closeAddCategoryModal();
+            await this.loadFromModel();
+        } catch (error) {
+            console.error('❌ Failed to save category via model:', error);
+            alert('Failed to create category. Please try again.');
+        }
     }
 
     /**
@@ -446,33 +782,6 @@ class FinSiteCategories extends HTMLElement {
         if (!this._model) {
             console.error('Model not available for creating group');
             return;
-        }
-
-        // Get new subcategories from inputs and save them
-        const newSubInputs = this.shadowRoot.querySelectorAll('.new-subcategory-input');
-        for (const input of newSubInputs) {
-            const subName = input.value.trim();
-            if (subName) {
-                const subId = subName.toLowerCase().replace(/\s+/g, '-');
-                // Only add if not duplicate
-                if (!this.categories.find((c) => c.id === subId)) {
-                    const newCategory = {
-                        id: subId,
-                        groupId,
-                        name: subName,
-                        amount: 0,
-                    };
-                    // Add new category ID to the selection
-                    selectedCategoryIdsArray.push(subId);
-
-                    try {
-                        await this._model.addCategory(newCategory);
-                        log(`💾 Saved new category via model: ${subName}`);
-                    } catch (error) {
-                        console.error('❌ Failed to save category via model:', error);
-                    }
-                }
-            }
         }
 
         // Create the new group with categoryIds for custom groups
@@ -517,14 +826,28 @@ class FinSiteCategories extends HTMLElement {
         const allCategories = this.categoriesWithAmounts.length ? this.categoriesWithAmounts : this.categories;
 
         // Group categories by their current group for display
+        // For custom groups, check categoryIds array; for default groups, check category.groupId
         const categoryGroups = {};
         for (const cat of allCategories) {
-            const group = this.groups.find((g) => g.id === cat.groupId);
-            const groupName = group?.name || 'Unassigned';
-            if (!categoryGroups[groupName]) {
-                categoryGroups[groupName] = [];
+            // Check if category is in any custom group
+            const customGroup = this.groups.find((g) => g.isCustom && g.categoryIds && g.categoryIds.includes(cat.id));
+            
+            if (customGroup) {
+                // Category is in a custom group
+                const groupName = customGroup.name;
+                if (!categoryGroups[groupName]) {
+                    categoryGroups[groupName] = [];
+                }
+                categoryGroups[groupName].push(cat);
+            } else {
+                // Category is in a default group (by groupId)
+                const group = this.groups.find((g) => g.id === cat.groupId);
+                const groupName = group?.name || 'UNCATEGORIZED';
+                if (!categoryGroups[groupName]) {
+                    categoryGroups[groupName] = [];
+                }
+                categoryGroups[groupName].push(cat);
             }
-            categoryGroups[groupName].push(cat);
         }
 
         // Build category checkboxes grouped by current assignment
@@ -540,7 +863,7 @@ class FinSiteCategories extends HTMLElement {
                                        class="category-checkbox" 
                                        data-category-id="${cat.id}"
                                        ${this.selectedCategoryIds.has(cat.id) ? 'checked' : ''}>
-                                <span class="checkbox-icon">${getCategoryIcon(cat.id)}</span>
+                                <span class="checkbox-icon">${cat.icon || getCategoryIcon(cat.id)}</span>
                                 <span class="checkbox-label">${cat.name}</span>
                                 <span class="checkbox-amount">${this._formatCurrency(cat.amount)}</span>
                             </label>
@@ -549,17 +872,6 @@ class FinSiteCategories extends HTMLElement {
                 </div>
             `;
         }
-
-        // Build new subcategory inputs
-        const newSubcategoriesHtml = this.newSubcategories.map((sub, index) => `
-            <div class="new-subcategory-row">
-                <input type="text" 
-                       class="new-subcategory-input form-input" 
-                       placeholder="Subcategory name"
-                       value="${sub.name}">
-                <button type="button" class="remove-subcategory-btn" data-index="${index}">✕</button>
-            </div>
-        `).join('');
 
         // Build icon picker HTML
         const iconPickerHtml = CUSTOM_GROUP_ICONS.map((icon) => `
@@ -611,18 +923,6 @@ class FinSiteCategories extends HTMLElement {
                             </div>
                         </div>
 
-                        <!-- Add New Subcategories -->
-                        <div class="form-group">
-                            <label class="form-label">Add New Subcategories</label>
-                            <p class="form-help">Create new categories for this group</p>
-                            <div class="new-subcategories-list">
-                                ${newSubcategoriesHtml}
-                            </div>
-                            <button type="button" class="add-subcategory-btn" id="add-subcategory-btn">
-                                <span class="btn-icon">+</span>
-                                Add Subcategory
-                            </button>
-                        </div>
                     </form>
                 </div>
 
@@ -669,18 +969,6 @@ class FinSiteCategories extends HTMLElement {
             });
         });
 
-        // Add subcategory button
-        const addSubBtn = overlay.querySelector('#add-subcategory-btn');
-        addSubBtn?.addEventListener('click', () => this.addSubcategoryField());
-
-        // Remove subcategory buttons
-        overlay.querySelectorAll('.remove-subcategory-btn').forEach((btn) => {
-            btn.addEventListener('click', (e) => {
-                const index = parseInt(e.target.dataset.index);
-                this.removeSubcategoryField(index);
-            });
-        });
-
         // Category checkboxes
         overlay.querySelectorAll('.category-checkbox').forEach((checkbox) => {
             checkbox.addEventListener('change', (e) => {
@@ -704,15 +992,6 @@ class FinSiteCategories extends HTMLElement {
         const nameInput = overlay.querySelector('#new-group-name');
         nameInput?.addEventListener('input', (e) => {
             this.newGroupName = e.target.value;
-        });
-
-        // Track subcategory name changes
-        overlay.querySelectorAll('.new-subcategory-input').forEach((input, index) => {
-            input.addEventListener('input', (e) => {
-                if (this.newSubcategories[index]) {
-                    this.newSubcategories[index].name = e.target.value;
-                }
-            });
         });
     }
 
@@ -770,13 +1049,22 @@ class FinSiteCategories extends HTMLElement {
             `).join('')
             : '<div class="no-transactions">No transactions found</div>';
 
-        const categoryBreakdownHtml = this.selectedCategories.map((cat) => `
-            <div class="category-row">
-                <span class="cat-icon">${getCategoryIcon(cat.id)}</span>
-                <span class="cat-name">${cat.name}</span>
-                <span class="cat-amount">${this._formatCurrency(cat.amount)}</span>
-            </div>
-        `).join('');
+        const categoryBreakdownHtml = this.selectedCategories.map((cat) => {
+            // Only show delete button for custom groups or if category has a custom icon (user-created)
+            const isPresetCategory = !cat.icon && !isCustomGroup;
+            const deleteButton = isPresetCategory 
+                ? `<span class="cat-delete-spacer"></span>` 
+                : `<button class="cat-delete-btn" data-category-id="${cat.id}" title="Remove from group">🗑️</button>`;
+            
+            return `
+                <div class="category-row">
+                    <span class="cat-icon">${cat.icon || getCategoryIcon(cat.id)}</span>
+                    <span class="cat-name">${cat.name}</span>
+                    <span class="cat-amount">${this._formatCurrency(cat.amount)}</span>
+                    ${deleteButton}
+                </div>
+            `;
+        }).join('');
 
         // Delete button only for custom groups
         const deleteButtonHtml = isCustomGroup ? `
@@ -788,7 +1076,7 @@ class FinSiteCategories extends HTMLElement {
         ` : '';
 
         overlay.innerHTML = `
-            <div class="modal-container">
+            <div class="modal-container group-detail-modal">
                 <div class="modal-header">
                     <div class="modal-title-section">
                         <h2 class="modal-title">${this.selectedGroup?.groupName || 'Group'} Details</h2>
@@ -835,6 +1123,15 @@ class FinSiteCategories extends HTMLElement {
         if (deleteBtn) {
             deleteBtn.addEventListener('click', () => this.handleDeleteGroup());
         }
+
+        // Category delete buttons
+        overlay.querySelectorAll('.cat-delete-btn').forEach((btn) => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const categoryId = btn.dataset.categoryId;
+                this.handleDeleteCategory(categoryId);
+            });
+        });
 
         // Close on overlay click
         overlay.addEventListener('click', (e) => {
@@ -915,6 +1212,34 @@ class FinSiteCategories extends HTMLElement {
                     margin-top: 0.25rem;
                 }
 
+                .header-actions {
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                }
+
+                .btn-create-category {
+                    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                    color: white;
+                    border: none;
+                    padding: 0.625rem 1.25rem;
+                    border-radius: 0.5rem;
+                    font-size: 0.875rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+                }
+
+                .btn-create-category:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+                }
+
+                .btn-create-category:active {
+                    transform: translateY(0);
+                }
+
                 .loading-indicator {
                     color: var(--text-secondary, #94a3b8);
                     font-size: 0.875rem;
@@ -977,7 +1302,9 @@ class FinSiteCategories extends HTMLElement {
                 }
 
                 /* Modal Styles */
-                .modal-overlay {
+                .modal-overlay,
+                .add-group-modal-overlay,
+                .add-category-modal-overlay {
                     position: fixed;
                     top: 0;
                     left: 0;
@@ -991,7 +1318,9 @@ class FinSiteCategories extends HTMLElement {
                     backdrop-filter: blur(4px);
                 }
 
-                .modal-overlay.hidden {
+                .modal-overlay.hidden,
+                .add-group-modal-overlay.hidden,
+                .add-category-modal-overlay.hidden {
                     display: none;
                 }
 
@@ -1238,6 +1567,28 @@ class FinSiteCategories extends HTMLElement {
                     color: var(--text-primary, #f1f5f9);
                 }
 
+                .cat-delete-btn {
+                    background: none;
+                    border: none;
+                    padding: 0.25rem 0.5rem;
+                    cursor: pointer;
+                    font-size: 1rem;
+                    opacity: 0.6;
+                    transition: opacity 0.15s ease, transform 0.15s ease;
+                    color: #ef4444;
+                }
+
+                .cat-delete-btn:hover {
+                    opacity: 1;
+                    transform: scale(1.1);
+                }
+
+                .cat-delete-spacer {
+                    display: inline-block;
+                    width: 2.25rem;
+                    height: 1.5rem;
+                }
+
                 .transactions-list {
                     display: flex;
                     flex-direction: column;
@@ -1323,7 +1674,9 @@ class FinSiteCategories extends HTMLElement {
                     display: none;
                 }
 
-                .add-group-modal {
+                .add-group-modal,
+                .add-category-modal,
+                .group-detail-modal {
                     max-width: 520px;
                 }
 
@@ -1345,7 +1698,8 @@ class FinSiteCategories extends HTMLElement {
                     margin-bottom: 0.5rem;
                 }
 
-                .form-input {
+                .form-input,
+                .form-select {
                     width: 100%;
                     padding: 0.75rem 1rem;
                     background: var(--bg-primary);
@@ -1356,13 +1710,18 @@ class FinSiteCategories extends HTMLElement {
                     transition: border-color 0.2s ease;
                 }
 
-                .form-input:focus {
+                .form-input:focus,
+                .form-select:focus {
                     outline: none;
                     border-color: #3b82f6;
                 }
 
                 .form-input::placeholder {
                     color: #64748b;
+                }
+
+                .form-select {
+                    cursor: pointer;
                 }
 
                 .icon-picker {
@@ -1401,7 +1760,8 @@ class FinSiteCategories extends HTMLElement {
                     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
                 }
 
-                .categories-selection {
+                .categories-selection,
+                .groups-selection {
                     max-height: 200px;
                     overflow-y: auto;
                     background: var(--bg-primary);
@@ -1464,64 +1824,40 @@ class FinSiteCategories extends HTMLElement {
                     color: var(--text-primary);
                 }
 
-                .checkbox-amount {
-                    font-size: 0.75rem;
-                    color: #64748b;
-                }
-
-                .new-subcategories-list {
+                /* Group radio buttons and checkboxes in category modal */
+                .groups-selection .radio-label,
+                .groups-selection .checkbox-label {
                     display: flex;
-                    flex-direction: column;
-                    gap: 0.5rem;
-                    margin-bottom: 0.75rem;
-                }
-
-                .new-subcategory-row {
-                    display: flex;
-                    gap: 0.5rem;
                     align-items: center;
-                }
-
-                .new-subcategory-row .form-input {
-                    flex: 1;
-                }
-
-                .remove-subcategory-btn {
-                    width: 2rem;
-                    height: 2rem;
+                    gap: 0.5rem;
+                    padding: 0.5rem;
                     border-radius: 0.375rem;
-                    background: rgba(239, 68, 68, 0.15);
-                    border: none;
-                    color: #ef4444;
                     cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 0.875rem;
                     transition: background 0.15s ease;
                 }
 
-                .remove-subcategory-btn:hover {
-                    background: rgba(239, 68, 68, 0.25);
+                .groups-selection .radio-label:hover,
+                .groups-selection .checkbox-label:hover {
+                    background: rgba(59, 130, 246, 0.1);
                 }
 
-                .add-subcategory-btn {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                    padding: 0.5rem 0.75rem;
-                    background: rgba(59, 130, 246, 0.15);
-                    border: 1px dashed #3b82f6;
-                    border-radius: 0.5rem;
-                    color: #3b82f6;
-                    font-size: 0.8rem;
-                    font-weight: 500;
+                .groups-selection .primary-group-radio,
+                .groups-selection .group-checkbox {
+                    width: 1rem;
+                    height: 1rem;
+                    accent-color: #3b82f6;
                     cursor: pointer;
-                    transition: all 0.15s ease;
                 }
 
-                .add-subcategory-btn:hover {
-                    background: rgba(59, 130, 246, 0.25);
+                .groups-selection .radio-text,
+                .groups-selection .checkbox-text {
+                    font-size: 0.875rem;
+                    color: var(--text-primary);
+                }
+
+                .checkbox-amount {
+                    font-size: 0.75rem;
+                    color: #64748b;
                 }
 
                 .btn-icon {
@@ -1612,7 +1948,12 @@ class FinSiteCategories extends HTMLElement {
                         <h1 class="page-title">Categories</h1>
                         <p class="page-subtitle">View spending breakdown by group</p>
                     </div>
-                    ${loadingIndicator}
+                    <div class="header-actions">
+                        <button class="btn-create-category" id="btn-create-category">
+                            Create a new category
+                        </button>
+                        ${loadingIndicator}
+                    </div>
                 </div>
 
                 <div class="charts-grid">
@@ -1629,6 +1970,9 @@ class FinSiteCategories extends HTMLElement {
 
             <!-- Modal for adding new group -->
             <div class="add-group-modal-overlay hidden" id="add-group-modal-overlay"></div>
+
+            <!-- Modal for adding new category -->
+            <div class="add-category-modal-overlay hidden" id="add-category-modal-overlay"></div>
         `;
     }
 
@@ -1660,6 +2004,15 @@ class FinSiteCategories extends HTMLElement {
             addGroupBtn.addEventListener('click', () => {
                 log('➕ Add new group clicked');
                 this.openAddGroupModal();
+            });
+        }
+
+        // Add category button - rebind after each render (element is recreated)
+        const addCategoryBtn = this.shadowRoot.querySelector('#btn-create-category');
+        if (addCategoryBtn) {
+            addCategoryBtn.addEventListener('click', () => {
+                log('➕ Create category clicked');
+                this.openAddCategoryModal();
             });
         }
     }

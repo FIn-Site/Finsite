@@ -7,6 +7,7 @@
 import {
     getAllTransactions,
     addTransaction,
+    updateTransaction,
     deleteTransactions,
     clearAllTransactions,
     getAllGroups,
@@ -15,6 +16,7 @@ import {
     getAllCategories,
     addCategory,
     updateCategoriesBatch,
+    deleteCategory,
 } from '../storage/storageService.js';
 import { seedDatabase } from './seedDatabase.js';
 import {
@@ -492,6 +494,78 @@ export class FinSiteModel {
     }
 
     /**
+     * Update an existing transaction
+     * @param {Object} input - Transaction data with id
+     * @returns {Promise<Transaction>} Updated transaction
+     * @throws {Error} If transaction not found or update fails
+     */
+    async updateTransaction(input) {
+        if (!input.id) {
+            throw new Error('Transaction ID is required for update');
+        }
+
+        // Find the old transaction to calculate delta
+        const oldTxIndex = this.data.transactions.findIndex(tx => tx.id === input.id);
+        if (oldTxIndex === -1) {
+            throw new Error(`Transaction with ID ${input.id} not found`);
+        }
+        const oldTx = this.data.transactions[oldTxIndex];
+
+        // Validate and normalize the updated data
+        const updatedTx = this._validateTransaction(input);
+        updatedTx.id = input.id; // Preserve ID
+
+        try {
+            // Persist to IndexedDB
+            const saved = await updateTransaction(updatedTx);
+
+            // Update in-memory list
+            this.data.transactions[oldTxIndex] = saved;
+
+            // OPTIMIZATION A: Apply delta (remove old, add new)
+            this._applyTransactionDelta(oldTx, -1);
+            this._applyTransactionDelta(saved, 1);
+
+            log('Transaction updated:', saved);
+            return saved;
+        } catch (error) {
+            console.error('Error updating transaction in FinSiteModel:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Delete a transaction by ID
+     * @param {number} transactionId - ID of transaction to delete
+     * @returns {Promise<void>}
+     * @throws {Error} If transaction not found or deletion fails
+     */
+    async deleteTransaction(transactionId) {
+        // Find the transaction to calculate delta
+        const txIndex = this.data.transactions.findIndex(tx => tx.id === transactionId);
+        if (txIndex === -1) {
+            throw new Error(`Transaction with ID ${transactionId} not found`);
+        }
+        const tx = this.data.transactions[txIndex];
+
+        try {
+            // Persist to IndexedDB
+            await deleteTransactions([transactionId]);
+
+            // Remove from in-memory list
+            this.data.transactions.splice(txIndex, 1);
+
+            // OPTIMIZATION A: Apply delta (remove transaction)
+            this._applyTransactionDelta(tx, -1);
+
+            log('Transaction deleted:', transactionId);
+        } catch (error) {
+            console.error('Error deleting transaction in FinSiteModel:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Add multiple transactions in bulk (e.g., CSV import)
      * OPTIMIZATION A: Single pass through new items, one rebuild at end
      * @param {Array} transactions - Array of transaction objects
@@ -783,6 +857,58 @@ export class FinSiteModel {
             log(`Group '${groupId}' deleted, ${categoriesToUpdate.length} categories reassigned, aggregates rebuilt`);
         } catch (error) {
             console.error(`Error deleting group '${groupId}':`, error);
+            throw error;
+        }
+
+        return this.getData();
+    }
+
+    /**
+     * Delete a category by ID.
+     * Updates transactions using this category to use 'uncategorized'.
+     * @param {string} categoryId - The category ID to delete
+     */
+    async deleteCategory(categoryId) {
+        if (!categoryId) return this.getData();
+
+        // Cannot delete system categories
+        if (categoryId === 'uncategorized') {
+            log('Cannot delete system category: uncategorized');
+            return this.getData();
+        }
+
+        const category = this.data.categories.find((c) => c.id === categoryId);
+        if (!category) {
+            log(`Category ${categoryId} not found`);
+            return this.getData();
+        }
+
+        // Find transactions using this category and update them to 'uncategorized'
+        const transactionsToUpdate = this.data.transactions
+            .filter((tx) => tx.category === categoryId)
+            .map((tx) => ({ ...tx, category: 'uncategorized' }));
+
+        try {
+            // Update transactions in storage
+            for (const tx of transactionsToUpdate) {
+                await addTransaction(tx); // addTransaction uses put() for upsert
+            }
+
+            // Delete the category from storage
+            await deleteCategory(categoryId);
+
+            // Update in-memory state
+            this.data.categories = this.data.categories.filter((c) => c.id !== categoryId);
+            this.data.transactions = this.data.transactions.map((tx) =>
+                tx.category === categoryId ? { ...tx, category: 'uncategorized' } : tx
+            );
+
+            // Rebuild aggregates
+            this._rebuildAggregates();
+
+            log(`✅ Deleted category: ${categoryId}, updated ${transactionsToUpdate.length} transactions`);
+        } catch (error) {
+            console.error('❌ Error deleting category:', error);
             throw error;
         }
 
