@@ -423,7 +423,7 @@ class FinSiteTransactions extends HTMLElement {
         const isSelected = this.selectedTransactions.has(tx.id);
 
         return `
-            <div class="transaction-row ${isSelected ? 'selected' : ''}" data-id="${tx.id}">
+            <div class="transaction-row ${isSelected ? 'selected' : ''}" data-id="${tx.id}" style="${this.isEditMultipleMode ? 'padding-left: 3.75rem;' : ''}">
                 ${this.isEditMultipleMode ? `<div class="row-checkbox"><input type="checkbox" class="tx-checkbox" data-id="${tx.id}" ${isSelected ? 'checked' : ''}></div>` : ''}
                 <div class="row-icon ${isExpense ? 'expense' : 'income'}">${catIcon}</div>
                 <div class="row-merchant"><span class="merchant-name">${this.escapeHtml(merchant)}</span></div>
@@ -620,11 +620,11 @@ class FinSiteTransactions extends HTMLElement {
             .date-group { border-bottom: 1px solid var(--border-color, #334155); }
             .date-group:last-child { border-bottom: none; }
             .date-header { padding: 0.75rem 1.25rem; background: var(--bg-secondary, #0f172a); font-size: 0.8125rem; font-weight: 600; color: var(--text-muted, #64748b); border-bottom: 1px solid var(--border-color, #334155); }
-            .transaction-row { display: grid; grid-template-columns: auto 1fr auto auto auto auto; align-items: center; gap: 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-light, #0f172a); cursor: pointer; transition: background 0.15s ease; }
+            .transaction-row { position: relative; display: grid; grid-template-columns: auto 1fr auto auto auto auto; align-items: center; gap: 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-light, #0f172a); cursor: pointer; transition: background 0.15s ease, padding 0.2s ease; }
             .transaction-row:last-child { border-bottom: none; }
             .transaction-row:hover { background: var(--bg-card-hover, #334155); }
             .transaction-row.selected { background: rgba(249, 115, 22, 0.1); }
-            .row-checkbox { display: flex; align-items: center; }
+            .row-checkbox { position: absolute; left: 1.25rem; display: flex; align-items: center; }
             .tx-checkbox { width: 1rem; height: 1rem; cursor: pointer; accent-color: var(--accent-primary, #f97316); }
             .row-icon { width: 2.5rem; height: 2.5rem; border-radius: 0.625rem; display: flex; align-items: center; justify-content: center; font-size: 1.125rem; background: var(--icon-bg, #f5f5f5); }
             .row-merchant { min-width: 0; }
