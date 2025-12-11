@@ -49,10 +49,10 @@ class FinSiteTransactions extends HTMLElement {
         // UI state
         this.sortOrder = 'newest'; // newest, oldest, amount-high, amount-low
         this.isSearchActive = false;
+        this.isSortPanelOpen = false;
         this.isDatePickerOpen = false;
         this.isFilterPanelOpen = false;
         this.isModalOpen = false;
-        this.isEditMultipleMode = false;
         this.selectedTransactions = new Set();
 
         // Available groups and categories for filters
@@ -231,14 +231,12 @@ class FinSiteTransactions extends HTMLElement {
     }
 
     /**
-     * Update only the transaction list and filter badge without full re-render
+     * Update only the transaction list without full re-render
      * Used for search to preserve input focus and cursor position
      */
     _updateTransactionList() {
         const root = this.shadowRoot;
         const container = root.querySelector('.transaction-list-container');
-        const badge = root.querySelector('.filter-badge');
-        const filterBarLeft = root.querySelector('.filter-bar-left');
 
         if (!container) return;
 
@@ -251,22 +249,6 @@ class FinSiteTransactions extends HTMLElement {
             container.innerHTML = this.renderEmptyState(hasFilters);
         } else {
             container.innerHTML = this.renderTransactionList(grouped);
-        }
-
-        // Update filter badge
-        if (hasFilters && filterBarLeft) {
-            const existingBadge = filterBarLeft.querySelector('.filter-badge');
-            if (existingBadge) {
-                existingBadge.textContent = `${filtered.length} of ${this.transactions.length}`;
-            } else {
-                const badgeEl = document.createElement('span');
-                badgeEl.className = 'filter-badge';
-                badgeEl.textContent = `${filtered.length} of ${this.transactions.length}`;
-                filterBarLeft.appendChild(badgeEl);
-            }
-        } else if (!hasFilters && filterBarLeft) {
-            const existingBadge = filterBarLeft.querySelector('.filter-badge');
-            if (existingBadge) existingBadge.remove();
         }
 
         // Re-attach transaction row listeners
@@ -282,21 +264,8 @@ class FinSiteTransactions extends HTMLElement {
         // Transaction row clicks
         root.querySelectorAll('.transaction-row').forEach((row) => {
             row.addEventListener('click', (e) => {
-                if (e.target.closest('.tx-checkbox')) return;
                 const id = Number(row.dataset.id);
-                if (this.isEditMultipleMode) {
-                    this._toggleTransactionSelection(id);
-                } else {
-                    this.openTransactionModal(id);
-                }
-            });
-        });
-
-        // Checkboxes in edit multiple mode
-        root.querySelectorAll('.tx-checkbox').forEach((cb) => {
-            cb.addEventListener('change', (e) => {
-                const id = Number(e.target.dataset.id);
-                this._toggleTransactionSelection(id);
+                this.openTransactionModal(id);
             });
         });
     }
@@ -351,11 +320,14 @@ class FinSiteTransactions extends HTMLElement {
                             <button class="action-btn ${this.isSearchActive ? 'active' : ''}" id="search-btn">
                                 <span class="btn-icon">🔍</span><span class="btn-label">Search</span>
                             </button>
+                            <button class="action-btn" id="sort-btn">
+                                <span class="btn-icon">⇅</span><span class="btn-label">Sort By</span>
+                            </button>
                             <button class="action-btn ${this.filters.dateRange ? 'active' : ''}" id="date-btn">
                                 <span class="btn-icon">📅</span><span class="btn-label">Date</span>
                             </button>
                             <button class="action-btn ${this.filters.groups.length || this.filters.categories.length ? 'active' : ''}" id="filter-btn">
-                                <span class="btn-icon">⚙️</span><span class="btn-label">Filters</span>
+                                <span class="btn-icon">⚙️</span><span class="btn-label">Filter</span>
                             </button>
                             <button class="add-btn" id="add-transaction-btn" data-testid="btn-add-transaction">
                                 <span class="add-icon">+</span><span>Add Transaction</span>
@@ -363,24 +335,10 @@ class FinSiteTransactions extends HTMLElement {
                         </div>
                     </div>
                     ${this.isSearchActive ? this.renderSearchBar() : ''}
+                    ${this.isSortPanelOpen ? this.renderSortPanel() : ''}
                     ${this.isDatePickerOpen ? this.renderDatePicker() : ''}
                     ${this.isFilterPanelOpen ? this.renderFilterPanel() : ''}
                 </header>
-
-                <div class="filter-bar">
-                    <div class="filter-bar-left">
-                        ${hasFilters ? `<span class="filter-badge">${filtered.length} of ${this.transactions.length}</span>` : ''}
-                    </div>
-                    <div class="filter-bar-right">
-                        <button class="control-btn ${this.isEditMultipleMode ? 'active' : ''}" id="edit-multiple-btn">Edit multiple</button>
-                        <select class="sort-select" id="sort-select">
-                            <option value="newest" ${this.sortOrder === 'newest' ? 'selected' : ''}>Newest first</option>
-                            <option value="oldest" ${this.sortOrder === 'oldest' ? 'selected' : ''}>Oldest first</option>
-                            <option value="amount-high" ${this.sortOrder === 'amount-high' ? 'selected' : ''}>Amount (high)</option>
-                            <option value="amount-low" ${this.sortOrder === 'amount-low' ? 'selected' : ''}>Amount (low)</option>
-                        </select>
-                    </div>
-                </div>
 
                 <div class="transaction-list-container" data-testid="transaction-list">
                     ${filtered.length === 0 ? this.renderEmptyState(hasFilters) : this.renderTransactionList(grouped)}
@@ -423,8 +381,7 @@ class FinSiteTransactions extends HTMLElement {
         const isSelected = this.selectedTransactions.has(tx.id);
 
         return `
-            <div class="transaction-row ${isSelected ? 'selected' : ''}" data-id="${tx.id}" style="${this.isEditMultipleMode ? 'padding-left: 3.75rem;' : ''}">
-                ${this.isEditMultipleMode ? `<div class="row-checkbox"><input type="checkbox" class="tx-checkbox" data-id="${tx.id}" ${isSelected ? 'checked' : ''}></div>` : ''}
+            <div class="transaction-row" data-id="${tx.id}">
                 <div class="row-icon ${isExpense ? 'expense' : 'income'}">${catIcon}</div>
                 <div class="row-merchant"><span class="merchant-name">${this.escapeHtml(merchant)}</span></div>
                 <div class="row-category"><span class="category-icon">${catIcon}</span><span class="category-name">${this.escapeHtml(tx.category || 'Uncategorized')}</span></div>
@@ -450,6 +407,32 @@ class FinSiteTransactions extends HTMLElement {
             <div class="empty-subtitle">Start tracking your spending by adding a transaction</div>
             <button class="add-btn" id="empty-add-btn"><span class="add-icon">+</span><span>Add Transaction</span></button>
         </div>`;
+    }
+
+    renderSortPanel() {
+        return `
+            <div class="panel sort-panel">
+                <div class="panel-header"><span class="panel-title">Sort By</span><button class="panel-close" id="sort-close-btn">✕</button></div>
+                <div class="sort-options">
+                    <button class="sort-option ${this.sortOrder === 'newest' ? 'active' : ''}" data-sort="newest">
+                        <span class="sort-icon">⬇️</span>
+                        <span class="sort-label">Newest first</span>
+                    </button>
+                    <button class="sort-option ${this.sortOrder === 'oldest' ? 'active' : ''}" data-sort="oldest">
+                        <span class="sort-icon">⬆️</span>
+                        <span class="sort-label">Oldest first</span>
+                    </button>
+                    <button class="sort-option ${this.sortOrder === 'amount-high' ? 'active' : ''}" data-sort="amount-high">
+                        <span class="sort-icon">💵</span>
+                        <span class="sort-label">Amount (high)</span>
+                    </button>
+                    <button class="sort-option ${this.sortOrder === 'amount-low' ? 'active' : ''}" data-sort="amount-low">
+                        <span class="sort-icon">💳</span>
+                        <span class="sort-label">Amount (low)</span>
+                    </button>
+                </div>
+            </div>
+        `;
     }
 
     renderDatePicker() {
@@ -598,21 +581,18 @@ class FinSiteTransactions extends HTMLElement {
             .option-icon { font-size: 0.875rem; }
             .option-label { font-size: 0.8125rem; color: var(--text-secondary, #94a3b8); }
             .filter-option:has(input:checked) .option-label { color: var(--accent-primary, #f97316); }
+            .sort-options { display: flex; flex-direction: column; gap: 0.5rem; }
+            .sort-option { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; background: var(--bg-primary, #0f172a); border: 1px solid var(--border-color, #334155); border-radius: 0.5rem; cursor: pointer; transition: all 0.15s ease; width: 100%; text-align: left; }
+            .sort-option:hover { background: var(--bg-tertiary, #334155); border-color: var(--accent-primary, #f97316); }
+            .sort-option.active { background: rgba(249, 115, 22, 0.15); border-color: var(--accent-primary, #f97316); }
+            .sort-icon { font-size: 1rem; }
+            .sort-label { font-size: 0.875rem; color: var(--text-secondary, #94a3b8); }
+            .sort-option.active .sort-label { color: var(--accent-primary, #f97316); }
             .panel-actions { display: flex; justify-content: flex-end; gap: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color, #334155); }
             .btn-secondary { padding: 0.5rem 1rem; background: var(--bg-card, #1e293b); border: 1px solid var(--border-color, #334155); border-radius: 0.5rem; color: var(--text-secondary, #94a3b8); font-size: 0.875rem; cursor: pointer; }
             .btn-secondary:hover { background: var(--bg-tertiary, #334155); color: var(--text-primary, #f1f5f9); }
             .btn-primary { padding: 0.5rem 1rem; background: var(--accent-primary, #f97316); border: none; border-radius: 0.5rem; color: #ffffff; font-size: 0.875rem; font-weight: 500; cursor: pointer; }
             .btn-primary:hover { background: var(--accent-primary-hover, #fb923c); }
-
-            /* Filter Bar */
-            .filter-bar { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 2rem; background: var(--bg-primary, #0f172a); border-bottom: 1px solid var(--border-color, #334155); transition: background 0.3s ease; }
-            .filter-bar-left { display: flex; align-items: center; gap: 1rem; }
-            .sort-select { padding: 0.5rem 2rem 0.5rem 0.75rem; background: var(--bg-card, #1e293b); border: 1px solid var(--border-color, #334155); border-radius: 9999px; color: var(--text-primary, #f1f5f9); font-size: 0.875rem; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.75rem center; }
-            .filter-badge { font-size: 0.75rem; color: var(--text-secondary, #94a3b8); background: var(--bg-card, #1e293b); padding: 0.25rem 0.5rem; border-radius: 9999px; }
-            .filter-bar-right { display: flex; align-items: center; gap: 0.75rem; }
-            .control-btn { padding: 0.5rem 0.875rem; background: var(--bg-card, #1e293b); border: 1px solid var(--border-color, #334155); border-radius: 0.5rem; color: var(--text-secondary, #94a3b8); font-size: 0.8125rem; cursor: pointer; }
-            .control-btn:hover { background: var(--bg-tertiary, #334155); color: var(--text-primary, #f1f5f9); }
-            .control-btn.active { background: var(--bg-card, #1e293b); border-color: var(--accent-primary, #f97316); color: var(--accent-primary, #f97316); }
 
             /* Transaction List */
             .transaction-list-container { flex: 1; overflow-y: auto; padding: 1rem 2rem 2rem; }
@@ -623,9 +603,6 @@ class FinSiteTransactions extends HTMLElement {
             .transaction-row { position: relative; display: grid; grid-template-columns: auto 1fr auto auto auto auto; align-items: center; gap: 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-light, #0f172a); cursor: pointer; transition: background 0.15s ease, padding 0.2s ease; }
             .transaction-row:last-child { border-bottom: none; }
             .transaction-row:hover { background: var(--bg-card-hover, #334155); }
-            .transaction-row.selected { background: rgba(249, 115, 22, 0.1); }
-            .row-checkbox { position: absolute; left: 1.25rem; display: flex; align-items: center; }
-            .tx-checkbox { width: 1rem; height: 1rem; cursor: pointer; accent-color: var(--accent-primary, #f97316); }
             .row-icon { width: 2.5rem; height: 2.5rem; border-radius: 0.625rem; display: flex; align-items: center; justify-content: center; font-size: 1.125rem; background: var(--icon-bg, #f5f5f5); }
             .row-merchant { min-width: 0; }
             .merchant-name { font-size: 0.9375rem; font-weight: 500; color: var(--text-primary, #f1f5f9); }
@@ -712,10 +689,38 @@ class FinSiteTransactions extends HTMLElement {
         // Search button toggle
         root.querySelector('#search-btn')?.addEventListener('click', () => {
             this.isSearchActive = !this.isSearchActive;
+            this.isSortPanelOpen = false;
             this.isDatePickerOpen = false;
             this.isFilterPanelOpen = false;
             this.render();
             this.setupEventListeners();
+        });
+
+        // Sort button toggle
+        root.querySelector('#sort-btn')?.addEventListener('click', () => {
+            this.isSortPanelOpen = !this.isSortPanelOpen;
+            this.isSearchActive = false;
+            this.isDatePickerOpen = false;
+            this.isFilterPanelOpen = false;
+            this.render();
+            this.setupEventListeners();
+        });
+
+        // Sort panel close
+        root.querySelector('#sort-close-btn')?.addEventListener('click', () => {
+            this.isSortPanelOpen = false;
+            this.render();
+            this.setupEventListeners();
+        });
+
+        // Sort option clicks
+        root.querySelectorAll('.sort-option').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                this.sortOrder = btn.dataset.sort;
+                this.isSortPanelOpen = false;
+                this.render();
+                this.setupEventListeners();
+            });
         });
 
         // Search input - updates immediately while preserving cursor position
@@ -739,6 +744,7 @@ class FinSiteTransactions extends HTMLElement {
         root.querySelector('#date-btn')?.addEventListener('click', () => {
             this.isDatePickerOpen = !this.isDatePickerOpen;
             this.isSearchActive = false;
+            this.isSortPanelOpen = false;
             this.isFilterPanelOpen = false;
             this.render();
             this.setupEventListeners();
@@ -816,6 +822,7 @@ class FinSiteTransactions extends HTMLElement {
         root.querySelector('#filter-btn')?.addEventListener('click', () => {
             this.isFilterPanelOpen = !this.isFilterPanelOpen;
             this.isSearchActive = false;
+            this.isSortPanelOpen = false;
             this.isDatePickerOpen = false;
             this.render();
             this.setupEventListeners();
@@ -840,21 +847,6 @@ class FinSiteTransactions extends HTMLElement {
             this.filters.groups = Array.from(root.querySelectorAll('.group-checkbox:checked')).map((cb) => cb.value);
             this.filters.categories = Array.from(root.querySelectorAll('.category-checkbox:checked')).map((cb) => cb.value);
             this.isFilterPanelOpen = false;
-            this.render();
-            this.setupEventListeners();
-        });
-
-        // Sort dropdown
-        root.querySelector('#sort-select')?.addEventListener('change', (e) => {
-            this.sortOrder = e.target.value;
-            this.render();
-            this.setupEventListeners();
-        });
-
-        // Edit multiple toggle
-        root.querySelector('#edit-multiple-btn')?.addEventListener('click', () => {
-            this.isEditMultipleMode = !this.isEditMultipleMode;
-            if (!this.isEditMultipleMode) this.selectedTransactions.clear();
             this.render();
             this.setupEventListeners();
         });
