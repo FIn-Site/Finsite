@@ -1037,16 +1037,21 @@ class FinSiteCategories extends HTMLElement {
         const isCustomGroup = group?.isCustom === true;
 
         const transactionsHtml = this.selectedTransactions.length > 0
-            ? this.selectedTransactions.map((tx) => `
+            ? this.selectedTransactions.map((tx) => {
+                // Find the category to get its custom icon if it exists
+                const category = this.categories.find((c) => c.id === tx.category);
+                const categoryIcon = category?.icon || getCategoryIcon(tx.category);
+                
+                return `
                 <div class="transaction-row">
-                    <div class="tx-icon">${getCategoryIcon(tx.category)}</div>
+                    <div class="tx-icon">${categoryIcon}</div>
                     <div class="tx-details">
                         <div class="tx-merchant">${tx.merchant}</div>
                         <div class="tx-meta">${this._formatDate(tx.date)} · ${tx.category}</div>
                     </div>
                     <div class="tx-amount">${this._formatCurrency(tx.amount)}</div>
                 </div>
-            `).join('')
+            `}).join('')
             : '<div class="no-transactions">No transactions found</div>';
 
         const categoryBreakdownHtml = this.selectedCategories.map((cat) => {
@@ -1950,7 +1955,7 @@ class FinSiteCategories extends HTMLElement {
                     </div>
                     <div class="header-actions">
                         <button class="btn-create-category" id="btn-create-category">
-                            Create a new category
+                            Create a New Category
                         </button>
                         ${loadingIndicator}
                     </div>
