@@ -9,5 +9,6 @@
   "editor.suggest.showWords": false,
   "editor.quickSuggestions": {
     "comments": true
-  }
+  },
+  "liveServer.settings.port": 5501
 }

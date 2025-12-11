@@ -135,8 +135,40 @@ class SidebarComponent extends HTMLElement {
                 .theme-toggle {
                     display: flex;
                     align-items: center;
+                    justify-content: center;
                     gap: 6px;
+                    padding: 0.5rem;
+                    margin-bottom: 0.5rem;
+                    border-radius: 0.5rem;
+                    background: var(--bg-tertiary, #1e293b);
                 }
+                
+                :host(.collapsed) .theme-toggle {
+                    flex-direction: column;
+                    gap: 4px;
+                    padding: 0.5rem 0.25rem;
+                }
+                
+                :host(.collapsed) .theme-icon {
+                    font-size: 12px;
+                }
+                
+                :host(.collapsed) .toggle-switch {
+                    width: 32px;
+                    height: 18px;
+                }
+                
+                :host(.collapsed) .toggle-switch::after {
+                    width: 14px;
+                    height: 14px;
+                    top: 2px;
+                    left: 2px;
+                }
+                
+                :host(.collapsed) .toggle-switch.dark::after {
+                    transform: translateX(14px);
+                }
+                                
 
                 .theme-icon {
                     font-size: 14px;
@@ -376,6 +408,57 @@ class SidebarComponent extends HTMLElement {
                         opacity: 1;
                         width: auto;
                     }
+                    .theme-toggle {
+                        flex-direction: column;
+                        gap: 4px;
+                        padding: 0.5rem 0.25rem;
+                    }
+
+                    .theme-icon {
+                        font-size: 12px;
+                    }
+
+                    .toggle-switch {
+                        width: 32px;
+                        height: 18px;
+                    }
+
+                    .toggle-switch::after {
+                        width: 14px;
+                        height: 14px;
+                        top: 2px;
+                        left: 2px;
+                    }
+
+                    .toggle-switch.dark::after {
+                        transform: translateX(14px);
+                    }
+
+                    :host(.expanded-mobile) .theme-toggle {
+                        flex-direction: row;
+                        gap: 6px;
+                        padding: 0.5rem;
+                    }
+
+                    :host(.expanded-mobile) .theme-icon {
+                        font-size: 14px;
+                    }
+
+                    :host(.expanded-mobile) .toggle-switch {
+                        width: 44px;
+                        height: 24px;
+                    }
+
+                    :host(.expanded-mobile) .toggle-switch::after {
+                        width: 18px;
+                        height: 18px;
+                        top: 3px;
+                        left: 3px;
+                    }
+
+                    :host(.expanded-mobile) .toggle-switch.dark::after {
+                        transform: translateX(20px);
+                    }
                 }
             </style>
 
@@ -383,13 +466,6 @@ class SidebarComponent extends HTMLElement {
                 <div class="logo-section">
                     <div class="logo-icon">💰</div>
                     <span class="logo-text">FinSite</span>
-                </div>
-                <div class="header-icons">
-                    <div class="theme-toggle">
-                        <span class="theme-icon" id="light-icon">☀️</span>
-                        <button class="toggle-switch dark" id="theme-toggle" aria-label="Toggle dark/light mode"></button>
-                        <span class="theme-icon inactive" id="dark-icon">🌙</span>
-                    </div>
                 </div>
             </div>
 
@@ -410,10 +486,15 @@ class SidebarComponent extends HTMLElement {
             </nav>
 
             <div class="sidebar-footer">
-                <button class="collapse-btn" id="collapse-btn">
-                    <span class="collapse-icon">◀</span>
-                    <span class="collapse-text">Collapse</span>
-                </button>
+              <div class="theme-toggle">
+                <span class="theme-icon" id="light-icon">☀️</span>
+                <button class="toggle-switch dark" id="theme-toggle" aria-label="Toggle dark/light mode"></button>
+                <span class="theme-icon inactive" id="dark-icon">🌙</span>
+              </div>
+              <button class="collapse-btn" id="collapse-btn">
+                <span class="collapse-icon">◀</span>
+                <span class="collapse-text">Collapse</span>
+              </button>
             </div>
         `;
     }
