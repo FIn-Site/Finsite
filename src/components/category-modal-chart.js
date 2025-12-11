@@ -35,10 +35,10 @@ class FinSiteCategoryModalChart extends HTMLElement {
                 }
 
                 .chart-wrapper {
-                    background: #0f172a;
+                    background: var(--bg-card, #1e293b);
                     border-radius: 0.75rem;
                     padding: 0.75rem;
-                    border: 1px solid #1f2937;
+                    border: 1px solid var(--border-color, #334155);
                     min-height: 220px;
                 }
 
