@@ -128,6 +128,26 @@ export class FinSiteView {
             }
         });
 
+        // Set up update-transaction listener (bubbles from finsite-transactions component)
+        this.container.addEventListener('update-transaction', (event) => {
+            const transactionData = event.detail;
+            log('✏️ Update transaction event received:', transactionData);
+
+            if (this.handlers && typeof this.handlers.onUpdateTransaction === 'function') {
+                this.handlers.onUpdateTransaction(transactionData);
+            }
+        });
+
+        // Set up delete-transaction listener (bubbles from finsite-transactions component)
+        this.container.addEventListener('delete-transaction', (event) => {
+            const { id } = event.detail;
+            log('🗑️ Delete transaction event received:', id);
+
+            if (this.handlers && typeof this.handlers.onDeleteTransaction === 'function') {
+                this.handlers.onDeleteTransaction(id);
+            }
+        });
+
         // Set up open-manual-entry listener for analytics/logging
         this.container.addEventListener('open-manual-entry', (event) => {
             log('📊 Manual entry modal opened from:', event.detail.source);
@@ -387,6 +407,32 @@ export class FinSiteView {
             this.transactionsEl.onTransactionAdded(savedTransaction);
         }
         log('✅ Transaction added notification sent to component');
+    }
+
+    /**
+     * Notify the transactions component that a transaction was successfully updated.
+     * Routes controller feedback through view interface to avoid direct DOM coupling.
+     *
+     * @param {Object} updatedTransaction - The updated transaction with ID
+     */
+    onTransactionUpdated(updatedTransaction) {
+        if (this.transactionsEl && typeof this.transactionsEl.onTransactionUpdated === 'function') {
+            this.transactionsEl.onTransactionUpdated(updatedTransaction);
+        }
+        log('✅ Transaction updated notification sent to component');
+    }
+
+    /**
+     * Notify the transactions component that a transaction was successfully deleted.
+     * Routes controller feedback through view interface to avoid direct DOM coupling.
+     *
+     * @param {number} transactionId - The ID of the deleted transaction
+     */
+    onTransactionDeleted(transactionId) {
+        if (this.transactionsEl && typeof this.transactionsEl.onTransactionDeleted === 'function') {
+            this.transactionsEl.onTransactionDeleted(transactionId);
+        }
+        log('✅ Transaction deleted notification sent to component');
     }
 
     /**

@@ -313,6 +313,11 @@ class FinSiteCategoryChart extends HTMLElement {
                     background: rgba(239, 68, 68, 0.2);
                     transform: scale(1.1);
                 }
+
+                .delete-spacer {
+                    width: 1.5rem;
+                    height: 1.5rem;
+                }
             </style>
 
             <div class="chart-card" data-group-id="${this.groupId}" data-group-name="${this.groupName}" data-is-custom="${this.isCustom}">
@@ -323,7 +328,7 @@ class FinSiteCategoryChart extends HTMLElement {
                     </div>
                     <div class="header-actions">
                         <span class="total-amount">${this._formatCurrency(this.totalSpent)}</span>
-                        ${this.isCustom ? `<button class="delete-btn" data-action="delete-group" title="Delete custom group">🗑️</button>` : ''}
+                        ${this.isCustom ? `<button class="delete-btn" data-action="delete-group" title="Delete custom group">🗑️</button>` : '<div class="delete-spacer"></div>'}
                     </div>
                 </div>
                 <div class="chart-area">
