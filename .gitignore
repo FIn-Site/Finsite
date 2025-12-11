@@ -14,3 +14,10 @@ yarn-debug.log*
 yarn-error.log*
 coverage/
 .vitest/
+
+# Generated documentation
+/docs/api/
+!docs/api/README.md
+
+# Build output
+/dist/
