@@ -11,7 +11,7 @@ import {
   addGroup,
   getAllCategories,
   addCategory
-} from '../src/storage/storageService.js';
+} from '../../src/storage/storageService.js';
 
 describe('Integration: storageService with IndexedDB (via fake-indexeddb)', () => {
 
