@@ -1144,32 +1144,18 @@ export class FinSiteModel {
      * Calculate spending for today
      * @returns {number} Total spending for today
      */
-    _calculateSpendingToday() {
-        const today = new Date();
-        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
-
-        return this.data.transactions
-            .filter((tx) => {
-                const txDate = new Date(tx.date);
-                return txDate >= todayStart && txDate <= todayEnd && tx.amount > 0;
-            })
-            .reduce((sum, tx) => sum + tx.amount, 0);
-    }
-
     /**
      * Calculate spending for today
      * @returns {number} Total spending for today
      */
     _calculateSpendingToday() {
         const today = new Date();
-        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+        const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
 
         return this.data.transactions
             .filter((tx) => {
-                const txDate = new Date(tx.date);
-                return txDate >= todayStart && txDate <= todayEnd && tx.amount > 0;
+                // tx.date is already in YYYY-MM-DD format
+                return tx.date === todayStr && tx.amount > 0;
             })
             .reduce((sum, tx) => sum + tx.amount, 0);
     }
@@ -1225,7 +1211,7 @@ export class FinSiteModel {
     }
 
     /**
-     * Count transactions in the last 7 days (rolling window)
+     * Count transactions in the current week (Sunday to Saturday)
      * @returns {number} Count of transactions this week
      */
     _countTransactionsThisWeek() {
@@ -1235,14 +1221,26 @@ export class FinSiteModel {
             return 0;
         }
 
-        const now = new Date();
-        const sevenDaysAgo = new Date(now);
-        sevenDaysAgo.setDate(now.getDate() - 7);
-        sevenDaysAgo.setHours(0, 0, 0, 0);
+        const today = new Date();
+        const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+        
+        // Calculate start of current week (most recent Sunday)
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - currentDay);
+        
+        // Calculate end of current week (next Sunday, exclusive)
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 7);
+        
+        // Convert to YYYY-MM-DD strings for comparison
+        const startStr = startOfWeek.toISOString().split('T')[0];
+        const endStr = endOfWeek.toISOString().split('T')[0];
 
-        return transactions.filter((tx) => {
-            const txDate = new Date(tx.date);
-            return txDate >= sevenDaysAgo && txDate <= now;
+        const count = transactions.filter((tx) => {
+            // tx.date is already in YYYY-MM-DD format
+            return tx.date >= startStr && tx.date < endStr;
         }).length;
+
+        return count;
     }
 }
