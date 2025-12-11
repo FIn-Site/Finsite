@@ -66,3 +66,29 @@ We will use the Model-View-Controller (MVC) architectural pattern to structure t
 **Related ADRs:**
 - ADR-04: Implement Web Components for UI Modularity (complements MVC by organizing View layer)
 - ADR-05: Use Vanilla JavaScript (influenced choice to manually implement MVC vs. framework)
+
+---
+
+## Implementation Details
+
+### Model Layer (`src/model/financeModel.js`)
+- Manages application state for transactions, categories, groups, and budgets
+- Implements **O(1) incremental aggregation** for dashboard performance
+- Data structures: `_timeBuckets` (monthly spending), `_groupTotals`, `_cachedMetrics`
+- Core operations: `addTransaction()`, `deleteTransactions()`, `addTransactionsBulk()`
+- Dashboard data: `getDashboardSummary()`, `getDashboardPanelSummary()`
+- Validation: `_validateTransaction()` ensures data integrity
+
+### View Layer (`src/view/financeView.js`)
+- Handles all DOM manipulation and rendering
+- Maintains persistent component shell with visibility toggle via `hidden` attribute
+- Caches component references for direct method calls (no repeated DOM queries)
+- Event delegation: Forwards user interactions to controller via custom events
+- Passive layer: Accepts data updates from controller, no business logic
+
+### Controller Layer (`src/controller/financeController.js`)
+- Coordinates between Model and View
+- Handles user interactions: navigation, transaction operations, bulk import
+- Optimizes dashboard updates: `isHeavyUpdate` flag for animation control
+- Error handling: `_handleError()` provides user feedback
+- State synchronization: `_syncModelToView()` centralizes refresh logic
