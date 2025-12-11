@@ -351,7 +351,10 @@ class FinSiteTransactions extends HTMLElement {
             <div class="transactions-page">
                 <header class="page-header">
                     <div class="header-content">
-                        <h1 class="page-title">Transactions</h1>
+                        <div class="header-title-section">
+                            <h1 class="page-title">Transactions</h1>
+                            <p class="page-subtitle">View and manage all transactions</p>
+                        </div>
                         <div class="header-actions">
                             ${hasFilters ? '<button class="action-link" id="clear-all-btn">Clear</button>' : ''}
                             <button class="action-btn ${this.isSearchActive ? 'active' : ''}" id="search-btn">
@@ -578,7 +581,9 @@ class FinSiteTransactions extends HTMLElement {
             /* Header */
             .page-header { position: sticky; top: 0; z-index: 100; background: var(--bg-primary, #0f172a); border-bottom: 1px solid var(--border-color, #334155); padding: 1.25rem 2rem 0; transition: background 0.3s ease, border-color 0.3s ease; }
             .header-content { display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; }
-            .page-title { font-size: 1.75rem; font-weight: 700; color: var(--text-primary, #f1f5f9); }
+            .header-title-section { display: flex; flex-direction: column; gap: 0.25rem; }
+            .page-title { font-size: 1.75rem; font-weight: 700; color: var(--text-primary, #f1f5f9); margin: 0; }
+            .page-subtitle { font-size: 0.875rem; color: var(--text-muted, #64748b); margin: 0; }
             .header-actions { display: flex; align-items: center; gap: 0.75rem; }
             .action-link { background: none; border: none; color: var(--accent-primary, #f97316); font-size: 0.875rem; font-weight: 500; cursor: pointer; padding: 0.5rem; }
             .action-link:hover { color: var(--accent-primary-hover, #fb923c); text-decoration: underline; }
