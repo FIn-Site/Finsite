@@ -163,9 +163,13 @@ class FinSiteTransactions extends HTMLElement {
         // Date range filter
         if (this.filters.dateRange) {
             const { start, end } = this.filters.dateRange;
+            // Convert filter dates to YYYY-MM-DD strings for comparison
+            const startStr = start.toISOString().split('T')[0];
+            const endStr = end.toISOString().split('T')[0];
+            
             filtered = filtered.filter((tx) => {
-                const txDate = new Date(tx.date);
-                return txDate >= start && txDate <= end;
+                // tx.date is already in YYYY-MM-DD format
+                return tx.date >= startStr && tx.date <= endStr;
             });
         }
 
