@@ -15,6 +15,7 @@ import {
     getAllCategories,
     addCategory,
     updateCategoriesBatch,
+    deleteCategory,
 } from '../storage/storageService.js';
 import { seedDatabase } from './seedDatabase.js';
 import {
@@ -783,6 +784,58 @@ export class FinSiteModel {
             log(`Group '${groupId}' deleted, ${categoriesToUpdate.length} categories reassigned, aggregates rebuilt`);
         } catch (error) {
             console.error(`Error deleting group '${groupId}':`, error);
+            throw error;
+        }
+
+        return this.getData();
+    }
+
+    /**
+     * Delete a category by ID.
+     * Updates transactions using this category to use 'uncategorized'.
+     * @param {string} categoryId - The category ID to delete
+     */
+    async deleteCategory(categoryId) {
+        if (!categoryId) return this.getData();
+
+        // Cannot delete system categories
+        if (categoryId === 'uncategorized') {
+            log('Cannot delete system category: uncategorized');
+            return this.getData();
+        }
+
+        const category = this.data.categories.find((c) => c.id === categoryId);
+        if (!category) {
+            log(`Category ${categoryId} not found`);
+            return this.getData();
+        }
+
+        // Find transactions using this category and update them to 'uncategorized'
+        const transactionsToUpdate = this.data.transactions
+            .filter((tx) => tx.category === categoryId)
+            .map((tx) => ({ ...tx, category: 'uncategorized' }));
+
+        try {
+            // Update transactions in storage
+            for (const tx of transactionsToUpdate) {
+                await addTransaction(tx); // addTransaction uses put() for upsert
+            }
+
+            // Delete the category from storage
+            await deleteCategory(categoryId);
+
+            // Update in-memory state
+            this.data.categories = this.data.categories.filter((c) => c.id !== categoryId);
+            this.data.transactions = this.data.transactions.map((tx) =>
+                tx.category === categoryId ? { ...tx, category: 'uncategorized' } : tx
+            );
+
+            // Rebuild aggregates
+            this._rebuildAggregates();
+
+            log(`✅ Deleted category: ${categoryId}, updated ${transactionsToUpdate.length} transactions`);
+        } catch (error) {
+            console.error('❌ Error deleting category:', error);
             throw error;
         }
 

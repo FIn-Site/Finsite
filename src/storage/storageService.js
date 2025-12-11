@@ -404,3 +404,25 @@ export async function updateCategoriesBatch(categories) {
         }
     });
 }
+
+/**
+ * Delete a category by ID.
+ * @param {string} categoryId - The ID of the category to delete
+ */
+export async function deleteCategory(categoryId) {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction([CATEGORIES_STORE], 'readwrite');
+        const store = tx.objectStore(CATEGORIES_STORE);
+
+        const request = store.delete(categoryId);
+
+        request.onsuccess = () => {
+            resolve();
+        };
+
+        request.onerror = (event) => {
+            reject(createError('Failed to delete category', event.target.error));
+        };
+    });
+}
