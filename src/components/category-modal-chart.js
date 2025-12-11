@@ -116,7 +116,7 @@ class FinSiteCategoryModalChart extends HTMLElement {
                         type: 'category',
                         grid: { display: false },
                         ticks: {
-                            color: '#e2e8f0',
+                            color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#94a3b8',
                             font: { size: 11, weight: '500' },
                             maxRotation: 45,
                             callback: (value) => {
@@ -131,8 +131,9 @@ class FinSiteCategoryModalChart extends HTMLElement {
                             drawBorder: false,
                         },
                         ticks: {
-                            color: '#64748b',
+                            color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#94a3b8',
                             font: { size: 11 },
+                            callback: (value) => `$${value.toLocaleString()}`,
                         },
                         beginAtZero: true,
                     },

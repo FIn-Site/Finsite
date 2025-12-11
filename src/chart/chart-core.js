@@ -283,7 +283,7 @@ export function createLineChartConfig({
                         drawBorder: false,
                     },
                     ticks: {
-                        color: '#64748b',
+                        color: '#1e293b',
                         font: { size: 11 },
                     },
                 },
@@ -295,7 +295,7 @@ export function createLineChartConfig({
                     ticks: {
                         color: '#64748b',
                         font: { size: 11 },
-                        callback: (value) => `$${formatCurrency(value)}`,
+                        callback: (value) => `$${value.toLocaleString()}`,
                     },
                     beginAtZero: false,
                 },
@@ -347,8 +347,8 @@ export function createBarChartConfig(labels, values, overrides = {}) {
     };
 
     // Use colors that work in both light and dark modes
-    const axisLabelColor = '#64748b'; // Muted gray - visible in both themes
-    const categoryLabelColor = '#475569'; // Darker gray for better visibility
+    const axisLabelColor = '#1e293b'; // Dark text matching category labels
+    const categoryLabelColor = '#1e293b'; // Dark text for better visibility
 
     const baseScales = isHorizontal
         ? {
@@ -360,7 +360,7 @@ export function createBarChartConfig(labels, values, overrides = {}) {
                 ticks: {
                     color: axisLabelColor,
                     font: { size: 11 },
-                    callback: (value) => `$${formatCurrency(value)}`,
+                    callback: (value) => `$${value.toLocaleString()}`,
                 },
                 beginAtZero: true,
             },
@@ -390,7 +390,7 @@ export function createBarChartConfig(labels, values, overrides = {}) {
                 ticks: {
                     color: axisLabelColor,
                     font: { size: 11 },
-                    callback: (value) => `$${formatCurrency(value)}`,
+                    callback: (value) => `$${value.toLocaleString()}`,
                 },
                 beginAtZero: true,
             },
