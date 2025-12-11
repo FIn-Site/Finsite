@@ -75,3 +75,39 @@ We will use IndexedDB as the primary client-side storage mechanism for Finsite.
 **Related ADRs:**
 - ADR-01: Use MVC Architecture (Model layer uses storage service)
 - Future: May need ADR for data migration strategy as schema evolves
+
+---
+
+## Implementation Details
+
+### Database Schema
+- **Database Name**: `finsiteDB`
+- **Version**: 2
+- **Object Stores**:
+  - `transactions`: Primary key `id` (auto-increment), indexes on `group`, `category`, `amount`, `date`
+  - `groups`: Primary key `id` (string), stores both default and custom groups
+  - `categories`: Primary key `id` (string), index on `groupId`
+
+### Storage Service API (`src/storage/storageService.js`)
+**Transactions:**
+- `getAllTransactions()`: Returns all transaction records
+- `addTransaction(data)`: Creates single transaction, returns record with ID
+- `updateTransaction(data)`: Updates existing transaction using `put()`
+- `deleteTransactions(ids)`: Deletes multiple transactions by ID array
+- `clearAllTransactions()`: Removes all transactions (reset functionality)
+
+**Groups:**
+- `getAllGroups()`: Returns all groups
+- `addGroup(group)`: Creates or updates group using `put()`
+- `deleteGroup(groupId)`: Deletes group by ID
+
+**Categories:**
+- `getAllCategories()`: Returns all categories
+- `addCategory(category)`: Creates or updates category
+- `updateCategoriesBatch(categories)`: Atomic batch update in single transaction
+
+### Error Handling
+- Promise-based API with consistent error objects
+- `createError(context, detail)` helper for consistent error format
+- ID validation: Rejects invalid IDs immediately (prevents silent failures)
+- Atomic operations: Batch updates ensure all-or-nothing consistency

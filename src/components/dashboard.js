@@ -41,6 +41,7 @@ class FinSiteDashboard extends HTMLElement {
         this.panelData = {
             totalSpentAllTime: 0,
             transactionsThisWeek: 0,
+            spendingToday: 0,
             monthlySpendingCurrent: 0,
             monthlySpendingLast: 0,
             monthlyChangePercent: 0,
@@ -91,6 +92,7 @@ class FinSiteDashboard extends HTMLElement {
         const {
             totalSpentAllTime,
             transactionsThisWeek,
+            spendingToday,
             monthlySpendingCurrent,
             monthlyChangePercent,
             monthlyDirection,
@@ -328,18 +330,17 @@ class FinSiteDashboard extends HTMLElement {
                     </div>
                     <div class="stat-card">
                         <div class="stat-card-header">
-                            <div class="stat-icon transactions">📊</div>
-                            <span class="stat-label">Transactions This Week</span>
-                        </div>
-                        <div class="stat-value" data-field="weeklyCount">${transactionsThisWeek}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-header">
                             <div class="stat-icon spending">💳</div>
                             <span class="stat-label">Monthly Spending</span>
                         </div>
                         <div class="stat-value" data-field="monthlySpending">${this._formatCurrency(monthlySpendingCurrent)}</div>
-                        <div class="stat-change ${changeClass}" data-field="monthlyChange">${changeText}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div class="stat-icon spending">💵</div>
+                            <span class="stat-label">Today's Spending</span>
+                        </div>
+                        <div class="stat-value" data-field="spendingToday">${this._formatCurrency(spendingToday)}</div>
                     </div>
                 </div>
 

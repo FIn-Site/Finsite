@@ -1367,7 +1367,7 @@ class FinSiteCategories extends HTMLElement {
 
                 .modal-subtitle {
                     font-size: 0.875rem;
-                    color: var(--positive-color, #10b981);
+                    color: var(--text-primary, #f1f5f9);
                     margin-top: 0.25rem;
                     font-weight: 600;
                 }
@@ -1564,7 +1564,7 @@ class FinSiteCategories extends HTMLElement {
                 .cat-amount {
                     font-size: 0.875rem;
                     font-weight: 600;
-                    color: #10b981;
+                    color: var(--text-primary, #f1f5f9);
                 }
 
                 .cat-delete-btn {
@@ -1645,7 +1645,7 @@ class FinSiteCategories extends HTMLElement {
                 .tx-amount {
                     font-size: 0.875rem;
                     font-weight: 600;
-                    color: #ef4444;
+                    color: var(--text-primary, #f1f5f9);
                 }
 
                 .no-transactions {

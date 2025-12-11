@@ -1053,7 +1053,15 @@ export class FinSiteModel {
         // 6-month average
         const sixMonthAvg = sixMonthTotal / 6;
 
+        // Calculate spending today
+        const spendingToday = this._calculateSpendingToday();
+
+        // Calculate transactions this week
+        const transactionsThisWeek = this._countTransactionsThisWeek();
+
         return {
+            spendingToday: Math.round(spendingToday * 100) / 100,
+            transactionsThisWeek,
             thisMonth: Math.round(thisMonth * 100) / 100,
             lastMonth: Math.round(lastMonth * 100) / 100,
             percentChange: Math.round(percentChange * 100) / 100,
@@ -1092,6 +1100,9 @@ export class FinSiteModel {
         // Calculate transactions this week (last 7 days rolling window)
         const transactionsThisWeek = this._countTransactionsThisWeek();
 
+        // Calculate spending today
+        const spendingToday = this._calculateSpendingToday();
+
         // Monthly spending current (from cached metrics)
         const monthlySpendingCurrent = this._cachedMetrics.thisMonth;
 
@@ -1121,11 +1132,46 @@ export class FinSiteModel {
             recentTransactions,
             totalSpentAllTime: Math.round(totalSpentAllTime * 100) / 100,
             transactionsThisWeek,
+            spendingToday: Math.round(spendingToday * 100) / 100,
             monthlySpendingCurrent: Math.round(monthlySpendingCurrent * 100) / 100,
             monthlySpendingLast: Math.round(monthlySpendingLast * 100) / 100,
             monthlyChangePercent: Math.round(monthlyChangePercent * 100) / 100,
             monthlyDirection,
         };
+    }
+
+    /**
+     * Calculate spending for today
+     * @returns {number} Total spending for today
+     */
+    _calculateSpendingToday() {
+        const today = new Date();
+        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+
+        return this.data.transactions
+            .filter((tx) => {
+                const txDate = new Date(tx.date);
+                return txDate >= todayStart && txDate <= todayEnd && tx.amount > 0;
+            })
+            .reduce((sum, tx) => sum + tx.amount, 0);
+    }
+
+    /**
+     * Calculate spending for today
+     * @returns {number} Total spending for today
+     */
+    _calculateSpendingToday() {
+        const today = new Date();
+        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+
+        return this.data.transactions
+            .filter((tx) => {
+                const txDate = new Date(tx.date);
+                return txDate >= todayStart && txDate <= todayEnd && tx.amount > 0;
+            })
+            .reduce((sum, tx) => sum + tx.amount, 0);
     }
 
     /**

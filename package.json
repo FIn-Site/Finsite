@@ -10,12 +10,17 @@
   "scripts": {
     "test": "vitest",
     "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "e2e:report": "playwright show-report",
     "e2e:debug": "playwright test --debug",
     "lint": "eslint src",
-    "lint:fix": "eslint src --fix"
+    "lint:fix": "eslint src --fix",
+    "docs:generate": "documentation build src/**/*.js -f html -o docs/api",
+    "docs:serve": "documentation serve src/**/*.js -w",
+    "docs:watch": "documentation build src/**/*.js -f html -o docs/api -w"
   },
   "repository": {
     "type": "git",
@@ -29,13 +34,14 @@
   },
   "homepage": "https://github.com/FIn-Site/Finsite#readme",
   "devDependencies": {
-    "vitest": "^4.0.15",
-    "fake-indexeddb": "6.2.5",
     "@playwright/test": "^1.57.0",
     "@types/node": "^24.10.2",
-    "vite": "^7.2.7",
+    "documentation": "^14.0.3",
     "eslint": "^8.2.0",
     "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-plugin-import": "^2.25.2"
+    "eslint-plugin-import": "^2.25.2",
+    "fake-indexeddb": "6.2.5",
+    "vite": "^7.2.7",
+    "vitest": "^4.0.15"
   }
 }
