@@ -130,17 +130,20 @@ class FinSiteTransactions extends HTMLElement {
         // Find the selected group to check if it's a custom group with categoryIds
         const selectedGroup = this.availableGroups.find((g) => g.id === this.currentGroupId);
 
-        // If it's a custom group with categoryIds array, filter by those IDs
-        if (selectedGroup?.categoryIds && Array.isArray(selectedGroup.categoryIds)) {
-            return this.availableCategories.filter(
-                (c) => selectedGroup.categoryIds.includes(c.id)
-            );
-        }
-
-        // Default behavior: filter categories that belong to the group by groupId
-        return this.availableCategories.filter(
-            (c) => c.groupId === this.currentGroupId || c.group === this.currentGroupId
-        );
+        // Filter categories that belong to this group
+        // Include categories that:
+        // 1. Have groupId matching the current group (default behavior)
+        // 2. Are in the group's categoryIds array (for custom groups)
+        return this.availableCategories.filter((c) => {
+            // Check if category's groupId matches
+            const hasMatchingGroupId = c.groupId === this.currentGroupId || c.group === this.currentGroupId;
+            
+            // Check if category is in the group's categoryIds array (for custom groups)
+            const isInCategoryIds = selectedGroup?.categoryIds && Array.isArray(selectedGroup.categoryIds) 
+                && selectedGroup.categoryIds.includes(c.id);
+            
+            return hasMatchingGroupId || isInCategoryIds;
+        });
     }
 
     // ============================================================
@@ -554,7 +557,6 @@ class FinSiteTransactions extends HTMLElement {
                                 <select class="form-select" id="tx-group" data-testid="select-group" name="group" required>
                                     <option value="" disabled ${!this.currentGroupId ? 'selected' : ''}>Select a group</option>
                                     ${this.availableGroups.map((g) => `<option value="${g.id}" ${this.currentGroupId === g.id ? 'selected' : ''}>${g.name}</option>`).join('')}
-                                    <option value="manual" ${this.currentGroupId === 'manual' ? 'selected' : ''}>Manual Entry</option>
                                 </select></div>
                             <div class="form-group"><label class="form-label" for="tx-category">Category</label>
                                 <select class="form-select" id="tx-category" data-testid="select-category" name="category" required ${showCategoryPlaceholder ? 'disabled' : ''}>
