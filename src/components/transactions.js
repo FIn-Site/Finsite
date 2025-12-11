@@ -425,7 +425,7 @@ class FinSiteTransactions extends HTMLElement {
                 <div class="row-merchant"><span class="merchant-name">${this.escapeHtml(merchant)}</span></div>
                 <div class="row-category"><span class="category-icon">${catIcon}</span><span class="category-name">${this.escapeHtml(tx.category || 'Uncategorized')}</span></div>
                 <div class="row-account"><span class="account-icon">${grpIcon}</span><span class="account-name">${this.escapeHtml(this.getGroupName(tx.group || 'expenses'))}</span></div>
-                <div class="row-amount ${isExpense ? 'expense' : 'income'}">${isExpense ? '-' : '+'}$${formatted}</div>
+                <div class="row-amount ${isExpense ? 'expense' : 'income'}">$${formatted}</div>
                 <div class="row-chevron">›</div>
             </div>
         `;

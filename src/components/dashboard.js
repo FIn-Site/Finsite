@@ -54,6 +54,9 @@ class FinSiteDashboard extends HTMLElement {
 
         // Reference to chart component
         this._chartComponent = null;
+
+        // Categories data for icon lookup
+        this.categories = [];
     }
 
     /**
@@ -379,7 +382,9 @@ class FinSiteDashboard extends HTMLElement {
 
         // Format raw transaction data for display
         return recentTransactions.map((tx) => {
-            const icon = getCategoryIcon(tx.category || tx.group);
+            // Find the category to get its custom icon if it exists
+            const category = this.categories.find((c) => c.id === tx.category);
+            const icon = category?.icon || getCategoryIcon(tx.category || tx.group);
             const displayDate = getRelativeDate(tx.date);
             const displayMerchant = tx.merchant || tx.category || 'Transaction';
 
@@ -394,6 +399,14 @@ class FinSiteDashboard extends HTMLElement {
                 </div>
             `;
         }).join('');
+    }
+
+    /**
+     * Set categories for icon lookup
+     * @param {Array} categories - Array of category objects
+     */
+    setCategories(categories) {
+        this.categories = categories || [];
     }
 
     /**

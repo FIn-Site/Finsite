@@ -326,6 +326,10 @@ export class FinSiteView {
         // Only update if dashboard is visible or exists
         const dashboard = this.container?.querySelector('finsite-dashboard');
         if (dashboard && typeof dashboard.updateFromSummary === 'function') {
+            // Set categories for icon lookup
+            if (this.model && typeof dashboard.setCategories === 'function') {
+                dashboard.setCategories(this.model.getCategories());
+            }
             dashboard.updateFromSummary(panelSummary);
             log('📋 Dashboard panel updated with:', panelSummary);
         }
