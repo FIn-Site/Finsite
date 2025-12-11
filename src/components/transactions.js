@@ -535,7 +535,7 @@ class FinSiteTransactions extends HTMLElement {
         
         // Pre-fill values if editing
         const amountValue = editTx ? Math.abs(Number(editTx.amount)) : '';
-        const dateValue = editTx ? editTx.date : '';
+        const dateValue = editTx ? editTx.date : todayDate;
         const merchantValue = editTx ? (editTx.merchant || '') : '';
         const notesValue = editTx ? (editTx.notes || '') : '';
 
@@ -551,7 +551,7 @@ class FinSiteTransactions extends HTMLElement {
                             <div class="form-group"><label class="form-label" for="tx-amount">Amount (USD)</label>
                                 <input class="form-input" type="number" id="tx-amount" data-testid="input-amount" name="amount" step="0.01" min="0.01" placeholder="e.g., 12.34" value="${amountValue}" required /></div>
                             <div class="form-group"><label class="form-label" for="tx-date">Date</label>
-                                <input class="form-input" type="date" id="tx-date" data-testid="input-date" name="date" value="${todayDate}" required /></div>
+                                <input class="form-input" type="date" id="tx-date" data-testid="input-date" name="date" value="${dateValue}" required /></div>
                         </div>
                         <div class="form-row">
                             <div class="form-group"><label class="form-label" for="tx-group">Group</label>
@@ -948,7 +948,22 @@ class FinSiteTransactions extends HTMLElement {
         root.querySelector('#transaction-form')?.addEventListener('submit', (e) => this.handleFormSubmit(e));
         
         // Delete button (only in edit mode)
-        root.querySelector('#modal-delete-btn')?.addEventListener('click', () => this.handleDeleteTransaction());
+        root.querySelector('#modal-delete-btn')?.addEventListener('click', () => {
+            if (!this.isEditMode || !this.editingTransactionId) return;
+            
+            const confirmed = confirm('Are you sure you want to delete this transaction?');
+            if (!confirmed) return;
+
+            // Dispatch delete event
+            this.dispatchEvent(new CustomEvent('delete-transaction', {
+                bubbles: true,
+                composed: true,
+                detail: { id: this.editingTransactionId }
+            }));
+
+            // Close modal
+            this.closeModal();
+        });
     }
 
     // ============================================================
@@ -1049,19 +1064,33 @@ class FinSiteTransactions extends HTMLElement {
         const transactionData = {
             amount, date, group, category, merchant, notes, name: merchant || category, account: 'Manual Entry', type: category, status: 'complete',
         };
-        this.dispatchEvent(new CustomEvent('add-transaction', { bubbles: true, composed: true, detail: transactionData }));
-        
-        // Show success notification immediately (same as error notifications)
-        this.showNotification('Transaction successfully added!', true);
-        
-        // Reset form but keep today's date
-        form.reset();
-        const dateInput = this.shadowRoot.querySelector('#tx-date');
-        if (dateInput) {
-            dateInput.value = new Date().toISOString().split('T')[0];
+
+        // If in edit mode, include the ID and dispatch update event
+        if (this.isEditMode && this.editingTransactionId) {
+            transactionData.id = this.editingTransactionId;
+            this.dispatchEvent(new CustomEvent('update-transaction', {
+                bubbles: true,
+                composed: true,
+                detail: transactionData
+            }));
+            this.showNotification('Transaction updated successfully!', true);
+            this.closeModal();
+        } else {
+            // Otherwise, add new transaction
+            this.dispatchEvent(new CustomEvent('add-transaction', { bubbles: true, composed: true, detail: transactionData }));
+            
+            // Show success notification immediately (same as error notifications)
+            this.showNotification('Transaction successfully added!', true);
+            
+            // Reset form but keep today's date
+            form.reset();
+            const dateInput = this.shadowRoot.querySelector('#tx-date');
+            if (dateInput) {
+                dateInput.value = new Date().toISOString().split('T')[0];
+            }
+            this.currentGroupId = null;
+            this._updateCategoryDropdown();
         }
-        this.currentGroupId = null;
-        this._updateCategoryDropdown();
     }
 
     onTransactionAdded(savedTransaction) {
