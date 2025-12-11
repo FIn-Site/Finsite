@@ -504,14 +504,14 @@ class FinSiteTransactions extends HTMLElement {
                     <div class="filter-section-title">Groups</div>
                     <div class="filter-options">${this.availableGroups.map((g) => `
                         <label class="filter-option"><input type="checkbox" class="group-checkbox" value="${g.id}" ${this.filters.groups.includes(g.id) ? 'checked' : ''}>
-                        <span class="option-icon">${getGroupIcon(g.id)}</span><span class="option-label">${g.name}</span></label>
+                        <span class="option-icon">${g.icon || getGroupIcon(g.id, g.icon)}</span><span class="option-label">${g.name}</span></label>
                     `).join('')}</div>
                 </div>
                 <div class="filter-section">
                     <div class="filter-section-title">Categories</div>
                     <div class="filter-options">${this.availableCategories.map((c) => `
                         <label class="filter-option"><input type="checkbox" class="category-checkbox" value="${c.id}" ${this.filters.categories.includes(c.id) ? 'checked' : ''}>
-                        <span class="option-icon">${getCategoryIcon(c.id)}</span><span class="option-label">${c.name}</span></label>
+                        <span class="option-icon">${c.icon || getCategoryIcon(c.id)}</span><span class="option-label">${c.name}</span></label>
                     `).join('')}</div>
                 </div>
                 <div class="panel-actions"><button class="btn-secondary" id="filter-clear-btn">Clear</button><button class="btn-primary" id="filter-apply-btn">Apply</button></div>
@@ -557,8 +557,9 @@ class FinSiteTransactions extends HTMLElement {
                             <div class="form-group"><label class="form-label" for="tx-group">Group</label>
                                 <select class="form-select" id="tx-group" data-testid="select-group" name="group" required>
                                     <option value="" disabled ${!this.currentGroupId ? 'selected' : ''}>Select a group</option>
-                                    ${this.availableGroups.map((g) => `<option value="${g.id}" ${this.currentGroupId === g.id ? 'selected' : ''}>${g.name}</option>`).join('')}
-                                    <option value="manual" ${this.currentGroupId === 'manual' ? 'selected' : ''}>Manual Entry</option>
+                                    ${this.availableGroups
+                                        .filter((g, index, self) => index === self.findIndex((t) => t.id === g.id))
+                                        .map((g) => `<option value="${g.id}" ${this.currentGroupId === g.id ? 'selected' : ''}>${g.name}</option>`).join('')}
                                 </select></div>
                             <div class="form-group"><label class="form-label" for="tx-category">Category</label>
                                 <select class="form-select" id="tx-category" data-testid="select-category" name="category" required ${showCategoryPlaceholder ? 'disabled' : ''}>
