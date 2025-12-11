@@ -9,6 +9,8 @@
 
 Finsite is a modern, **local-first** personal finance application that helps you track income and expenses without compromising your privacy. All your financial data stays on your device—nothing is sent to external servers.
 
+Check out the deployed version [here](https://finsite.pages.dev/)
+
 ---
 
 ## ✨ Features
