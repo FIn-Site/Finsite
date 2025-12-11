@@ -145,8 +145,11 @@ export class FinSiteController {
         log(`🧭 Navigating to: ${route}`);
         this.model.updateData({ currentView: route });
 
-        // Navigate through view interface, then sync state
+        // Navigate through view interface
         this.view.navigateToPage(route);
+
+        // Always sync model state to view after navigation
+        this._syncModelToView();
 
         // Only refresh dashboard data when navigating to dashboard
         if (route === 'dashboard') {

@@ -16,6 +16,7 @@ import {
     addCategory,
     updateCategoriesBatch,
 } from '../storage/storageService.js';
+import { seedDatabase } from './seedDatabase.js';
 import {
     buildCategoryAggregates,
     buildGroupBreakdown,
@@ -310,7 +311,7 @@ export class FinSiteModel {
                 ? storedCategories
                 : [];
 
-            // If no transactions exist, seed sample data
+            // If no transactions exist, seed sample data only if debug mode is enabled
             if (transactions.length === 0) {
                 const seeded = await seedDatabase();
                 if (seeded) {
