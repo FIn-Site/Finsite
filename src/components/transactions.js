@@ -53,6 +53,8 @@ class FinSiteTransactions extends HTMLElement {
         this.isDatePickerOpen = false;
         this.isFilterPanelOpen = false;
         this.isModalOpen = false;
+        this.isEditMode = false;
+        this.editingTransactionId = null;
         this.selectedTransactions = new Set();
 
         // Available groups and categories for filters
@@ -210,7 +212,11 @@ class FinSiteTransactions extends HTMLElement {
     formatDateHeader(dateStr) {
         if (!dateStr || dateStr === 'Unknown') return 'Unknown Date';
 
-        const date = new Date(dateStr);
+        // Parse date string as local time to avoid timezone shifts
+        // Assuming dateStr is in YYYY-MM-DD format
+        const parts = dateStr.split('-');
+        const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        
         const today = new Date();
         const yesterday = new Date(today);
         yesterday.setDate(today.getDate() - 1);
@@ -481,23 +487,37 @@ class FinSiteTransactions extends HTMLElement {
     }
 
     renderModal() {
+        // Get the transaction being edited if in edit mode
+        const editTx = this.isEditMode && this.editingTransactionId 
+            ? this.transactions.find(t => t.id === this.editingTransactionId) 
+            : null;
+        
         // Get categories filtered by currently selected group
         const filteredCategories = this.getCategoriesForCurrentGroup();
         const showCategoryPlaceholder = !this.currentGroupId || filteredCategories.length === 0;
+
+        const modalTitle = this.isEditMode ? 'Edit Transaction' : 'Add New Transaction';
+        const modalSubtitle = this.isEditMode ? 'Update transaction details below' : 'Enter transaction details below';
+        
+        // Pre-fill values if editing
+        const amountValue = editTx ? Math.abs(Number(editTx.amount)) : '';
+        const dateValue = editTx ? editTx.date : '';
+        const merchantValue = editTx ? (editTx.merchant || '') : '';
+        const notesValue = editTx ? (editTx.notes || '') : '';
 
         return `
             <div class="modal-overlay ${this.isModalOpen ? '' : 'hidden'}" id="modal-overlay">
                 <div class="modal-container">
                     <div class="modal-header">
-                        <div><div class="modal-title">Add New Transaction</div><div class="modal-subtitle">Enter transaction details below</div></div>
+                        <div><div class="modal-title">${modalTitle}</div><div class="modal-subtitle">${modalSubtitle}</div></div>
                         <button class="modal-close-btn" id="modal-close-btn">✕</button>
                     </div>
                     <form class="modal-form" id="transaction-form" novalidate>
                         <div class="form-row">
                             <div class="form-group"><label class="form-label" for="tx-amount">Amount (USD)</label>
-                                <input class="form-input" type="number" id="tx-amount" data-testid="input-amount" name="amount" step="0.01" min="0.01" placeholder="e.g., 12.34" required /></div>
+                                <input class="form-input" type="number" id="tx-amount" data-testid="input-amount" name="amount" step="0.01" min="0.01" placeholder="e.g., 12.34" value="${amountValue}" required /></div>
                             <div class="form-group"><label class="form-label" for="tx-date">Date</label>
-                                <input class="form-input" type="date" id="tx-date" data-testid="input-date" name="date" required /></div>
+                                <input class="form-input" type="date" id="tx-date" data-testid="input-date" name="date" value="${dateValue}" required /></div>
                         </div>
                         <div class="form-row">
                             <div class="form-group"><label class="form-label" for="tx-group">Group</label>
@@ -508,17 +528,18 @@ class FinSiteTransactions extends HTMLElement {
                                 </select></div>
                             <div class="form-group"><label class="form-label" for="tx-category">Category</label>
                                 <select class="form-select" id="tx-category" data-testid="select-category" name="category" required ${showCategoryPlaceholder ? 'disabled' : ''}>
-                                    <option value="" disabled selected>${showCategoryPlaceholder ? 'Select a group first' : 'Select a category'}</option>
-                                    ${filteredCategories.map((c) => `<option value="${c.id}">${c.name}</option>`).join('')}
+                                    <option value="" disabled ${!editTx ? 'selected' : ''}>${showCategoryPlaceholder ? 'Select a group first' : 'Select a category'}</option>
+                                    ${filteredCategories.map((c) => `<option value="${c.id}" ${editTx && editTx.category === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
                                 </select></div>
                         </div>
                         <div class="form-group"><label class="form-label" for="tx-merchant">Merchant</label>
-                            <input class="form-input" type="text" id="tx-merchant" data-testid="input-merchant" name="merchant" placeholder="e.g., Amazon, Walmart" /></div>
+                            <input class="form-input" type="text" id="tx-merchant" data-testid="input-merchant" name="merchant" placeholder="e.g., Amazon, Walmart" value="${this.escapeHtml(merchantValue)}" /></div>
                         <div class="form-group"><label class="form-label" for="tx-notes">Notes</label>
-                            <textarea class="form-textarea" id="tx-notes" name="notes" placeholder="Add any additional notes..."></textarea></div>
+                            <textarea class="form-textarea" id="tx-notes" name="notes" placeholder="Add any additional notes...">${this.escapeHtml(notesValue)}</textarea></div>
                         <div class="modal-actions">
                             <button type="button" class="btn-secondary" id="modal-cancel-btn">Cancel</button>
-                            <button type="submit" class="btn-primary" data-testid="btn-add-transaction">Add Transaction</button>
+                            ${this.isEditMode ? '<button type="button" class="btn-danger" id="modal-delete-btn">Delete</button>' : ''}
+                            <button type="submit" class="btn-primary" data-testid="btn-add-transaction">${this.isEditMode ? 'Save' : 'Add Transaction'}</button>
                         </div>
                     </form>
                 </div>
@@ -591,6 +612,8 @@ class FinSiteTransactions extends HTMLElement {
             .panel-actions { display: flex; justify-content: flex-end; gap: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color, #334155); }
             .btn-secondary { padding: 0.5rem 1rem; background: var(--bg-card, #1e293b); border: 1px solid var(--border-color, #334155); border-radius: 0.5rem; color: var(--text-secondary, #94a3b8); font-size: 0.875rem; cursor: pointer; }
             .btn-secondary:hover { background: var(--bg-tertiary, #334155); color: var(--text-primary, #f1f5f9); }
+            .btn-danger { padding: 0.5rem 1rem; background: #dc2626; border: none; border-radius: 0.5rem; color: #ffffff; font-size: 0.875rem; font-weight: 500; cursor: pointer; }
+            .btn-danger:hover { background: #b91c1c; }
             .btn-primary { padding: 0.5rem 1rem; background: var(--accent-primary, #f97316); border: none; border-radius: 0.5rem; color: #ffffff; font-size: 0.875rem; font-weight: 500; cursor: pointer; }
             .btn-primary:hover { background: var(--accent-primary-hover, #fb923c); }
 
@@ -854,8 +877,8 @@ class FinSiteTransactions extends HTMLElement {
         // Transaction row clicks
         root.querySelectorAll('.transaction-row').forEach((row) => {
             row.addEventListener('click', (e) => {
-                if (e.target.classList.contains('tx-checkbox')) return;
-                log('Transaction clicked:', row.dataset.id);
+                const id = Number(row.dataset.id);
+                this.openTransactionModal(id);
             });
         });
 
@@ -887,6 +910,9 @@ class FinSiteTransactions extends HTMLElement {
 
         // Form submission
         root.querySelector('#transaction-form')?.addEventListener('submit', (e) => this.handleFormSubmit(e));
+        
+        // Delete button (only in edit mode)
+        root.querySelector('#modal-delete-btn')?.addEventListener('click', () => this.handleDeleteTransaction());
     }
 
     // ============================================================
@@ -895,16 +921,39 @@ class FinSiteTransactions extends HTMLElement {
 
     openModal() {
         this.isModalOpen = true;
+        this.isEditMode = false;
+        this.editingTransactionId = null;
         this.currentGroupId = null; // Reset group selection when opening modal
         this.render();
         this.setupEventListeners();
         const dateInput = this.shadowRoot.querySelector('#tx-date');
-        if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+        if (dateInput) {
+            // Use local date to avoid timezone issues
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            dateInput.value = `${year}-${month}-${day}`;
+        }
         this.dispatchEvent(new CustomEvent('open-manual-entry', { bubbles: true, composed: true, detail: { source: 'transactions-page' } }));
+    }
+
+    openTransactionModal(transactionId) {
+        const tx = this.transactions.find(t => t.id === transactionId);
+        if (!tx) return;
+        
+        this.isModalOpen = true;
+        this.isEditMode = true;
+        this.editingTransactionId = transactionId;
+        this.currentGroupId = tx.group || null;
+        this.render();
+        this.setupEventListeners();
     }
 
     closeModal() {
         this.isModalOpen = false;
+        this.isEditMode = false;
+        this.editingTransactionId = null;
         this.currentGroupId = null; // Reset group selection when closing modal
         const form = this.shadowRoot.querySelector('#transaction-form');
         if (form) form.reset();
@@ -961,15 +1010,44 @@ class FinSiteTransactions extends HTMLElement {
         if (!group) { this.showNotification('Please select a group', false); return; }
         if (!category) { this.showNotification('Please select a category', false); return; }
 
-        const transactionData = {
-            amount, date, group, category, merchant, notes, name: merchant || category, account: 'Manual Entry', type: category, status: 'complete',
-        };
-        this.dispatchEvent(new CustomEvent('add-transaction', { bubbles: true, composed: true, detail: transactionData }));
+        if (this.isEditMode && this.editingTransactionId) {
+            const transactionData = {
+                id: this.editingTransactionId,
+                amount, date, group, category, merchant, notes, name: merchant || category, account: 'Manual Entry', type: category, status: 'complete',
+            };
+            this.dispatchEvent(new CustomEvent('update-transaction', { bubbles: true, composed: true, detail: transactionData }));
+        } else {
+            const transactionData = {
+                amount, date, group, category, merchant, notes, name: merchant || category, account: 'Manual Entry', type: category, status: 'complete',
+            };
+            this.dispatchEvent(new CustomEvent('add-transaction', { bubbles: true, composed: true, detail: transactionData }));
+        }
+        
+        // Close modal immediately after submission
+        this.closeModal();
+    }
+
+    handleDeleteTransaction() {
+        if (!this.isEditMode || !this.editingTransactionId) return;
+        
+        if (confirm('Are you sure you want to delete this transaction?')) {
+            this.dispatchEvent(new CustomEvent('delete-transaction', { bubbles: true, composed: true, detail: { id: this.editingTransactionId } }));
+            this.closeModal();
+        }
     }
 
     onTransactionAdded(savedTransaction) {
         this.showNotification(`Added: ${savedTransaction.merchant || savedTransaction.category} • $${Number(savedTransaction.amount).toFixed(2)}`, true);
         this.closeModal();
+    }
+
+    onTransactionUpdated(updatedTransaction) {
+        this.showNotification(`Updated: ${updatedTransaction.merchant || updatedTransaction.category} • $${Number(updatedTransaction.amount).toFixed(2)}`, true);
+        this.closeModal();
+    }
+
+    onTransactionDeleted(transactionId) {
+        this.showNotification('Transaction deleted successfully', true);
     }
 
     onTransactionError(errorMessage) {

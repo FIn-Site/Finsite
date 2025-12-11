@@ -7,6 +7,7 @@
 import {
     getAllTransactions,
     addTransaction,
+    updateTransaction,
     deleteTransactions,
     clearAllTransactions,
     getAllGroups,
@@ -488,6 +489,78 @@ export class FinSiteModel {
             return saved;
         } catch (error) {
             console.error('Error adding transaction in FinSiteModel:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Update an existing transaction
+     * @param {Object} input - Transaction data with id
+     * @returns {Promise<Transaction>} Updated transaction
+     * @throws {Error} If transaction not found or update fails
+     */
+    async updateTransaction(input) {
+        if (!input.id) {
+            throw new Error('Transaction ID is required for update');
+        }
+
+        // Find the old transaction to calculate delta
+        const oldTxIndex = this.data.transactions.findIndex(tx => tx.id === input.id);
+        if (oldTxIndex === -1) {
+            throw new Error(`Transaction with ID ${input.id} not found`);
+        }
+        const oldTx = this.data.transactions[oldTxIndex];
+
+        // Validate and normalize the updated data
+        const updatedTx = this._validateTransaction(input);
+        updatedTx.id = input.id; // Preserve ID
+
+        try {
+            // Persist to IndexedDB
+            const saved = await updateTransaction(updatedTx);
+
+            // Update in-memory list
+            this.data.transactions[oldTxIndex] = saved;
+
+            // OPTIMIZATION A: Apply delta (remove old, add new)
+            this._applyTransactionDelta(oldTx, -1);
+            this._applyTransactionDelta(saved, 1);
+
+            log('Transaction updated:', saved);
+            return saved;
+        } catch (error) {
+            console.error('Error updating transaction in FinSiteModel:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Delete a transaction by ID
+     * @param {number} transactionId - ID of transaction to delete
+     * @returns {Promise<void>}
+     * @throws {Error} If transaction not found or deletion fails
+     */
+    async deleteTransaction(transactionId) {
+        // Find the transaction to calculate delta
+        const txIndex = this.data.transactions.findIndex(tx => tx.id === transactionId);
+        if (txIndex === -1) {
+            throw new Error(`Transaction with ID ${transactionId} not found`);
+        }
+        const tx = this.data.transactions[txIndex];
+
+        try {
+            // Persist to IndexedDB
+            await deleteTransactions([transactionId]);
+
+            // Remove from in-memory list
+            this.data.transactions.splice(txIndex, 1);
+
+            // OPTIMIZATION A: Apply delta (remove transaction)
+            this._applyTransactionDelta(tx, -1);
+
+            log('Transaction deleted:', transactionId);
+        } catch (error) {
+            console.error('Error deleting transaction in FinSiteModel:', error);
             throw error;
         }
     }

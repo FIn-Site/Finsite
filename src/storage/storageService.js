@@ -160,6 +160,31 @@ export async function addTransaction(transactionData) {
 }
 
 /**
+ * Update an existing transaction.
+ * 
+ * @async
+ * @param {Transaction} transactionData - Transaction data with ID
+ * @returns {Promise<Transaction>} Updated transaction
+ * @throws {Error} If transaction cannot be updated
+ */
+export async function updateTransaction(transactionData) {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([TRANSACTION_STORE], 'readwrite');
+        const store = transaction.objectStore(TRANSACTION_STORE);
+
+        const request = store.put(transactionData);
+
+        request.onsuccess = () => {
+            resolve(transactionData);
+        };
+        request.onerror = (event) => {
+            reject(createError('Failed to update transaction', event.target.error));
+        };
+    });
+}
+
+/**
  * Delete one or more transactions by ID.
  * 
  * Accepts an array of IDs and deletes them in a single transaction.
