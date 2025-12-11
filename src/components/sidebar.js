@@ -80,7 +80,7 @@ class SidebarComponent extends HTMLElement {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    padding: 1rem 0;
+                    padding: 1.5rem 0 1rem;
                     min-height: 60px;
                 }
 
