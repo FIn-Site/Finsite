@@ -659,7 +659,7 @@ class FinSiteTransactions extends HTMLElement {
             .row-category, .row-account { display: flex; align-items: center; gap: 0.375rem; font-size: 0.8125rem; color: var(--text-muted, #64748b); }
             .category-icon, .account-icon { font-size: 0.875rem; }
             .row-amount { font-size: 0.9375rem; font-weight: 600; text-align: right; min-width: 5rem; }
-            .row-amount.expense { color: var(--negative-color, #ef4444); }
+            .row-amount.expense { color: var(--text-primary, #f1f5f9); }
             .row-amount.income { color: var(--positive-color, #10b981); }
             .row-chevron { color: var(--text-muted, #475569); font-size: 1.25rem; font-weight: 300; }
 
