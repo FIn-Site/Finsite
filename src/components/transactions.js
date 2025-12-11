@@ -381,8 +381,13 @@ class FinSiteTransactions extends HTMLElement {
         const amount = Number(tx.amount) || 0;
         const isExpense = amount > 0;
         const formatted = Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const catIcon = getCategoryIcon(tx.category);
-        const grpIcon = getGroupIcon(tx.group);
+        
+        // Get icon from category/group object if available, otherwise use default
+        const category = this.availableCategories.find(c => c.id === tx.category);
+        const group = this.availableGroups.find(g => g.id === tx.group);
+        const catIcon = category?.icon || getCategoryIcon(tx.category);
+        const grpIcon = group?.icon || getGroupIcon(tx.group);
+        
         const merchant = tx.merchant || tx.name || tx.category || 'Transaction';
         const isSelected = this.selectedTransactions.has(tx.id);
 

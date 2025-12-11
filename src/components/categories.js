@@ -826,14 +826,28 @@ class FinSiteCategories extends HTMLElement {
         const allCategories = this.categoriesWithAmounts.length ? this.categoriesWithAmounts : this.categories;
 
         // Group categories by their current group for display
+        // For custom groups, check categoryIds array; for default groups, check category.groupId
         const categoryGroups = {};
         for (const cat of allCategories) {
-            const group = this.groups.find((g) => g.id === cat.groupId);
-            const groupName = group?.name || 'Unassigned';
-            if (!categoryGroups[groupName]) {
-                categoryGroups[groupName] = [];
+            // Check if category is in any custom group
+            const customGroup = this.groups.find((g) => g.isCustom && g.categoryIds && g.categoryIds.includes(cat.id));
+            
+            if (customGroup) {
+                // Category is in a custom group
+                const groupName = customGroup.name;
+                if (!categoryGroups[groupName]) {
+                    categoryGroups[groupName] = [];
+                }
+                categoryGroups[groupName].push(cat);
+            } else {
+                // Category is in a default group (by groupId)
+                const group = this.groups.find((g) => g.id === cat.groupId);
+                const groupName = group?.name || 'UNCATEGORIZED';
+                if (!categoryGroups[groupName]) {
+                    categoryGroups[groupName] = [];
+                }
+                categoryGroups[groupName].push(cat);
             }
-            categoryGroups[groupName].push(cat);
         }
 
         // Build category checkboxes grouped by current assignment
@@ -849,7 +863,7 @@ class FinSiteCategories extends HTMLElement {
                                        class="category-checkbox" 
                                        data-category-id="${cat.id}"
                                        ${this.selectedCategoryIds.has(cat.id) ? 'checked' : ''}>
-                                <span class="checkbox-icon">${getCategoryIcon(cat.id)}</span>
+                                <span class="checkbox-icon">${cat.icon || getCategoryIcon(cat.id)}</span>
                                 <span class="checkbox-label">${cat.name}</span>
                                 <span class="checkbox-amount">${this._formatCurrency(cat.amount)}</span>
                             </label>
