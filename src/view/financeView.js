@@ -226,10 +226,23 @@ export class FinSiteView {
                 if (this.model) {
                     transactionsPage.model = this.model;
                     if (typeof transactionsPage.setTaxonomy === 'function') {
-                        transactionsPage.setTaxonomy({
-                            groups: data.groups || [],
-                            categories: data.categories || [],
-                        });
+                        let groups = data.groups || [];
+                        let categories = data.categories || [];
+
+                        // Fall back to default config if no groups/categories exist
+                        if (groups.length === 0 || categories.length === 0) {
+                            const defaults = this.model.getDefaultConfig?.();
+                            if (defaults) {
+                                if (groups.length === 0) {
+                                    groups = defaults.defaultGroups || [];
+                                }
+                                if (categories.length === 0) {
+                                    categories = defaults.defaultCategories || [];
+                                }
+                            }
+                        }
+
+                        transactionsPage.setTaxonomy({ groups, categories });
                     }
                 }
             }
@@ -313,6 +326,7 @@ export class FinSiteView {
     /**
      * Inject taxonomy (groups/categories) into transactions component.
      * This ensures the dropdown menus are populated with available options.
+     * Falls back to default config if no groups/categories exist yet.
      */
     _wireModelToTransactions() {
         if (!this.model || !this.container) return;
@@ -320,10 +334,33 @@ export class FinSiteView {
             try {
                 // Set model reference for future syncing
                 el.model = this.model;
+
+                // Inject transactions data
+                if (typeof el.setTransactions === 'function') {
+                    const transactions = this.model.getTransactions?.() || [];
+                    el.setTransactions(transactions);
+                    log('Transactions wired to component:', transactions.length);
+                }
+
                 // Inject taxonomy data directly
                 if (typeof el.setTaxonomy === 'function') {
-                    const groups = this.model.getGroups?.() || [];
-                    const categories = this.model.getCategories?.() || [];
+                    let groups = this.model.getGroups?.() || [];
+                    let categories = this.model.getCategories?.() || [];
+
+                    // Fall back to default config if no groups/categories exist
+                    if (groups.length === 0 || categories.length === 0) {
+                        const defaults = this.model.getDefaultConfig?.();
+                        if (defaults) {
+                            if (groups.length === 0) {
+                                groups = defaults.defaultGroups || [];
+                            }
+                            if (categories.length === 0) {
+                                categories = defaults.defaultCategories || [];
+                            }
+                            log('Using default taxonomy for transactions (no data yet)');
+                        }
+                    }
+
                     el.setTaxonomy({ groups, categories });
                     log('Taxonomy wired to transactions:', { groups: groups.length, categories: categories.length });
                 }
