@@ -145,7 +145,7 @@ export class FinSiteController {
         log(`🧭 Navigating to: ${route}`);
         this.model.updateData({ currentView: route });
 
-        // Navigate through view interface, then sync state
+        // Navigate through view interface
         this.view.navigateToPage(route);
 
         // Sync model data to the newly rendered page
