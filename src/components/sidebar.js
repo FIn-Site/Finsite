@@ -80,8 +80,7 @@ class SidebarComponent extends HTMLElement {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    padding: 1rem 1rem;
-                    border-bottom: 1px solid var(--border-color, #1e293b);
+                    padding: 1.5rem 0 1rem;
                     min-height: 60px;
                 }
 
@@ -90,22 +89,27 @@ class SidebarComponent extends HTMLElement {
                     align-items: center;
                     gap: 0.75rem;
                     overflow: hidden;
+                    padding-left: 0.75rem;
+                    height: 44px;
                 }
 
                 .logo-icon {
-                    width: 32px;
-                    height: 32px;
-                    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-                    border-radius: 8px;
+                    width: 44px;
+                    height: 44px;
+                    background: var(--bg-card, #1e293b);
+                    border-radius: 0.5rem;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     font-size: 1.1rem;
                     flex-shrink: 0;
+                    color: var(--accent-primary, #f97316);
+                    border: 1px solid var(--border-color, #334155);
+                    transition: background 0.3s ease, border-color 0.3s ease;
                 }
 
                 .logo-text {
-                    font-size: 1.125rem;
+                    font-size: 1.75rem;
                     font-weight: 700;
                     color: var(--text-primary, #ffffff);
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -184,7 +188,7 @@ class SidebarComponent extends HTMLElement {
                 /* Navigation Section */
                 .nav-section {
                     flex: 1;
-                    padding: 1rem 0.75rem;
+                    padding: 0.5rem 0.75rem 0;
                     overflow-y: auto;
                     overflow-x: hidden;
                 }
@@ -305,6 +309,27 @@ class SidebarComponent extends HTMLElement {
                 .sidebar-footer {
                     padding: 0.75rem;
                     border-top: 1px solid var(--border-color, #1e293b);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.75rem;
+                }
+
+                .sidebar-footer .theme-toggle {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 6px;
+                }
+
+                :host(.collapsed) .sidebar-footer .theme-toggle {
+                    gap: 0;
+                    justify-content: center;
+                }
+
+                :host(.collapsed) .sidebar-footer .theme-icon {
+                    opacity: 0;
+                    width: 0;
+                    overflow: hidden;
                 }
 
                 .collapse-btn {
@@ -384,17 +409,9 @@ class SidebarComponent extends HTMLElement {
                     <div class="logo-icon">💰</div>
                     <span class="logo-text">FinSite</span>
                 </div>
-                <div class="header-icons">
-                    <div class="theme-toggle">
-                        <span class="theme-icon" id="light-icon">☀️</span>
-                        <button class="toggle-switch dark" id="theme-toggle" aria-label="Toggle dark/light mode"></button>
-                        <span class="theme-icon inactive" id="dark-icon">🌙</span>
-                    </div>
-                </div>
             </div>
 
             <nav class="nav-section" data-testid= "navbar">
-                <div class="nav-label">Menu</div>
                 <a class="nav-item active" data-page="dashboard" data-tooltip="Dashboard" data-testid="nav-dashboard">
                     <span class="nav-item-icon">📊</span>
                     <span class="nav-item-text">Dashboard</span>
@@ -410,7 +427,13 @@ class SidebarComponent extends HTMLElement {
             </nav>
 
             <div class="sidebar-footer">
-                <button class="collapse-btn" id="collapse-btn">
+                <div class="theme-toggle">
+                    <span class="theme-icon" id="light-icon">☀️</span>
+                    <button class="toggle-switch dark" id="theme-toggle" aria-label="Toggle dark/light mode"></button>
+                    <span class="theme-icon inactive" id="dark-icon">🌙</span>
+                </div>
+
+                <button class="collapse-btn" id="collapse-btn" aria-label="Collapse sidebar">
                     <span class="collapse-icon">◀</span>
                     <span class="collapse-text">Collapse</span>
                 </button>

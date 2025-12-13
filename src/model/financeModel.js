@@ -7,6 +7,7 @@
 import {
     getAllTransactions,
     addTransaction,
+    updateTransaction,
     deleteTransactions,
     clearAllTransactions,
     getAllGroups,
@@ -15,7 +16,9 @@ import {
     getAllCategories,
     addCategory,
     updateCategoriesBatch,
+    deleteCategory,
 } from '../storage/storageService.js';
+import { seedDatabase } from './seedDatabase.js';
 import {
     buildCategoryAggregates,
     buildGroupBreakdown,
@@ -310,7 +313,7 @@ export class FinSiteModel {
                 ? storedCategories
                 : [];
 
-            // If no transactions exist, seed sample data
+            // If no transactions exist, seed sample data only if debug mode is enabled
             if (transactions.length === 0) {
                 const seeded = await seedDatabase();
                 if (seeded) {
@@ -319,18 +322,33 @@ export class FinSiteModel {
                 }
             }
 
-            // If no groups/categories exist yet, seed defaults
-            if (groups.length === 0 || categories.length === 0) {
-                const { defaultGroups, defaultCategories } = this._getDefaultConfig();
+            // Always ensure default groups and categories exist
+            // This prevents the bug where custom groups replace defaults
+            const { defaultGroups, defaultCategories } = this._getDefaultConfig();
 
-                // Persist defaults
+            // Check which default groups are missing and add them
+            const existingGroupIds = new Set(groups.map((g) => g.id));
+            const missingGroups = defaultGroups.filter((g) => !existingGroupIds.has(g.id));
+
+            // Check which default categories are missing and add them
+            const existingCategoryIds = new Set(categories.map((c) => c.id));
+            const missingCategories = defaultCategories.filter((c) => !existingCategoryIds.has(c.id));
+
+            // Persist any missing defaults
+            if (missingGroups.length > 0 || missingCategories.length > 0) {
                 await Promise.all([
-                    ...defaultGroups.map((g) => addGroup(g)),
-                    ...defaultCategories.map((c) => addCategory(c)),
+                    ...missingGroups.map((g) => addGroup(g)),
+                    ...missingCategories.map((c) => addCategory(c)),
                 ]);
 
-                groups = defaultGroups;
-                categories = defaultCategories;
+                // Add missing defaults to arrays
+                groups = [...groups, ...missingGroups];
+                categories = [...categories, ...missingCategories];
+
+                log('Seeded missing default groups/categories:', {
+                    groups: missingGroups.length,
+                    categories: missingCategories.length,
+                });
             }
 
             this.data.transactions = transactions;
@@ -471,6 +489,78 @@ export class FinSiteModel {
             return saved;
         } catch (error) {
             console.error('Error adding transaction in FinSiteModel:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Update an existing transaction
+     * @param {Object} input - Transaction data with id
+     * @returns {Promise<Transaction>} Updated transaction
+     * @throws {Error} If transaction not found or update fails
+     */
+    async updateTransaction(input) {
+        if (!input.id) {
+            throw new Error('Transaction ID is required for update');
+        }
+
+        // Find the old transaction to calculate delta
+        const oldTxIndex = this.data.transactions.findIndex(tx => tx.id === input.id);
+        if (oldTxIndex === -1) {
+            throw new Error(`Transaction with ID ${input.id} not found`);
+        }
+        const oldTx = this.data.transactions[oldTxIndex];
+
+        // Validate and normalize the updated data
+        const updatedTx = this._validateTransaction(input);
+        updatedTx.id = input.id; // Preserve ID
+
+        try {
+            // Persist to IndexedDB
+            const saved = await updateTransaction(updatedTx);
+
+            // Update in-memory list
+            this.data.transactions[oldTxIndex] = saved;
+
+            // OPTIMIZATION A: Apply delta (remove old, add new)
+            this._applyTransactionDelta(oldTx, -1);
+            this._applyTransactionDelta(saved, 1);
+
+            log('Transaction updated:', saved);
+            return saved;
+        } catch (error) {
+            console.error('Error updating transaction in FinSiteModel:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Delete a transaction by ID
+     * @param {number} transactionId - ID of transaction to delete
+     * @returns {Promise<void>}
+     * @throws {Error} If transaction not found or deletion fails
+     */
+    async deleteTransaction(transactionId) {
+        // Find the transaction to calculate delta
+        const txIndex = this.data.transactions.findIndex(tx => tx.id === transactionId);
+        if (txIndex === -1) {
+            throw new Error(`Transaction with ID ${transactionId} not found`);
+        }
+        const tx = this.data.transactions[txIndex];
+
+        try {
+            // Persist to IndexedDB
+            await deleteTransactions([transactionId]);
+
+            // Remove from in-memory list
+            this.data.transactions.splice(txIndex, 1);
+
+            // OPTIMIZATION A: Apply delta (remove transaction)
+            this._applyTransactionDelta(tx, -1);
+
+            log('Transaction deleted:', transactionId);
+        } catch (error) {
+            console.error('Error deleting transaction in FinSiteModel:', error);
             throw error;
         }
     }
@@ -760,9 +850,65 @@ export class FinSiteModel {
             this.data.groups = this.data.groups.filter((g) => g.id !== groupId);
             this.data.categories = updatedCategories;
 
-            log(`Group '${groupId}' deleted, ${categoriesToUpdate.length} categories reassigned`);
+            // Rebuild aggregates to reflect the group removal
+            // This ensures _groupTotals no longer contains the deleted group
+            this._rebuildAggregates();
+
+            log(`Group '${groupId}' deleted, ${categoriesToUpdate.length} categories reassigned, aggregates rebuilt`);
         } catch (error) {
             console.error(`Error deleting group '${groupId}':`, error);
+            throw error;
+        }
+
+        return this.getData();
+    }
+
+    /**
+     * Delete a category by ID.
+     * Updates transactions using this category to use 'uncategorized'.
+     * @param {string} categoryId - The category ID to delete
+     */
+    async deleteCategory(categoryId) {
+        if (!categoryId) return this.getData();
+
+        // Cannot delete system categories
+        if (categoryId === 'uncategorized') {
+            log('Cannot delete system category: uncategorized');
+            return this.getData();
+        }
+
+        const category = this.data.categories.find((c) => c.id === categoryId);
+        if (!category) {
+            log(`Category ${categoryId} not found`);
+            return this.getData();
+        }
+
+        // Find transactions using this category and update them to 'uncategorized'
+        const transactionsToUpdate = this.data.transactions
+            .filter((tx) => tx.category === categoryId)
+            .map((tx) => ({ ...tx, category: 'uncategorized' }));
+
+        try {
+            // Update transactions in storage
+            for (const tx of transactionsToUpdate) {
+                await addTransaction(tx); // addTransaction uses put() for upsert
+            }
+
+            // Delete the category from storage
+            await deleteCategory(categoryId);
+
+            // Update in-memory state
+            this.data.categories = this.data.categories.filter((c) => c.id !== categoryId);
+            this.data.transactions = this.data.transactions.map((tx) =>
+                tx.category === categoryId ? { ...tx, category: 'uncategorized' } : tx
+            );
+
+            // Rebuild aggregates
+            this._rebuildAggregates();
+
+            log(`✅ Deleted category: ${categoryId}, updated ${transactionsToUpdate.length} transactions`);
+        } catch (error) {
+            console.error('❌ Error deleting category:', error);
             throw error;
         }
 
@@ -837,22 +983,38 @@ export class FinSiteModel {
      */
     _getGroupBreakdownFromAggregates() {
         const groupIdToName = {};
+        const existingGroupIds = new Set();
 
-        // Build group name lookup
+        // Build group name lookup from existing groups only
         this.data.groups.forEach((g) => {
             groupIdToName[g.id] = g.name;
+            existingGroupIds.add(g.id);
         });
 
-        // Convert map to sorted array
+        // Convert map to sorted array, only including groups that still exist
+        // Transactions from deleted groups are aggregated under 'Uncategorized'
         const entries = [];
+        let uncategorizedTotal = 0;
+
         for (const [groupId, total] of this._groupTotals) {
             if (total > 0) {
-                const name = groupIdToName[groupId] || groupId;
-                entries.push([name, total]);
+                if (existingGroupIds.has(groupId)) {
+                    // Group still exists - show it
+                    const name = groupIdToName[groupId];
+                    entries.push([name, total]);
+                } else {
+                    // Group was deleted - aggregate under uncategorized
+                    uncategorizedTotal += total;
+                }
             }
         }
 
-        // Sort by total descending - show ALL groups with transactions
+        // Add uncategorized total if any transactions belonged to deleted groups
+        if (uncategorizedTotal > 0) {
+            entries.push(['Uncategorized', uncategorizedTotal]);
+        }
+
+        // Sort by total descending - show ALL existing groups with transactions
         entries.sort((a, b) => b[1] - a[1]);
 
         if (entries.length === 0) {
@@ -891,7 +1053,15 @@ export class FinSiteModel {
         // 6-month average
         const sixMonthAvg = sixMonthTotal / 6;
 
+        // Calculate spending today
+        const spendingToday = this._calculateSpendingToday();
+
+        // Calculate transactions this week
+        const transactionsThisWeek = this._countTransactionsThisWeek();
+
         return {
+            spendingToday: Math.round(spendingToday * 100) / 100,
+            transactionsThisWeek,
             thisMonth: Math.round(thisMonth * 100) / 100,
             lastMonth: Math.round(lastMonth * 100) / 100,
             percentChange: Math.round(percentChange * 100) / 100,
@@ -930,6 +1100,9 @@ export class FinSiteModel {
         // Calculate transactions this week (last 7 days rolling window)
         const transactionsThisWeek = this._countTransactionsThisWeek();
 
+        // Calculate spending today
+        const spendingToday = this._calculateSpendingToday();
+
         // Monthly spending current (from cached metrics)
         const monthlySpendingCurrent = this._cachedMetrics.thisMonth;
 
@@ -959,11 +1132,32 @@ export class FinSiteModel {
             recentTransactions,
             totalSpentAllTime: Math.round(totalSpentAllTime * 100) / 100,
             transactionsThisWeek,
+            spendingToday: Math.round(spendingToday * 100) / 100,
             monthlySpendingCurrent: Math.round(monthlySpendingCurrent * 100) / 100,
             monthlySpendingLast: Math.round(monthlySpendingLast * 100) / 100,
             monthlyChangePercent: Math.round(monthlyChangePercent * 100) / 100,
             monthlyDirection,
         };
+    }
+
+    /**
+     * Calculate spending for today
+     * @returns {number} Total spending for today
+     */
+    /**
+     * Calculate spending for today
+     * @returns {number} Total spending for today
+     */
+    _calculateSpendingToday() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+        return this.data.transactions
+            .filter((tx) => {
+                // tx.date is already in YYYY-MM-DD format
+                return tx.date === todayStr && tx.amount > 0;
+            })
+            .reduce((sum, tx) => sum + tx.amount, 0);
     }
 
     /**
@@ -1017,7 +1211,7 @@ export class FinSiteModel {
     }
 
     /**
-     * Count transactions in the last 7 days (rolling window)
+     * Count transactions in the current week (Sunday to Saturday)
      * @returns {number} Count of transactions this week
      */
     _countTransactionsThisWeek() {
@@ -1027,14 +1221,26 @@ export class FinSiteModel {
             return 0;
         }
 
-        const now = new Date();
-        const sevenDaysAgo = new Date(now);
-        sevenDaysAgo.setDate(now.getDate() - 7);
-        sevenDaysAgo.setHours(0, 0, 0, 0);
+        const today = new Date();
+        const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+        
+        // Calculate start of current week (most recent Sunday)
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - currentDay);
+        
+        // Calculate end of current week (next Sunday, exclusive)
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 7);
+        
+        // Convert to YYYY-MM-DD strings for comparison
+        const startStr = startOfWeek.toISOString().split('T')[0];
+        const endStr = endOfWeek.toISOString().split('T')[0];
 
-        return transactions.filter((tx) => {
-            const txDate = new Date(tx.date);
-            return txDate >= sevenDaysAgo && txDate <= now;
+        const count = transactions.filter((tx) => {
+            // tx.date is already in YYYY-MM-DD format
+            return tx.date >= startStr && tx.date < endStr;
         }).length;
+
+        return count;
     }
 }

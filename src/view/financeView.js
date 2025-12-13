@@ -128,6 +128,26 @@ export class FinSiteView {
             }
         });
 
+        // Set up update-transaction listener (bubbles from finsite-transactions component)
+        this.container.addEventListener('update-transaction', (event) => {
+            const transactionData = event.detail;
+            log('✏️ Update transaction event received:', transactionData);
+
+            if (this.handlers && typeof this.handlers.onUpdateTransaction === 'function') {
+                this.handlers.onUpdateTransaction(transactionData);
+            }
+        });
+
+        // Set up delete-transaction listener (bubbles from finsite-transactions component)
+        this.container.addEventListener('delete-transaction', (event) => {
+            const { id } = event.detail;
+            log('🗑️ Delete transaction event received:', id);
+
+            if (this.handlers && typeof this.handlers.onDeleteTransaction === 'function') {
+                this.handlers.onDeleteTransaction(id);
+            }
+        });
+
         // Set up open-manual-entry listener for analytics/logging
         this.container.addEventListener('open-manual-entry', (event) => {
             log('📊 Manual entry modal opened from:', event.detail.source);
@@ -221,15 +241,30 @@ export class FinSiteView {
         // Update transactions component with new data if it's active
         if (this.currentPage === 'transactions') {
             const transactionsPage = this.container.querySelector('finsite-transactions');
+            // Store reference for notifications
+            this.transactionsEl = transactionsPage;
             if (transactionsPage && typeof transactionsPage.setTransactions === 'function') {
                 transactionsPage.setTransactions(data.transactions || []);
                 if (this.model) {
                     transactionsPage.model = this.model;
                     if (typeof transactionsPage.setTaxonomy === 'function') {
-                        transactionsPage.setTaxonomy({
-                            groups: data.groups || [],
-                            categories: data.categories || [],
-                        });
+                        let groups = data.groups || [];
+                        let categories = data.categories || [];
+
+                        // Fall back to default config if no groups/categories exist
+                        if (groups.length === 0 || categories.length === 0) {
+                            const defaults = this.model.getDefaultConfig?.();
+                            if (defaults) {
+                                if (groups.length === 0) {
+                                    groups = defaults.defaultGroups || [];
+                                }
+                                if (categories.length === 0) {
+                                    categories = defaults.defaultCategories || [];
+                                }
+                            }
+                        }
+
+                        transactionsPage.setTaxonomy({ groups, categories });
                     }
                 }
             }
@@ -291,6 +326,10 @@ export class FinSiteView {
         // Only update if dashboard is visible or exists
         const dashboard = this.container?.querySelector('finsite-dashboard');
         if (dashboard && typeof dashboard.updateFromSummary === 'function') {
+            // Set categories for icon lookup
+            if (this.model && typeof dashboard.setCategories === 'function') {
+                dashboard.setCategories(this.model.getCategories());
+            }
             dashboard.updateFromSummary(panelSummary);
             log('📋 Dashboard panel updated with:', panelSummary);
         }
@@ -313,6 +352,7 @@ export class FinSiteView {
     /**
      * Inject taxonomy (groups/categories) into transactions component.
      * This ensures the dropdown menus are populated with available options.
+     * Falls back to default config if no groups/categories exist yet.
      */
     _wireModelToTransactions() {
         if (!this.model || !this.container) return;
@@ -320,10 +360,33 @@ export class FinSiteView {
             try {
                 // Set model reference for future syncing
                 el.model = this.model;
+
+                // Inject transactions data
+                if (typeof el.setTransactions === 'function') {
+                    const transactions = this.model.getTransactions?.() || [];
+                    el.setTransactions(transactions);
+                    log('Transactions wired to component:', transactions.length);
+                }
+
                 // Inject taxonomy data directly
                 if (typeof el.setTaxonomy === 'function') {
-                    const groups = this.model.getGroups?.() || [];
-                    const categories = this.model.getCategories?.() || [];
+                    let groups = this.model.getGroups?.() || [];
+                    let categories = this.model.getCategories?.() || [];
+
+                    // Fall back to default config if no groups/categories exist
+                    if (groups.length === 0 || categories.length === 0) {
+                        const defaults = this.model.getDefaultConfig?.();
+                        if (defaults) {
+                            if (groups.length === 0) {
+                                groups = defaults.defaultGroups || [];
+                            }
+                            if (categories.length === 0) {
+                                categories = defaults.defaultCategories || [];
+                            }
+                            log('Using default taxonomy for transactions (no data yet)');
+                        }
+                    }
+
                     el.setTaxonomy({ groups, categories });
                     log('Taxonomy wired to transactions:', { groups: groups.length, categories: categories.length });
                 }
@@ -348,6 +411,32 @@ export class FinSiteView {
             this.transactionsEl.onTransactionAdded(savedTransaction);
         }
         log('✅ Transaction added notification sent to component');
+    }
+
+    /**
+     * Notify the transactions component that a transaction was successfully updated.
+     * Routes controller feedback through view interface to avoid direct DOM coupling.
+     *
+     * @param {Object} updatedTransaction - The updated transaction with ID
+     */
+    onTransactionUpdated(updatedTransaction) {
+        if (this.transactionsEl && typeof this.transactionsEl.onTransactionUpdated === 'function') {
+            this.transactionsEl.onTransactionUpdated(updatedTransaction);
+        }
+        log('✅ Transaction updated notification sent to component');
+    }
+
+    /**
+     * Notify the transactions component that a transaction was successfully deleted.
+     * Routes controller feedback through view interface to avoid direct DOM coupling.
+     *
+     * @param {number} transactionId - The ID of the deleted transaction
+     */
+    onTransactionDeleted(transactionId) {
+        if (this.transactionsEl && typeof this.transactionsEl.onTransactionDeleted === 'function') {
+            this.transactionsEl.onTransactionDeleted(transactionId);
+        }
+        log('✅ Transaction deleted notification sent to component');
     }
 
     /**

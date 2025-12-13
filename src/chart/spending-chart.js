@@ -302,12 +302,6 @@ class FinSiteSpendingChart extends HTMLElement {
                 <!-- Metrics Row -->
                 <div class="metrics-row">
                     <div class="metric-card">
-                        <div class="metric-value" id="metric-this-month">
-                            $${this._formatCurrency(metrics.thisMonth)}
-                        </div>
-                        <div class="metric-label">This Month</div>
-                    </div>
-                    <div class="metric-card">
                         <div class="metric-value ${changeClass}" id="metric-change">
                             ${changeSymbol}${percentChange.toFixed(1)}%
                         </div>
@@ -324,6 +318,12 @@ class FinSiteSpendingChart extends HTMLElement {
                             $${this._formatCurrency(metrics.sixMonthAvg)}
                         </div>
                         <div class="metric-label">6-Month Average</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="metric-transactions-week">
+                            ${metrics.transactionsThisWeek || 0}
+                        </div>
+                        <div class="metric-label">Transactions This Week</div>
                     </div>
                 </div>
 
@@ -456,14 +456,10 @@ class FinSiteSpendingChart extends HTMLElement {
     _updateMetricsDisplay() {
         const { metrics } = this.chartData;
 
-        const thisMonthEl = this.shadowRoot.querySelector('#metric-this-month');
         const changeEl = this.shadowRoot.querySelector('#metric-change');
         const lastMonthEl = this.shadowRoot.querySelector('#metric-last-month');
         const avgEl = this.shadowRoot.querySelector('#metric-avg');
-
-        if (thisMonthEl) {
-            thisMonthEl.textContent = `$${formatCurrency(metrics.thisMonth)}`;
-        }
+        const transactionsWeekEl = this.shadowRoot.querySelector('#metric-transactions-week');
 
         if (changeEl) {
             // For spending: negative change (spent less) = good (green), positive change (spent more) = bad (red)
@@ -479,6 +475,10 @@ class FinSiteSpendingChart extends HTMLElement {
 
         if (avgEl) {
             avgEl.textContent = `$${formatCurrency(metrics.sixMonthAvg)}`;
+        }
+
+        if (transactionsWeekEl) {
+            transactionsWeekEl.textContent = metrics.transactionsThisWeek || 0;
         }
     }
 

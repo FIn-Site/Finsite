@@ -41,6 +41,8 @@ export class FinSiteController {
             this.view.bindHandlers({
                 onNavigate: (route) => this.navigate(route),
                 onAddTransaction: (transactionData) => this.handleAddTransaction(transactionData),
+                onUpdateTransaction: (transactionData) => this.handleUpdateTransaction(transactionData),
+                onDeleteTransaction: (transactionId) => this.handleDeleteTransaction(transactionId),
                 onDeleteGroup: (groupId, groupName) => this.handleDeleteGroup(groupId, groupName),
             });
         }
@@ -145,13 +147,12 @@ export class FinSiteController {
         log(`🧭 Navigating to: ${route}`);
         this.model.updateData({ currentView: route });
 
-        // Navigate through view interface, then sync state
+        // Navigate through view interface
         this.view.navigateToPage(route);
 
-        // Only refresh dashboard data when navigating to dashboard
-        if (route === 'dashboard') {
-            this._refreshDashboard(false);
-        }
+        // Sync model data to the newly rendered page
+        // This ensures transactions page gets data when navigated to
+        this._syncModelToView({ refreshDashboard: route === 'dashboard' });
     }
 
     /**
@@ -227,6 +228,68 @@ export class FinSiteController {
             // Notify view of error (view routes to appropriate component)
             if (typeof this.view.onTransactionError === 'function') {
                 this.view.onTransactionError('Failed to save transaction. Please try again.');
+            }
+        }
+    }
+
+    /**
+     * Handle transaction update
+     * @param {Object} transactionData - Transaction data with id
+     * @returns {Promise<void>}
+     */
+    async handleUpdateTransaction(transactionData) {
+        log('✏️ Handling update transaction:', transactionData);
+
+        try {
+            // Use the model to update the transaction in IndexedDB
+            const updatedTransaction = await this.model.updateTransaction(transactionData);
+
+            log('✅ Transaction updated successfully:', updatedTransaction);
+
+            // Notify view of success
+            if (typeof this.view.onTransactionUpdated === 'function') {
+                this.view.onTransactionUpdated(updatedTransaction);
+            }
+
+            // Sync model state to view
+            this._syncModelToView({ isHeavyUpdate: false });
+        } catch (error) {
+            this._handleError('Error updating transaction', error);
+
+            // Notify view of error
+            if (typeof this.view.onTransactionError === 'function') {
+                this.view.onTransactionError('Failed to update transaction. Please try again.');
+            }
+        }
+    }
+
+    /**
+     * Handle transaction deletion
+     * @param {number} transactionId - ID of transaction to delete
+     * @returns {Promise<void>}
+     */
+    async handleDeleteTransaction(transactionId) {
+        log('🗑️ Handling delete transaction:', transactionId);
+
+        try {
+            // Use the model to delete the transaction from IndexedDB
+            await this.model.deleteTransaction(transactionId);
+
+            log('✅ Transaction deleted successfully:', transactionId);
+
+            // Notify view of success
+            if (typeof this.view.onTransactionDeleted === 'function') {
+                this.view.onTransactionDeleted(transactionId);
+            }
+
+            // Sync model state to view
+            this._syncModelToView({ isHeavyUpdate: false });
+        } catch (error) {
+            this._handleError('Error deleting transaction', error);
+
+            // Notify view of error
+            if (typeof this.view.onTransactionError === 'function') {
+                this.view.onTransactionError('Failed to delete transaction. Please try again.');
             }
         }
     }

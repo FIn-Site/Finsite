@@ -41,6 +41,7 @@ class FinSiteDashboard extends HTMLElement {
         this.panelData = {
             totalSpentAllTime: 0,
             transactionsThisWeek: 0,
+            spendingToday: 0,
             monthlySpendingCurrent: 0,
             monthlySpendingLast: 0,
             monthlyChangePercent: 0,
@@ -53,6 +54,9 @@ class FinSiteDashboard extends HTMLElement {
 
         // Reference to chart component
         this._chartComponent = null;
+
+        // Categories data for icon lookup
+        this.categories = [];
     }
 
     /**
@@ -91,6 +95,7 @@ class FinSiteDashboard extends HTMLElement {
         const {
             totalSpentAllTime,
             transactionsThisWeek,
+            spendingToday,
             monthlySpendingCurrent,
             monthlyChangePercent,
             monthlyDirection,
@@ -328,18 +333,17 @@ class FinSiteDashboard extends HTMLElement {
                     </div>
                     <div class="stat-card">
                         <div class="stat-card-header">
-                            <div class="stat-icon transactions">📊</div>
-                            <span class="stat-label">Transactions This Week</span>
-                        </div>
-                        <div class="stat-value" data-field="weeklyCount">${transactionsThisWeek}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-header">
                             <div class="stat-icon spending">💳</div>
                             <span class="stat-label">Monthly Spending</span>
                         </div>
                         <div class="stat-value" data-field="monthlySpending">${this._formatCurrency(monthlySpendingCurrent)}</div>
-                        <div class="stat-change ${changeClass}" data-field="monthlyChange">${changeText}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div class="stat-icon spending">💵</div>
+                            <span class="stat-label">Today's Spending</span>
+                        </div>
+                        <div class="stat-value" data-field="spendingToday">${this._formatCurrency(spendingToday)}</div>
                     </div>
                 </div>
 
@@ -378,7 +382,9 @@ class FinSiteDashboard extends HTMLElement {
 
         // Format raw transaction data for display
         return recentTransactions.map((tx) => {
-            const icon = getCategoryIcon(tx.category || tx.group);
+            // Find the category to get its custom icon if it exists
+            const category = this.categories.find((c) => c.id === tx.category);
+            const icon = category?.icon || getCategoryIcon(tx.category || tx.group);
             const displayDate = getRelativeDate(tx.date);
             const displayMerchant = tx.merchant || tx.category || 'Transaction';
 
@@ -393,6 +399,14 @@ class FinSiteDashboard extends HTMLElement {
                 </div>
             `;
         }).join('');
+    }
+
+    /**
+     * Set categories for icon lookup
+     * @param {Array} categories - Array of category objects
+     */
+    setCategories(categories) {
+        this.categories = categories || [];
     }
 
     /**
