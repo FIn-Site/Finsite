@@ -6,19 +6,19 @@
 
 /**
  * Spending Chart Web Component.
- * 
+ *
  * Performance Optimizations:
  * - Uses chart-core module for lazy Chart.js loading
  * - Categorical X-axis (no date adapter needed)
  * - Animation disabled for bulk updates
- * 
+ *
  * Features:
  * - Line chart for 6-month spending trend
  * - Bar chart for top 5 groups breakdown
  * - KPI metrics display
- * 
+ *
  * This is the ONLY component that directly interacts with Chart.js.
- * 
+ *
  * @extends HTMLElement
  */
 import {

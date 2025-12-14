@@ -323,7 +323,7 @@ class FinSiteCategoryChart extends HTMLElement {
                     </div>
                     <div class="header-actions">
                         <span class="total-amount">${this._formatCurrency(this.totalSpent)}</span>
-                        ${this.isCustom ? `<button class="delete-btn" data-action="delete-group" title="Delete custom group">🗑️</button>` : ''}
+                        ${this.isCustom ? '<button class="delete-btn" data-action="delete-group" title="Delete custom group">🗑️</button>' : ''}
                     </div>
                 </div>
                 <div class="chart-area">

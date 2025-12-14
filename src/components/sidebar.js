@@ -11,13 +11,13 @@ const log = createPrefixedLogger('[Sidebar]');
 
 /**
  * Sidebar Web Component.
- * 
+ *
  * Features:
  * - Mint-style persistent sidebar
  * - Collapsible to icon-only mode
  * - Logo and navigation items
  * - Emits 'navigate' and 'sidebar-toggle' events
- * 
+ *
  * @extends HTMLElement
  * @fires navigate - When navigation item clicked {page: string}
  * @fires sidebar-toggle - When collapse state changes {collapsed: boolean}

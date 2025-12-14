@@ -68,9 +68,9 @@ export const CHART_COLORS = [
 
 /**
  * Dynamically load a script and return a promise.
- * 
+ *
  * Checks if script is already loaded before injecting.
- * 
+ *
  * @private
  * @param {string} src - Script source URL
  * @returns {Promise<void>}
@@ -95,13 +95,13 @@ function loadScript(src) {
 
 /**
  * Initialize Chart.js with required components.
- * 
+ *
  * Uses dynamic script loading for lazy initialization. Returns cached
  * instance if already loaded. Call this before creating any charts.
- * 
+ *
  * Performance: Only loads Chart.js when first chart is rendered,
  * not on initial page load.
- * 
+ *
  * @async
  * @returns {Promise<typeof Chart>} The configured Chart constructor
  * @throws {Error} If Chart.js fails to load
@@ -198,10 +198,10 @@ function _applyDefaults(Chart) {
 
 /**
  * Get Chart.js constructor if available.
- * 
+ *
  * Checks for cached instance first, then global Chart variable.
  * Returns null if Chart.js not yet loaded.
- * 
+ *
  * @returns {typeof Chart | null} Chart.js constructor or null
  */
 export function getChart() {
@@ -212,7 +212,7 @@ export function getChart() {
 
 /**
  * Check if Chart.js has been initialized.
- * 
+ *
  * @returns {boolean} True if Chart.js is loaded and ready
  */
 export function isInitialized() {
@@ -225,10 +225,10 @@ export function isInitialized() {
 
 /**
  * Create a line chart configuration for spending over time.
- * 
+ *
  * Generates a gradient-filled line chart with hover effects.
  * Used for 6-month spending trend visualization.
- * 
+ *
  * @param {Object} options - Configuration options
  * @param {string[]} options.labels - Month labels (e.g., ['Jun', 'Jul', 'Aug'])
  * @param {number[]} options.values - Spending values for each month
@@ -314,10 +314,10 @@ export function createLineChartConfig({
 
 /**
  * Create a bar chart configuration for spending by category.
- * 
+ *
  * Generates a horizontal bar chart with color-coded categories.
  * Used for top 5 spending groups visualization.
- * 
+ *
  * @param {Object} options - Configuration options
  * @param {string[]} options.labels - Category/group labels
  * @param {number[]} options.values - Spending values for each category

@@ -1,7 +1,5 @@
 import { createPrefixedLogger } from '../utils/debugService.js';
 
-
-
 /**
  * @fileoverview Controller layer for FinSite application.
  * Coordinates between Model and View following MVC pattern.
@@ -10,13 +8,13 @@ import { createPrefixedLogger } from '../utils/debugService.js';
 
 /**
  * FinSite Controller - Coordinates between Model and View.
- * 
+ *
  * Responsibilities:
  * - Handles user interactions and application events
  * - Orchestrates data flow between Model and View
  * - Manages navigation and routing
  * - Coordinates dashboard updates with aggregated data
- * 
+ *
  * @class
  */
 
@@ -119,9 +117,9 @@ export class FinSiteController {
 
     /**
      * Handle generic user interactions.
-     * 
+     *
      * Routes actions to appropriate handler methods.
-     * 
+     *
      * @param {string} action - Action type (e.g., 'navigate')
      * @param {Object} payload - Action data
      */
@@ -137,10 +135,10 @@ export class FinSiteController {
 
     /**
      * Navigate to different views.
-     * 
+     *
      * Updates model state, refreshes view, and triggers dashboard
      * data refresh when navigating to dashboard.
-     * 
+     *
      * @param {string} route - Route to navigate to (e.g., 'dashboard', 'transactions')
      */
     navigate(route) {
@@ -192,10 +190,10 @@ export class FinSiteController {
 
     /**
      * Handle adding a new transaction from the manual entry form.
-     * 
+     *
      * Persists transaction via model, notifies transactions component,
      * updates view, and refreshes dashboard with animation.
-     * 
+     *
      * @async
      * @param {Object} transactionData - Transaction data from the form
      * @param {string} transactionData.group - Group ID
@@ -334,10 +332,10 @@ export class FinSiteController {
 
     /**
      * Handle deleting one or more transactions.
-     * 
+     *
      * Deletes via model, updates view, and refreshes dashboard.
      * Disables animations if deleting more than 5 transactions.
-     * 
+     *
      * @async
      * @param {Array<number|string>} ids - Array of transaction IDs to delete
      * @returns {Promise<void>}

@@ -12,14 +12,14 @@ const log = createPrefixedLogger('[Transactions]');
 
 /**
  * Transactions Web Component.
- * 
+ *
  * Features:
  * - Date-grouped transaction list with sticky headers
  * - Advanced filtering (scope, search, date range, groups, categories)
  * - Sorting (newest, oldest, amount high/low)
  * - Multi-select for bulk operations
  * - Manual transaction entry modal
- * 
+ *
  * @extends HTMLElement
  * @fires add-transaction - When new transaction submitted {group, category, amount, date, merchant, notes}
  * @fires open-manual-entry - When manual entry modal opened {source: string}
@@ -133,13 +133,13 @@ class FinSiteTransactions extends HTMLElement {
         // If it's a custom group with categoryIds array, filter by those IDs
         if (selectedGroup?.categoryIds && Array.isArray(selectedGroup.categoryIds)) {
             return this.availableCategories.filter(
-                (c) => selectedGroup.categoryIds.includes(c.id)
+                (c) => selectedGroup.categoryIds.includes(c.id),
             );
         }
 
         // Default behavior: filter categories that belong to the group by groupId
         return this.availableCategories.filter(
-            (c) => c.groupId === this.currentGroupId || c.group === this.currentGroupId
+            (c) => c.groupId === this.currentGroupId || c.group === this.currentGroupId,
         );
     }
 
@@ -166,11 +166,10 @@ class FinSiteTransactions extends HTMLElement {
             // Convert filter dates to YYYY-MM-DD strings for comparison
             const startStr = start.toISOString().split('T')[0];
             const endStr = end.toISOString().split('T')[0];
-            
-            filtered = filtered.filter((tx) => {
+
+            filtered = filtered.filter((tx) =>
                 // tx.date is already in YYYY-MM-DD format
-                return tx.date >= startStr && tx.date <= endStr;
-            });
+                tx.date >= startStr && tx.date <= endStr);
         }
 
         // Group filter
@@ -220,7 +219,7 @@ class FinSiteTransactions extends HTMLElement {
         // Assuming dateStr is in YYYY-MM-DD format
         const parts = dateStr.split('-');
         const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-        
+
         const today = new Date();
         const yesterday = new Date(today);
         yesterday.setDate(today.getDate() - 1);
@@ -409,13 +408,13 @@ class FinSiteTransactions extends HTMLElement {
         const amount = Number(tx.amount) || 0;
         const isExpense = amount > 0;
         const formatted = Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        
+
         // Get icon from category/group object if available, otherwise use default
-        const category = this.availableCategories.find(c => c.id === tx.category);
-        const group = this.availableGroups.find(g => g.id === tx.group);
+        const category = this.availableCategories.find((c) => c.id === tx.category);
+        const group = this.availableGroups.find((g) => g.id === tx.group);
         const catIcon = category?.icon || getCategoryIcon(tx.category);
         const grpIcon = group?.icon || getGroupIcon(tx.group);
-        
+
         const merchant = tx.merchant || tx.name || tx.category || 'Transaction';
         const isSelected = this.selectedTransactions.has(tx.id);
 
@@ -521,10 +520,10 @@ class FinSiteTransactions extends HTMLElement {
 
     renderModal() {
         // Get the transaction being edited if in edit mode
-        const editTx = this.isEditMode && this.editingTransactionId 
-            ? this.transactions.find(t => t.id === this.editingTransactionId) 
+        const editTx = this.isEditMode && this.editingTransactionId
+            ? this.transactions.find((t) => t.id === this.editingTransactionId)
             : null;
-        
+
         // Get categories filtered by currently selected group
         const filteredCategories = this.getCategoriesForCurrentGroup();
         const showCategoryPlaceholder = !this.currentGroupId || filteredCategories.length === 0;
@@ -532,7 +531,7 @@ class FinSiteTransactions extends HTMLElement {
 
         const modalTitle = this.isEditMode ? 'Edit Transaction' : 'Add New Transaction';
         const modalSubtitle = this.isEditMode ? 'Update transaction details below' : 'Enter transaction details below';
-        
+
         // Pre-fill values if editing
         const amountValue = editTx ? Math.abs(Number(editTx.amount)) : '';
         const dateValue = editTx ? editTx.date : todayDate;
@@ -558,8 +557,8 @@ class FinSiteTransactions extends HTMLElement {
                                 <select class="form-select" id="tx-group" data-testid="select-group" name="group" required>
                                     <option value="" disabled ${!this.currentGroupId ? 'selected' : ''}>Select a group</option>
                                     ${this.availableGroups
-                                        .filter((g, index, self) => index === self.findIndex((t) => t.id === g.id))
-                                        .map((g) => `<option value="${g.id}" ${this.currentGroupId === g.id ? 'selected' : ''}>${g.name}</option>`).join('')}
+        .filter((g, index, self) => index === self.findIndex((t) => t.id === g.id))
+        .map((g) => `<option value="${g.id}" ${this.currentGroupId === g.id ? 'selected' : ''}>${g.name}</option>`).join('')}
                                 </select></div>
                             <div class="form-group"><label class="form-label" for="tx-category">Category</label>
                                 <select class="form-select" id="tx-category" data-testid="select-category" name="category" required ${showCategoryPlaceholder ? 'disabled' : ''}>
@@ -947,11 +946,11 @@ class FinSiteTransactions extends HTMLElement {
 
         // Form submission
         root.querySelector('#transaction-form')?.addEventListener('submit', (e) => this.handleFormSubmit(e));
-        
+
         // Delete button (only in edit mode)
         root.querySelector('#modal-delete-btn')?.addEventListener('click', () => {
             if (!this.isEditMode || !this.editingTransactionId) return;
-            
+
             const confirmed = confirm('Are you sure you want to delete this transaction?');
             if (!confirmed) return;
 
@@ -959,7 +958,7 @@ class FinSiteTransactions extends HTMLElement {
             this.dispatchEvent(new CustomEvent('delete-transaction', {
                 bubbles: true,
                 composed: true,
-                detail: { id: this.editingTransactionId }
+                detail: { id: this.editingTransactionId },
             }));
 
             // Close modal
@@ -991,9 +990,9 @@ class FinSiteTransactions extends HTMLElement {
     }
 
     openTransactionModal(transactionId) {
-        const tx = this.transactions.find(t => t.id === transactionId);
+        const tx = this.transactions.find((t) => t.id === transactionId);
         if (!tx) return;
-        
+
         this.isModalOpen = true;
         this.isEditMode = true;
         this.editingTransactionId = transactionId;
@@ -1072,17 +1071,17 @@ class FinSiteTransactions extends HTMLElement {
             this.dispatchEvent(new CustomEvent('update-transaction', {
                 bubbles: true,
                 composed: true,
-                detail: transactionData
+                detail: transactionData,
             }));
             this.showNotification('Transaction updated successfully!', true);
             this.closeModal();
         } else {
             // Otherwise, add new transaction
             this.dispatchEvent(new CustomEvent('add-transaction', { bubbles: true, composed: true, detail: transactionData }));
-            
+
             // Show success notification immediately (same as error notifications)
             this.showNotification('Transaction successfully added!', true);
-            
+
             // Reset form but keep today's date
             form.reset();
             const dateInput = this.shadowRoot.querySelector('#tx-date');

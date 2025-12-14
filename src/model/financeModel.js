@@ -35,12 +35,12 @@ const log = createPrefixedLogger('[Model]');
  *
  * Instead of O(n) full scans on every dashboard refresh, we maintain
  * running aggregates that are updated in O(1) on add/delete operations.
- * 
+ *
  * Aggregation Strategy:
  * - Time buckets: Map<"YYYY-MM", totalSpend> for monthly aggregates
  * - Group totals: Map<groupId, totalSpend> for category breakdowns
  * - Cached metrics: Pre-computed thisMonth, lastMonth, sixMonthTotal
- * 
+ *
  * @class
  */
 export class FinSiteModel {
@@ -111,7 +111,7 @@ export class FinSiteModel {
 
     /**
      * Get the bucket key for "last month" relative to current date.
-     * 
+     *
      * @private
      * @returns {string} Bucket key in "YYYY-MM" format
      */
@@ -159,10 +159,10 @@ export class FinSiteModel {
 
     /**
      * Apply a single transaction's delta to aggregates (O(1) operation).
-     * 
+     *
      * Updates time buckets, group totals, and cached metrics based on
      * the transaction's amount, date, and group.
-     * 
+     *
      * @private
      * @param {import('../storage/storageService.js').Transaction} tx - Transaction object
      * @param {number} sign - 1 for add, -1 for remove
@@ -287,11 +287,11 @@ export class FinSiteModel {
 
     /**
      * Initialize model from storage.
-     * 
+     *
      * Loads transactions, groups, and categories from IndexedDB.
      * Seeds default groups/categories if none exist.
      * Builds initial aggregates for O(1) dashboard queries.
-     * 
+     *
      * @async
      * @returns {Promise<Object>} Current data state
      */
@@ -387,10 +387,10 @@ export class FinSiteModel {
 
     /**
      * Get default configuration for groups and categories.
-     * 
+     *
      * Provides seed data for first-time users. Includes household,
      * investments, and general expense groups with common categories.
-     * 
+     *
      * @private
      * @returns {{defaultGroups: Array, defaultCategories: Array}} Default configuration
      */
@@ -445,7 +445,7 @@ export class FinSiteModel {
             throw new Error('Transaction amount must be a positive number');
         }
 
-        const date = input.date;
+        const { date } = input;
         if (!date) {
             throw new Error('Transaction date is required');
         }
@@ -505,7 +505,7 @@ export class FinSiteModel {
         }
 
         // Find the old transaction to calculate delta
-        const oldTxIndex = this.data.transactions.findIndex(tx => tx.id === input.id);
+        const oldTxIndex = this.data.transactions.findIndex((tx) => tx.id === input.id);
         if (oldTxIndex === -1) {
             throw new Error(`Transaction with ID ${input.id} not found`);
         }
@@ -542,7 +542,7 @@ export class FinSiteModel {
      */
     async deleteTransaction(transactionId) {
         // Find the transaction to calculate delta
-        const txIndex = this.data.transactions.findIndex(tx => tx.id === transactionId);
+        const txIndex = this.data.transactions.findIndex((tx) => tx.id === transactionId);
         if (txIndex === -1) {
             throw new Error(`Transaction with ID ${transactionId} not found`);
         }
@@ -610,10 +610,10 @@ export class FinSiteModel {
 
     /**
      * Delete one or more transactions by ID.
-     * 
+     *
      * Performance: O(k) aggregate updates where k = number of deleted items.
      * Each deleted transaction's amount is decremented from aggregates.
-     * 
+     *
      * @async
      * @param {Array<string|number>} ids - Array of transaction IDs to delete
      * @returns {Promise<Object>} Updated data state
@@ -659,9 +659,9 @@ export class FinSiteModel {
 
     /**
      * Clear all transactions from storage and memory.
-     * 
+     *
      * WARNING: Destructive operation. Also clears all aggregates.
-     * 
+     *
      * @async
      * @returns {Promise<Object>} Updated data state (empty transactions)
      * @throws {Error} If clear operation fails
@@ -687,7 +687,7 @@ export class FinSiteModel {
 
     /**
      * Get a copy of all transactions.
-     * 
+     *
      * @returns {Array<import('../storage/storageService.js').Transaction>} Copy of transactions array
      */
     getTransactions() {
@@ -696,7 +696,7 @@ export class FinSiteModel {
 
     /**
      * Get a copy of all groups.
-     * 
+     *
      * @returns {Array<import('../storage/storageService.js').Group>} Copy of groups array
      */
     getGroups() {
@@ -814,7 +814,9 @@ export class FinSiteModel {
         // Mark as system group so it won't appear in the UI
         let uncategorizedGroup = this.data.groups.find((g) => g.id === 'uncategorized');
         if (!uncategorizedGroup) {
-            uncategorizedGroup = { id: 'uncategorized', name: 'Uncategorized', isSystem: true, isCustom: false };
+            uncategorizedGroup = {
+                id: 'uncategorized', name: 'Uncategorized', isSystem: true, isCustom: false,
+            };
             await addGroup(uncategorizedGroup);
             this.data.groups = [...this.data.groups, uncategorizedGroup];
         }
@@ -899,9 +901,7 @@ export class FinSiteModel {
 
             // Update in-memory state
             this.data.categories = this.data.categories.filter((c) => c.id !== categoryId);
-            this.data.transactions = this.data.transactions.map((tx) =>
-                tx.category === categoryId ? { ...tx, category: 'uncategorized' } : tx
-            );
+            this.data.transactions = this.data.transactions.map((tx) => (tx.category === categoryId ? { ...tx, category: 'uncategorized' } : tx));
 
             // Rebuild aggregates
             this._rebuildAggregates();
@@ -921,10 +921,10 @@ export class FinSiteModel {
 
     /**
      * Generate dashboard summary from pre-computed aggregates.
-     * 
+     *
      * Performance: O(1) read from aggregates, no transaction iteration.
      * Returns data ready for Chart.js visualization.
-     * 
+     *
      * @returns {Object} Dashboard summary
      * @returns {Object} return.timeSeries - {labels: string[], values: number[]}
      * @returns {Object} return.groupBreakdown - {labels: string[], values: number[]}
@@ -945,9 +945,9 @@ export class FinSiteModel {
 
     /**
      * Get time series data from pre-computed buckets.
-     * 
+     *
      * Returns last 6 months of spending with month names as labels.
-     * 
+     *
      * @private
      * @returns {Object} Time series data for Chart.js
      * @returns {string[]} return.labels - Month names (e.g., ['Jun', 'Jul', 'Aug'])
@@ -973,9 +973,9 @@ export class FinSiteModel {
 
     /**
      * Get group breakdown from pre-computed totals.
-     * 
+     *
      * Returns top 5 groups by spending for bar chart display.
-     * 
+     *
      * @private
      * @returns {Object} Group breakdown data for Chart.js
      * @returns {string[]} return.labels - Group names sorted by spending (descending)
@@ -1029,9 +1029,9 @@ export class FinSiteModel {
 
     /**
      * Get dashboard metrics from cached values.
-     * 
+     *
      * Calculates percent change and 6-month average from pre-computed data.
-     * 
+     *
      * @private
      * @returns {Object} Dashboard metrics
      * @returns {number} return.thisMonth - Current month spending
@@ -1075,10 +1075,10 @@ export class FinSiteModel {
 
     /**
      * Generate dashboard panel summary for stat cards.
-     * 
+     *
      * Provides data for dashboard cards: total spent, transactions this week,
      * monthly spending comparison, and recent activity.
-     * 
+     *
      * @returns {Object} Dashboard panel summary
      * @returns {Array} return.recentTransactions - Last 5 transactions
      * @returns {number} return.totalSpentAllTime - Lifetime spending total
@@ -1153,10 +1153,9 @@ export class FinSiteModel {
         const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
 
         return this.data.transactions
-            .filter((tx) => {
+            .filter((tx) =>
                 // tx.date is already in YYYY-MM-DD format
-                return tx.date === todayStr && tx.amount > 0;
-            })
+                tx.date === todayStr && tx.amount > 0)
             .reduce((sum, tx) => sum + tx.amount, 0);
     }
 
@@ -1223,23 +1222,22 @@ export class FinSiteModel {
 
         const today = new Date();
         const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-        
+
         // Calculate start of current week (most recent Sunday)
         const startOfWeek = new Date(today);
         startOfWeek.setDate(today.getDate() - currentDay);
-        
+
         // Calculate end of current week (next Sunday, exclusive)
         const endOfWeek = new Date(startOfWeek);
         endOfWeek.setDate(startOfWeek.getDate() + 7);
-        
+
         // Convert to YYYY-MM-DD strings for comparison
         const startStr = startOfWeek.toISOString().split('T')[0];
         const endStr = endOfWeek.toISOString().split('T')[0];
 
-        const count = transactions.filter((tx) => {
+        const count = transactions.filter((tx) =>
             // tx.date is already in YYYY-MM-DD format
-            return tx.date >= startStr && tx.date < endStr;
-        }).length;
+            tx.date >= startStr && tx.date < endStr).length;
 
         return count;
     }

@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { FinSiteModel } from '../../src/model/financeModel.js';
+import { getCategoryIcon } from '../../src/utils/icons.js';
+import { getRelativeDate } from '../../src/utils/formatters.js';
 
 //  MOCK STORAGE LAYER
-vi.mock('../src/storage/storageService.js', () => {
+vi.mock('../../src/storage/storageService.js', () => {
   let db = [];
 
   return {
@@ -95,11 +97,11 @@ describe('FinSiteModel — Core Logic', () => {
   // ---------------------------
 
   it('returns correct icon for groceries', () => {
-    expect(model._getCategoryIcon('groceries')).toBe('🛒');
+    expect(getCategoryIcon('groceries')).toBe('🛒');
   });
 
   it('returns default icon for unknown category', () => {
-    expect(model._getCategoryIcon('random')).toBe('💸');
+    expect(getCategoryIcon('random')).toBe('❔');
   });
 
   // ---------------------------
@@ -107,7 +109,7 @@ describe('FinSiteModel — Core Logic', () => {
   // ---------------------------
 
   it('returns Today for today date', () => {
-    const result = model._getRelativeDate(new Date());
+    const result = getRelativeDate(new Date());
     expect(result).toBe('Today');
   });
 

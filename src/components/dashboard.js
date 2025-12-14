@@ -15,17 +15,17 @@ const log = createPrefixedLogger('[Dashboard]');
 
 /**
  * Dashboard Web Component.
- * 
+ *
  * Features:
  * - Spending overview with stat cards
  * - 6-month spending trend chart (line chart)
  * - Top 5 groups spending chart (bar chart)
  * - Recent transactions list
- * 
+ *
  * Data Flow:
  * Receives pre-aggregated chart data and panel summary from
  * Model via View via Controller.
- * 
+ *
  * @extends HTMLElement
  */
 class FinSiteDashboard extends HTMLElement {
@@ -87,7 +87,7 @@ class FinSiteDashboard extends HTMLElement {
 
     /**
      * Render dashboard UI.
-     * 
+     *
      * Creates stat cards, recent activity, and chart container.
      * Uses panelData for stat values.
      */

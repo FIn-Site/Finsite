@@ -287,11 +287,11 @@ class FinSiteCategories extends HTMLElement {
 
         // Confirm deletion
         const confirmed = confirm(
-            `Are you sure you want to delete the group "${groupName}"?\n\n` +
-            'This will:\n' +
-            '• Remove the custom group from the Categories page\n' +
-            '• Move its categories back to "Uncategorized"\n' +
-            '• Your transactions will NOT be deleted',
+            `Are you sure you want to delete the group "${groupName}"?\n\n`
+            + 'This will:\n'
+            + '• Remove the custom group from the Categories page\n'
+            + '• Move its categories back to "Uncategorized"\n'
+            + '• Your transactions will NOT be deleted',
         );
 
         if (!confirmed) return;
@@ -348,11 +348,11 @@ class FinSiteCategories extends HTMLElement {
             }
 
             console.log('🗑️ Deleting group:', groupId);
-            console.log('Groups before delete:', this._model.getGroups?.().map(g => g.id));
+            console.log('Groups before delete:', this._model.getGroups?.().map((g) => g.id));
 
             await this._model.deleteGroup(groupId);
 
-            console.log('Groups after delete:', this._model.getGroups?.().map(g => g.id));
+            console.log('Groups after delete:', this._model.getGroups?.().map((g) => g.id));
 
             // Dispatch event for controller awareness
             this.dispatchEvent(new CustomEvent('group-deleted', {
@@ -407,9 +407,9 @@ class FinSiteCategories extends HTMLElement {
 
         // Confirm removal
         const confirmed = confirm(
-            `Remove "${categoryName}" from "${currentGroup.name}"?\n\n` +
-            'This will remove the category from this group only.\n' +
-            'If the category has no other groups, it will become uncategorized.',
+            `Remove "${categoryName}" from "${currentGroup.name}"?\n\n`
+            + 'This will remove the category from this group only.\n'
+            + 'If the category has no other groups, it will become uncategorized.',
         );
 
         if (!confirmed) return;
@@ -423,7 +423,7 @@ class FinSiteCategories extends HTMLElement {
             if (currentGroup.isCustom) {
                 const updatedGroup = {
                     ...currentGroup,
-                    categoryIds: (currentGroup.categoryIds || []).filter((id) => id !== categoryId)
+                    categoryIds: (currentGroup.categoryIds || []).filter((id) => id !== categoryId),
                 };
                 await this._model.addGroup(updatedGroup);
                 log(`📂 Removed category ${categoryName} from custom group: ${currentGroup.name}`);
@@ -445,7 +445,7 @@ class FinSiteCategories extends HTMLElement {
 
             // Reload data and reopen the same group modal
             await this.loadFromModel();
-            
+
             // Reopen the modal for the same group
             this.openModal(currentGroupId);
 
@@ -523,7 +523,7 @@ class FinSiteCategories extends HTMLElement {
         const userVisibleGroups = this.groups.filter((g) => g.id !== 'uncategorized' && !g.isSystem);
         const defaultGroups = userVisibleGroups.filter((g) => !g.isCustom);
         const customGroups = userVisibleGroups.filter((g) => g.isCustom);
-        
+
         const primaryGroupHtml = defaultGroups.map((group) => `
             <label class="radio-label">
                 <input type="radio" 
@@ -534,7 +534,7 @@ class FinSiteCategories extends HTMLElement {
                 <span class="radio-text">${getGroupIcon(group.id, group.icon)} ${group.name}</span>
             </label>
         `).join('');
-        
+
         const customGroupHtml = customGroups.length > 0 ? `
             <div class="form-group">
                 <label class="form-label">Also Include in Custom Groups (Optional)</label>
@@ -634,7 +634,7 @@ class FinSiteCategories extends HTMLElement {
         // Icon picker buttons
         overlay.querySelectorAll('.icon-option').forEach((btn) => {
             btn.addEventListener('click', (e) => {
-                const icon = e.target.dataset.icon;
+                const { icon } = e.target.dataset;
                 this.newCategoryIcon = icon;
                 // Update UI to show selection
                 overlay.querySelectorAll('.icon-option').forEach((b) => b.classList.remove('selected'));
@@ -831,7 +831,7 @@ class FinSiteCategories extends HTMLElement {
         for (const cat of allCategories) {
             // Check if category is in any custom group
             const customGroup = this.groups.find((g) => g.isCustom && g.categoryIds && g.categoryIds.includes(cat.id));
-            
+
             if (customGroup) {
                 // Category is in a custom group
                 const groupName = customGroup.name;
@@ -961,7 +961,7 @@ class FinSiteCategories extends HTMLElement {
         // Icon picker buttons
         overlay.querySelectorAll('.icon-option').forEach((btn) => {
             btn.addEventListener('click', (e) => {
-                const icon = e.target.dataset.icon;
+                const { icon } = e.target.dataset;
                 this.selectedIcon = icon;
                 // Update UI to show selection
                 overlay.querySelectorAll('.icon-option').forEach((b) => b.classList.remove('selected'));
@@ -1041,7 +1041,7 @@ class FinSiteCategories extends HTMLElement {
                 // Find the category to get its custom icon if it exists
                 const category = this.categories.find((c) => c.id === tx.category);
                 const categoryIcon = category?.icon || getCategoryIcon(tx.category);
-                
+
                 return `
                 <div class="transaction-row">
                     <div class="tx-icon">${categoryIcon}</div>
@@ -1051,16 +1051,17 @@ class FinSiteCategories extends HTMLElement {
                     </div>
                     <div class="tx-amount">${this._formatCurrency(tx.amount)}</div>
                 </div>
-            `}).join('')
+            `;
+            }).join('')
             : '<div class="no-transactions">No transactions found</div>';
 
         const categoryBreakdownHtml = this.selectedCategories.map((cat) => {
             // Only show delete button for custom groups or if category has a custom icon (user-created)
             const isPresetCategory = !cat.icon && !isCustomGroup;
-            const deleteButton = isPresetCategory 
-                ? `<span class="cat-delete-spacer"></span>` 
+            const deleteButton = isPresetCategory
+                ? '<span class="cat-delete-spacer"></span>'
                 : `<button class="cat-delete-btn" data-category-id="${cat.id}" title="Remove from group">🗑️</button>`;
-            
+
             return `
                 <div class="category-row">
                     <span class="cat-icon">${cat.icon || getCategoryIcon(cat.id)}</span>
@@ -1133,7 +1134,7 @@ class FinSiteCategories extends HTMLElement {
         overlay.querySelectorAll('.cat-delete-btn').forEach((btn) => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const categoryId = btn.dataset.categoryId;
+                const { categoryId } = btn.dataset;
                 this.handleDeleteCategory(categoryId);
             });
         });

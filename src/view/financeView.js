@@ -15,13 +15,13 @@ const log = createPrefixedLogger('[View]');
 
 /**
  * FinSite View - Handles all UI rendering and DOM manipulation.
- * 
+ *
  * Architecture:
  * - Mint-style two-pane layout with persistent sidebar and main content area
  * - Uses Web Components for modular UI
  * - Delegates data visualization to chart components
  * - Handles component event forwarding to controller
- * 
+ *
  * @class
  */
 export class FinSiteView {
@@ -80,7 +80,7 @@ export class FinSiteView {
 
     /**
      * Set up component event listeners.
-     * 
+     *
      * Listens for:
      * - Sidebar navigation events
      * - Sidebar collapse/expand events
@@ -166,10 +166,10 @@ export class FinSiteView {
 
     /**
      * Navigate to a specific page.
-     * 
+     *
      * Updates current page state and re-renders content area
      * with appropriate component.
-     * 
+     *
      * @param {string} page - Page identifier ('dashboard', 'transactions')
      */
     navigateToPage(page) {
@@ -190,10 +190,10 @@ export class FinSiteView {
 
     /**
      * Render component for a specific page.
-     * 
+     *
      * Returns HTML string for the appropriate Web Component.
      * Shows 404 message for unknown pages.
-     * 
+     *
      * @param {string} page - Page identifier ('dashboard', 'transactions')
      * @returns {string} Component HTML string
      */
@@ -217,10 +217,10 @@ export class FinSiteView {
 
     /**
      * Update the view with new data.
-     * 
+     *
      * Handles page navigation and passes data to active component.
      * Called by controller after model state changes.
-     * 
+     *
      * @param {Object} data - Data from model
      * @param {string} [data.currentView] - Page to display
      * @param {Array} [data.transactions] - Transaction array for transactions page
@@ -288,10 +288,10 @@ export class FinSiteView {
 
     /**
      * Update dashboard charts with pre-aggregated data from model.
-     * 
+     *
      * Passes aggregated chart data directly to dashboard component's
      * chart child component. Only updates if dashboard is currently rendered.
-     * 
+     *
      * @param {Object} chartData - Pre-aggregated chart data from model
      * @param {Object} chartData.timeSeries - {labels: string[], values: number[]}
      * @param {Object} chartData.groupBreakdown - {labels: string[], values: number[]}
@@ -309,10 +309,10 @@ export class FinSiteView {
 
     /**
      * Update dashboard panel with summary data.
-     * 
+     *
      * Replaces static demo values in dashboard stat cards and
      * recent activity section with real transaction data.
-     * 
+     *
      * @param {Object} panelSummary - Panel summary from model
      * @param {Array} panelSummary.recentTransactions - Recent transactions for activity list
      * @param {number} panelSummary.totalSpentAllTime - Lifetime spending total
