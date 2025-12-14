@@ -427,13 +427,11 @@ class FinSiteCategories extends HTMLElement {
                 };
                 await this._model.addGroup(updatedGroup);
                 log(`📂 Removed category ${categoryName} from custom group: ${currentGroup.name}`);
-            } else {
+            } else if (category.groupId === currentGroupId) {
                 // If this is the category's primary group (default group), move to uncategorized
-                if (category.groupId === currentGroupId) {
-                    const updatedCategory = { ...category, groupId: 'uncategorized' };
-                    await this._model.addCategory(updatedCategory);
-                    log(`📝 Moved category ${categoryName} to uncategorized`);
-                }
+                const updatedCategory = { ...category, groupId: 'uncategorized' };
+                await this._model.addCategory(updatedCategory);
+                log(`📝 Moved category ${categoryName} to uncategorized`);
             }
 
             // Dispatch event for controller awareness

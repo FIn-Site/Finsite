@@ -167,9 +167,7 @@ class FinSiteTransactions extends HTMLElement {
             const startStr = start.toISOString().split('T')[0];
             const endStr = end.toISOString().split('T')[0];
 
-            filtered = filtered.filter((tx) =>
-                // tx.date is already in YYYY-MM-DD format
-                tx.date >= startStr && tx.date <= endStr);
+            filtered = filtered.filter((tx) => tx.date >= startStr && tx.date <= endStr);
         }
 
         // Group filter
@@ -218,7 +216,7 @@ class FinSiteTransactions extends HTMLElement {
         // Parse date string as local time to avoid timezone shifts
         // Assuming dateStr is in YYYY-MM-DD format
         const parts = dateStr.split('-');
-        const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        const date = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
 
         const today = new Date();
         const yesterday = new Date(today);
@@ -272,7 +270,7 @@ class FinSiteTransactions extends HTMLElement {
 
         // Transaction row clicks
         root.querySelectorAll('.transaction-row').forEach((row) => {
-            row.addEventListener('click', (e) => {
+            row.addEventListener('click', () => {
                 const id = Number(row.dataset.id);
                 this.openTransactionModal(id);
             });
@@ -416,7 +414,6 @@ class FinSiteTransactions extends HTMLElement {
         const grpIcon = group?.icon || getGroupIcon(tx.group);
 
         const merchant = tx.merchant || tx.name || tx.category || 'Transaction';
-        const isSelected = this.selectedTransactions.has(tx.id);
 
         return `
             <div class="transaction-row" data-id="${tx.id}">
@@ -912,7 +909,7 @@ class FinSiteTransactions extends HTMLElement {
 
         // Transaction row clicks
         root.querySelectorAll('.transaction-row').forEach((row) => {
-            row.addEventListener('click', (e) => {
+            row.addEventListener('click', () => {
                 const id = Number(row.dataset.id);
                 this.openTransactionModal(id);
             });
@@ -951,6 +948,7 @@ class FinSiteTransactions extends HTMLElement {
         root.querySelector('#modal-delete-btn')?.addEventListener('click', () => {
             if (!this.isEditMode || !this.editingTransactionId) return;
 
+            // eslint-disable-next-line no-alert, no-restricted-globals
             const confirmed = confirm('Are you sure you want to delete this transaction?');
             if (!confirmed) return;
 
@@ -1093,7 +1091,7 @@ class FinSiteTransactions extends HTMLElement {
         }
     }
 
-    onTransactionAdded(savedTransaction) {
+    onTransactionAdded() {
         this.showNotification('Transaction successfully added!', true);
         // Modal remains open for further additions
     }
@@ -1103,7 +1101,7 @@ class FinSiteTransactions extends HTMLElement {
         this.closeModal();
     }
 
-    onTransactionDeleted(transactionId) {
+    onTransactionDeleted() {
         this.showNotification('Transaction deleted successfully', true);
     }
 

@@ -808,8 +808,6 @@ export class FinSiteModel {
             return this.getData();
         }
 
-        const group = this.data.groups.find((g) => g.id === groupId);
-
         // Ensure an 'uncategorized' group exists for orphaned categories
         // Mark as system group so it won't appear in the UI
         let uncategorizedGroup = this.data.groups.find((g) => g.id === 'uncategorized');
@@ -820,11 +818,6 @@ export class FinSiteModel {
             await addGroup(uncategorizedGroup);
             this.data.groups = [...this.data.groups, uncategorizedGroup];
         }
-
-        // Identify categories that need reassignment
-        const idSet = group?.isCustom && Array.isArray(group.categoryIds)
-            ? new Set(group.categoryIds)
-            : null;
 
         const categoriesToUpdate = [];
         const updatedCategories = [];
@@ -1152,10 +1145,9 @@ export class FinSiteModel {
         const today = new Date();
         const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
 
+        // tx.date is already in YYYY-MM-DD format
         return this.data.transactions
-            .filter((tx) =>
-                // tx.date is already in YYYY-MM-DD format
-                tx.date === todayStr && tx.amount > 0)
+            .filter((tx) => tx.date === todayStr && tx.amount > 0)
             .reduce((sum, tx) => sum + tx.amount, 0);
     }
 
@@ -1235,9 +1227,8 @@ export class FinSiteModel {
         const startStr = startOfWeek.toISOString().split('T')[0];
         const endStr = endOfWeek.toISOString().split('T')[0];
 
-        const count = transactions.filter((tx) =>
-            // tx.date is already in YYYY-MM-DD format
-            tx.date >= startStr && tx.date < endStr).length;
+        // tx.date is already in YYYY-MM-DD format
+        const count = transactions.filter((tx) => tx.date >= startStr && tx.date < endStr).length;
 
         return count;
     }

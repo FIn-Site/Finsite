@@ -94,27 +94,9 @@ class FinSiteDashboard extends HTMLElement {
     render() {
         const {
             totalSpentAllTime,
-            transactionsThisWeek,
             spendingToday,
             monthlySpendingCurrent,
-            monthlyChangePercent,
-            monthlyDirection,
         } = this.panelData;
-
-        // Determine change indicator styling
-        let changeClass = '';
-        let changePrefix = '';
-
-        if (monthlyDirection === 'up') {
-            changeClass = 'negative';
-            changePrefix = '+';
-        } else if (monthlyDirection === 'down') {
-            changeClass = 'positive';
-            changePrefix = '';
-        }
-        const changeText = monthlyChangePercent !== 0
-            ? `${changePrefix}${monthlyChangePercent.toFixed(1)}% vs last month`
-            : 'No change vs last month';
 
         this.shadowRoot.innerHTML = `
             <style>

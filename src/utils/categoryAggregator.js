@@ -13,9 +13,10 @@ export function calculateCategoryTotals(transactions = []) {
     const totals = new Map();
     for (const tx of transactions) {
         const categoryId = tx?.category;
-        if (!categoryId) continue;
-        const amount = Math.abs(Number(tx.amount) || 0);
-        totals.set(categoryId, (totals.get(categoryId) || 0) + amount);
+        if (categoryId) {
+            const amount = Math.abs(Number(tx.amount) || 0);
+            totals.set(categoryId, (totals.get(categoryId) || 0) + amount);
+        }
     }
     return totals;
 }
